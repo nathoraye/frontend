@@ -1,11 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import type { CreateOrderData, CreateOrderActions, OnApproveData, OnApproveActions } from '@paypal/paypal-js';
 import * as fabric from 'fabric';
 import { submitOrder } from '../services/orderService';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
 
 type OrderType = 'vinyl' | 'permanent' | 'apparel';
 type GarmentView = 'front' | 'back' | 'left-arm' | 'right-arm';
@@ -41,6 +39,7 @@ interface OrderConfig {
   apparelSize?: string;
   printConfigs: Record<GarmentView, PrintConfig>;
   quantity: number;
+  [key: string]: unknown;
 }
 
 interface OrderModalProps {
@@ -74,15 +73,11 @@ const COUNTRIES = [
   'Other',
 ];
 
-// ─── Helper Functions ────────────────────────────────────────────────────────
-
 function calculatePrice(config: OrderConfig): number {
   const unitPrice = UNIT_PRICES[config.orderType];
   const subtotal = unitPrice * config.quantity;
   return subtotal + SHIPPING_COST;
 }
-
-// ─── Step 1: Configure ───────────────────────────────────────────────────────
 
 interface Step1Props {
   config: OrderConfig;
@@ -106,16 +101,8 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
     });
   };
 
-  const handleApparelChange = (key: string, value: string) => {
-    onConfigChange({
-      ...config,
-      [key]: value,
-    });
-  };
-
   return (
     <div className="space-y-6">
-      {/* Order Type Tabs */}
       <div className="flex gap-2 border-b border-pink-500">
         {(['vinyl', 'permanent', 'apparel'] as OrderType[]).map((type) => (
           <button
@@ -134,7 +121,6 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
         ))}
       </div>
 
-      {/* Vinyl Sticker Config */}
       {config.orderType === 'vinyl' && (
         <div className="space-y-4">
           <label className="block text-sm font-mono text-gray-300">
@@ -174,7 +160,6 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
         </div>
       )}
 
-      {/* Permanent Vinyl Config */}
       {config.orderType === 'permanent' && (
         <div className="space-y-4">
           <label className="block text-sm font-mono text-gray-300">
@@ -217,7 +202,10 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
           <select
             value={config.permanentFinish || 'matte'}
             onChange={(e) =>
-              handleApparelChange('permanentFinish', e.target.value)
+              onConfigChange({
+                ...config,
+                permanentFinish: e.target.value,
+              })
             }
             className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
           >
@@ -228,7 +216,6 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
         </div>
       )}
 
-      {/* Apparel Config */}
       {config.orderType === 'apparel' && (
         <div className="space-y-4">
           <label className="block text-sm font-mono text-gray-300">
@@ -237,7 +224,10 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
           <select
             value={config.apparelType || 'tshirt'}
             onChange={(e) =>
-              handleApparelChange('apparelType', e.target.value)
+              onConfigChange({
+                ...config,
+                apparelType: e.target.value,
+              })
             }
             className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
           >
@@ -252,7 +242,10 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
           <select
             value={config.apparelColor || 'black'}
             onChange={(e) =>
-              handleApparelChange('apparelColor', e.target.value)
+              onConfigChange({
+                ...config,
+                apparelColor: e.target.value,
+              })
             }
             className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
           >
@@ -268,7 +261,10 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
           <select
             value={config.apparelSize || 'M'}
             onChange={(e) =>
-              handleApparelChange('apparelSize', e.target.value)
+              onConfigChange({
+                ...config,
+                apparelSize: e.target.value,
+              })
             }
             className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
           >
@@ -282,7 +278,6 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
         </div>
       )}
 
-      {/* Quantity */}
       <div className="space-y-2">
         <label className="block text-sm font-mono text-gray-300">
           Quantity
@@ -309,15 +304,12 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
   );
 }
 
-// ─── Step 2: Placement ────────────────────────────────────────────────────────
-
 interface Step2Props {
   config: OrderConfig;
-  canvas: fabric.Canvas;
   onConfigChange: (config: OrderConfig) => void;
 }
 
-function Step2Placement({ config, canvas, onConfigChange }: Step2Props) {
+function Step2Placement({ config, onConfigChange }: Step2Props) {
   const [activeView, setActiveView] = useState<GarmentView>('front');
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -330,11 +322,9 @@ function Step2Placement({ config, canvas, onConfigChange }: Step2Props) {
     pCtx.fillStyle = '#1a1a1a';
     pCtx.fillRect(0, 0, previewCanvasRef.current.width, previewCanvasRef.current.height);
 
-    // Placeholder garment mockup
     pCtx.fillStyle = config.apparelColor === 'white' ? '#e0e0e0' : '#1a1a1a';
     pCtx.fillRect(100, 50, 300, 400);
 
-    // Draw print placement preview
     const printConfig = config.printConfigs[activeView];
     if (printConfig) {
       pCtx.fillStyle = '#FF1493';
@@ -359,7 +349,6 @@ function Step2Placement({ config, canvas, onConfigChange }: Step2Props) {
     <div className="space-y-6">
       <h3 className="text-lg font-mono text-pink-500">Print Placement</h3>
 
-      {/* Garment View Tabs */}
       {config.orderType !== 'vinyl' && (
         <div className="flex gap-2 border-b border-gray-700">
           {GARMENT_VIEWS.map((view) => (
@@ -378,7 +367,6 @@ function Step2Placement({ config, canvas, onConfigChange }: Step2Props) {
         </div>
       )}
 
-      {/* Preview Canvas */}
       <div className="bg-gray-900 p-4 rounded border border-gray-700">
         <canvas
           ref={previewCanvasRef}
@@ -396,7 +384,6 @@ function Step2Placement({ config, canvas, onConfigChange }: Step2Props) {
         />
       </div>
 
-      {/* Position Readout */}
       <div className="text-xs font-mono text-gray-400">
         Position: ({config.printConfigs[activeView]?.posX.toFixed(0)},
         {config.printConfigs[activeView]?.posY.toFixed(0)}) | Scale:
@@ -406,24 +393,19 @@ function Step2Placement({ config, canvas, onConfigChange }: Step2Props) {
   );
 }
 
-// ─── Step 3: Details & Payment ──────────────────────────────────────────────
-
 interface Step3Props {
   config: OrderConfig;
-  canvas: fabric.Canvas;
   onConfirm: (customer: CustomerFormValues, paypalOrderId: string) => Promise<void>;
   isProcessing: boolean;
 }
 
 function Step3Details({
   config,
-  canvas,
   onConfirm,
   isProcessing,
 }: Step3Props) {
   const {
     register,
-    handleSubmit,
     formState: { errors, isValid },
     getValues,
   } = useForm<CustomerFormValues>({
@@ -432,16 +414,15 @@ function Step3Details({
 
   const totalPrice = calculatePrice(config);
 
-  const handleApprove = async (data: OnApproveData) => {
+  const handleApprove = async (orderData: OnApproveData) => {
     const formData = getValues();
-    await onConfirm(formData, data.orderID);
+    await onConfirm(formData, orderData.orderID);
   };
 
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-mono text-pink-500">Shipping & Payment</h3>
 
-      {/* Order Summary */}
       <div className="bg-gray-800 p-4 rounded border border-gray-700 space-y-2 text-sm font-mono">
         <div className="flex justify-between text-gray-300">
           <span>Unit Price:</span>
@@ -467,7 +448,6 @@ function Step3Details({
         </div>
       </div>
 
-      {/* Customer Form */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -555,7 +535,6 @@ function Step3Details({
           </select>
         </div>
 
-        {/* PayPal Buttons - Only render if form is valid */}
         {isValid && !isProcessing && (
           <PayPalScriptProvider
             options={{
@@ -564,7 +543,7 @@ function Step3Details({
             }}
           >
             <PayPalButtons
-              createOrder={(data: CreateOrderData, actions: CreateOrderActions) =>
+              createOrder={(_data: CreateOrderData, actions: CreateOrderActions) =>
                 actions.order.create({
                   intent: 'CAPTURE',
                   purchase_units: [
@@ -579,10 +558,10 @@ function Step3Details({
                   ],
                 })
               }
-              onApprove={async (data: OnApproveData, actions: OnApproveActions) => {
+              onApprove={async (orderData: OnApproveData, actions: OnApproveActions) => {
                 const details = await actions.order?.capture();
                 if (details) {
-                  await handleApprove(data);
+                  await handleApprove(orderData);
                 }
               }}
               onError={(err) => {
@@ -601,8 +580,6 @@ function Step3Details({
     </div>
   );
 }
-
-// ─── Main Modal Component ─────────────────────────────────────────────────────
 
 export function OrderModal({ canvas, onClose }: OrderModalProps) {
   const [step, setStep] = useState<Step>(1);
@@ -639,7 +616,6 @@ export function OrderModal({ canvas, onClose }: OrderModalProps) {
         orderConfig: config,
         designSvg: canvas.toSVG(),
       });
-      // Show confirmation and close
       setTimeout(() => {
         onClose();
       }, 2000);
@@ -654,7 +630,6 @@ export function OrderModal({ canvas, onClose }: OrderModalProps) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
       <div className="bg-gray-900 w-full max-w-2xl max-h-[90vh] rounded-lg shadow-2xl flex flex-col border border-gray-700">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700">
           <div className="flex gap-4">
             {[1, 2, 3].map((s) => (
@@ -680,7 +655,6 @@ export function OrderModal({ canvas, onClose }: OrderModalProps) {
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {step === 1 && (
             <Step1Configure config={config} onConfigChange={setConfig} />
@@ -688,21 +662,18 @@ export function OrderModal({ canvas, onClose }: OrderModalProps) {
           {step === 2 && (
             <Step2Placement
               config={config}
-              canvas={canvas}
               onConfigChange={setConfig}
             />
           )}
           {step === 3 && (
             <Step3Details
               config={config}
-              canvas={canvas}
               onConfirm={handleConfirm}
               isProcessing={isProcessing}
             />
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t border-gray-700 bg-gray-950">
           <button
             onClick={handleBack}
