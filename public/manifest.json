@@ -1,0 +1,29 @@
+{
+  "name": "West Vinyl Studio",
+  "short_name": "West Vinyl",
+  "description": "Design, trace and order custom vinyl stickers and iron-on apparel prints.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f111a",
+  "theme_color": "#863bff",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

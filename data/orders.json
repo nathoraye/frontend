@@ -1,0 +1,21 @@
+[
+  {
+    "id": "ord-1785219140147-52",
+    "createdAt": "2026-07-28T06:12:20.147Z",
+    "paypalOrderId": "test-order",
+    "customer": {
+      "fullName": "Test User",
+      "email": "test@example.com",
+      "phone": "123",
+      "street": "1 Main St",
+      "city": "Melbourne",
+      "state": "VIC",
+      "postcode": "3000",
+      "country": "Australia"
+    },
+    "orderConfig": {
+      "orderType": "apparel"
+    },
+    "designSvg": "<svg></svg>"
+  }
+]

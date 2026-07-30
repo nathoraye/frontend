@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420" fill="none">
+  <!-- Right Sleeve Mockup (viewer's right = wearer's right) -->
+  <path d="M60 40 L20 80 L20 380 L280 380 L280 80 L240 40 Q150 20 60 40 Z" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M60 40 Q150 10 240 40" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <rect x="20" y="340" width="260" height="40" rx="0" fill="#b8c5d6" stroke="#94a3b8" stroke-width="1.5"/>
+  <line x1="20" y1="80" x2="20" y2="340" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
+  <line x1="280" y1="80" x2="280" y2="340" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
+  <rect x="95" y="100" width="110" height="110" rx="4" fill="none" stroke="#FF1493" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.5"/>
+</svg>

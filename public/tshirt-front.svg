@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 460" fill="none">
+  <!-- T-Shirt Front Mockup -->
+  <!-- Body -->
+  <path d="M120 80 L80 120 L40 100 L20 180 L80 190 L80 420 L320 420 L320 190 L360 180 L340 100 L300 120 L260 80 Q200 60 140 80 Z" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+  <!-- Collar -->
+  <path d="M140 80 Q200 110 260 80" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <!-- Left sleeve seam -->
+  <line x1="80" y1="190" x2="80" y2="420" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
+  <!-- Right sleeve seam -->
+  <line x1="320" y1="190" x2="320" y2="420" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
+  <!-- Front chest print zone indicator -->
+  <rect x="155" y="140" width="90" height="90" rx="4" fill="none" stroke="#FF1493" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.5"/>
+</svg>

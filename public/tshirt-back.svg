@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 460" fill="none">
+  <!-- T-Shirt Back Mockup -->
+  <path d="M120 80 L80 120 L40 100 L20 180 L80 190 L80 420 L320 420 L320 190 L360 180 L340 100 L300 120 L260 80 Q200 60 140 80 Z" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+  <!-- Back collar -->
+  <path d="M155 80 Q200 90 245 80" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <!-- Centre back seam -->
+  <line x1="200" y1="90" x2="200" y2="420" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,4" opacity="0.35"/>
+  <!-- Back print zone indicator -->
+  <rect x="140" y="130" width="120" height="130" rx="4" fill="none" stroke="#FF1493" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.5"/>
+</svg>
