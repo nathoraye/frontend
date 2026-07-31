@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as fabric from 'fabric'; 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { useCanvasEngine } from './hooks/useCanvasEngine';
 import { useHistoryEngine } from './hooks/useHistoryEngine';
 import { useAlignmentEngine } from './hooks/useAlignmentEngine'; 
@@ -405,6 +406,7 @@ export default function App() {
         {activeOrderTab && canvas && (
             <OrderModal canvas={canvas} initialTab={activeOrderTab} onClose={() => setActiveOrderTab(null)} />
         )}
+        <Analytics />
     </div>
   );
 }
