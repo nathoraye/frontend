@@ -122,9 +122,9 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
                 <p className="text-sm text-slate-400">Click and drag to isolate your sticker. Pull the anchors to adjust.</p>
             </div>
             
-            <div className="flex-1 w-full flex items-center justify-center overflow-hidden touch-none p-4">
-                <div ref={containerRef} className="relative inline-block shadow-2xl border border-slate-700 bg-black/50" style={{ fontSize: 0, lineHeight: 0 }}>
-                    <img ref={imgRef} src={imageUrl} alt="Target" className="pointer-events-none block max-w-[90vw] max-h-[50vh]" draggable={false} />
+            <div className="flex-1 w-full flex items-center justify-center overflow-hidden touch-none p-2 md:p-4">
+                <div ref={containerRef} className="relative w-full max-w-4xl h-[70vh] flex items-center justify-center bg-slate-900/90 shadow-2xl border border-slate-700 rounded-lg overflow-hidden" style={{ fontSize: 0, lineHeight: 0 }}>
+                    <img ref={imgRef} src={imageUrl} alt="Target" className="pointer-events-none block w-full h-full object-contain" draggable={false} />
                     <div className="absolute inset-0 z-10 cursor-crosshair pointer-events-auto" onMouseDown={(e) => handlePointerDown(e, 'new')} onTouchStart={(e) => handlePointerDown(e, 'new')} />
                     {cropBox && (cropBox.w > 0 || dragMode === 'new') && (
                         <div className="absolute z-20 border-[3px] border-[#FF1493] box-border" style={{ left: cropBox.x, top: cropBox.y, width: cropBox.w, height: cropBox.h, boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.7)' }}>

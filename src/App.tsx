@@ -30,7 +30,9 @@ export default function App() {
   const [tool, setTool] = useState<AppTool>('select');
   const [activeTab, setActiveTab] = useState<'design' | 'layers'>('design');
   const [showRightPanel, setShowRightPanel] = useState<boolean>(true);
-  
+  const [showLeftPanel, setShowLeftPanel] = useState<boolean>(true);
+  const [isMobileLayout, setIsMobileLayout] = useState<boolean>(false);
+   
   const [activeObj, setActiveObj] = useState<fabric.Object | null>(null);
   const [brushColor, setBrushColor] = useState<string>('#FF1493'); 
   const [brushSize, setBrushSize] = useState<number>(5);
@@ -247,6 +249,15 @@ export default function App() {
   useCanvasEvents({ canvas, matOverlayRef, isProcessingRef, tool, brushColor, brushSize, brushType, wandTolerance, wandMode, eraserMode, setIsTracing, setQuickMenu, updateUIFromSelection, saveHistorySnapshot, traceImage, setTool });
   useToolEngine({ canvas, tool, brushColor, brushSize, brushType, setQuickMenu });
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(max-width: 1023px)');
+    const updateLayout = () => setIsMobileLayout(mediaQuery.matches);
+    updateLayout();
+    mediaQuery.addEventListener?.('change', updateLayout);
+    return () => mediaQuery.removeEventListener?.('change', updateLayout);
+  }, []);
+ 
   const deleteSelected = useCallback(() => {
     if (!canvas || isProcessingRef.current) return; 
     const actives = canvas.getActiveObjects();
@@ -320,14 +331,27 @@ export default function App() {
               </button>
 
               <div className="w-px h-5 bg-slate-700 mx-1"></div>
-              <button onClick={() => setShowRightPanel(!showRightPanel)} className={`p-1.5 h-8 flex items-center justify-center rounded-md transition-colors hover:bg-slate-700/50 ${!showRightPanel ? 'text-[#FF1493] bg-[#FF1493]/10' : 'text-slate-400'}`} title="Toggle Inspector Panel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); setShowRightPanel((prev) => !prev); }} className={`p-1.5 h-8 flex items-center justify-center rounded-md transition-colors hover:bg-slate-700/50 touch-manipulation ${!showRightPanel ? 'text-[#FF1493] bg-[#FF1493]/10' : 'text-slate-400'}`} title="Toggle Inspector Panel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
             </div>
         </header>
+        {!showLeftPanel && (
+          <button
+            type="button"
+            onClick={() => setShowLeftPanel(true)}
+            className="fixed top-4 left-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-[#181a25]/95 text-slate-300 shadow-lg shadow-black/30 transition-transform hover:scale-110 hover:text-white hover:bg-slate-700 touch-manipulation"
+            aria-label="Open sidebar"
+            title="Toggle Sidebar"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+          </button>
+        )}
         <div className="flex-1 flex overflow-hidden">
-            <LeftDock tool={tool} setTool={setTool as any} addText={addText} addShape={addShape} fileInputRef={fileInputRef} handleImageUpload={handleInterceptUpload} borderCol="border-slate-800" bgPanel="bg-[#181a25]" />
-            <main className="flex-1 relative" ref={containerRef}>
+            {showLeftPanel && (
+              <LeftDock tool={tool} setTool={setTool as any} addText={addText} addShape={addShape} fileInputRef={fileInputRef} handleImageUpload={handleInterceptUpload} borderCol="border-slate-800" bgPanel="bg-[#181a25]" setShowLeftPanel={setShowLeftPanel} />
+            )}
+            <main className="flex-1 relative min-w-0 touch-manipulation" ref={containerRef}>
                 <canvas ref={canvasRef} />
-                
+                  
                 {quickMenu && quickMenu.show && !contourTarget && (
                   <div className="absolute z-20 flex items-center gap-1 p-1.5 rounded-xl shadow-2xl bg-[#1e2230]/90 border border-slate-700 transform -translate-x-1/2 transition-opacity" style={{ top: quickMenu.top, left: quickMenu.left }}>
                     
@@ -379,18 +403,43 @@ export default function App() {
                   </div>
                 )}
             </main>
-            {showRightPanel && (
-                <RightInspector
-                    canvas={canvas} activeTab={activeTab} setActiveTab={setActiveTab} activeObj={activeObj} canvasObjects={canvasObjects} tool={tool} setTool={setTool as any}
-                    brushColor={brushColor} setBrushColor={setBrushColor} brushSize={brushSize} setBrushSize={setBrushSize} brushType={brushType} setBrushType={setBrushType}
-                    opacity={opacity} wandTolerance={wandTolerance} setWandTolerance={setWandTolerance} wandMode={wandMode} setWandMode={setWandMode} 
-                    eraserMode={eraserMode} setEraserMode={setEraserMode} 
-                    textCurve={textCurve} charSpacing={charSpacing} setCharSpacing={setCharSpacing}
-                    lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
-                    performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} 
-                    saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
-                />
-            )}
+            {isMobileLayout ? (
+              <>
+                <div className={`fixed inset-0 z-30 bg-slate-950/55 backdrop-blur-[2px] transition-opacity duration-200 ${showRightPanel ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={() => setShowRightPanel(false)} />
+                <div className={`fixed inset-y-0 right-0 z-40 w-[min(92vw,320px)] h-full transform transition-transform duration-200 ease-out ${showRightPanel ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'}`}>
+                  <div className="h-full w-full" onClick={(e) => e.stopPropagation()}>
+                    {showRightPanel && (
+                      <RightInspector
+                        canvas={canvas} activeTab={activeTab} setActiveTab={setActiveTab} activeObj={activeObj} canvasObjects={canvasObjects} tool={tool} setTool={setTool as any}
+                        brushColor={brushColor} setBrushColor={setBrushColor} brushSize={brushSize} setBrushSize={setBrushSize} brushType={brushType} setBrushType={setBrushType}
+                        opacity={opacity} wandTolerance={wandTolerance} setWandTolerance={setWandTolerance} wandMode={wandMode} setWandMode={setWandMode} 
+                        eraserMode={eraserMode} setEraserMode={setEraserMode} 
+                        textCurve={textCurve} charSpacing={charSpacing} setCharSpacing={setCharSpacing}
+                        lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
+                        performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} 
+                        saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
+                      />
+                    )}
+                  </div>
+                </div>
+                {!showRightPanel && (
+                  <button type="button" onClick={() => setShowRightPanel(true)} className="fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-[#181a25]/95 text-[#FF1493] shadow-lg shadow-black/30 transition-transform hover:scale-105 touch-manipulation" aria-label="Open inspector">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+                  </button>
+                )}
+              </>
+            ) : showRightPanel ? (
+              <RightInspector
+                canvas={canvas} activeTab={activeTab} setActiveTab={setActiveTab} activeObj={activeObj} canvasObjects={canvasObjects} tool={tool} setTool={setTool as any}
+                brushColor={brushColor} setBrushColor={setBrushColor} brushSize={brushSize} setBrushSize={setBrushSize} brushType={brushType} setBrushType={setBrushType}
+                opacity={opacity} wandTolerance={wandTolerance} setWandTolerance={setWandTolerance} wandMode={wandMode} setWandMode={setWandMode} 
+                eraserMode={eraserMode} setEraserMode={setEraserMode} 
+                textCurve={textCurve} charSpacing={charSpacing} setCharSpacing={setCharSpacing}
+                lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
+                performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} 
+                saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
+              />
+            ) : null}
         </div>
         
         {pendingCropImage && (

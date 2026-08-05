@@ -13,13 +13,19 @@ interface LeftDockProps {
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   borderCol: string;
   bgPanel: string;
+  setShowLeftPanel?: (show: boolean) => void;
 }
 
 export const LeftDock: React.FC<LeftDockProps> = React.memo(({
-  tool, setTool, addText, addShape, fileInputRef, handleImageUpload, borderCol, bgPanel
+  tool, setTool, addText, addShape, fileInputRef, handleImageUpload, borderCol, bgPanel, setShowLeftPanel
 }) => {
   return (
-    <aside className={`w-16 border-r ${borderCol} ${bgPanel} flex flex-col items-center py-4 gap-3 z-10 shrink-0 overflow-y-auto overflow-x-hidden custom-scrollbar`}>
+    <aside className={`w-16 border-r ${borderCol} ${bgPanel} flex flex-col items-center py-4 gap-3 z-10 shrink-0 overflow-y-auto overflow-x-hidden custom-scrollbar relative`}>
+      {setShowLeftPanel && (
+        <button type="button" onClick={() => setShowLeftPanel(false)} className="absolute top-1 right-1 p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors touch-manipulation" title="Hide Sidebar" aria-label="Hide sidebar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+        </button>
+      )}
       <ToolBtn active={tool==='select'} onClick={() => setTool('select')} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/></svg>} tooltip="Select (V)" />
       <ToolBtn active={tool==='wand'} onClick={() => setTool('wand')} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 7-1-1-1 1 1 1 1-1Z"/><path d="m12 11-1-1-1 1 1 1 1-1Z"/><path d="m19 12-1-1-1 1 1 1 1-1Z"/><path d="m8 6-1-1-1 1 1 1 1-1Z"/><path d="m20.12 16.18-8.59 8.59a2 2 0 0 1-2.83 0l-5.66-5.66a2 2 0 0 1 0-2.83l8.59-8.59"/></svg>} tooltip="Magic Wand" />
       <ToolBtn active={tool==='draw'} onClick={() => setTool('draw')} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m18 5-3-3H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2"/><path d="M8 18h1"/><path d="M18.4 9.6a2 2 0 1 1 2.8 2.8L12 21l-4 1 1-4Z"/></svg>} tooltip="Brush Tool (B)" />

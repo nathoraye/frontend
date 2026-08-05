@@ -82,7 +82,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
   };
 
   return (
-    <aside className={`w-[320px] border-l ${borderCol} ${bgPanel} flex flex-col z-20 shrink-0 shadow-[-10px_0_30px_rgba(0,0,0,0.05)]`}>
+    <aside className={`w-full max-w-[320px] md:w-[320px] border-l ${borderCol} ${bgPanel} flex flex-col z-20 shrink-0 shadow-[-10px_0_30px_rgba(0,0,0,0.05)] touch-manipulation pointer-events-auto h-full`}>
       <div className={`flex border-b ${borderCol}`}>
         <button onClick={() => setActiveTab('design')} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-colors ${activeTab==='design' ? 'text-[#FF1493] border-b-2 border-[#FF1493] bg-[#FF1493]/5' : `${textMuted} hover:${textMain}`}`}>Design</button>
         <button onClick={() => setActiveTab('layers')} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-colors ${activeTab==='layers' ? 'text-[#FF1493] border-b-2 border-[#FF1493] bg-[#FF1493]/5' : `${textMuted} hover:${textMain}`}`}>Layers</button>

@@ -7,6 +7,23 @@ import TracerWorker from '../workers/tracerWorker.ts?worker';
 export function useVectorEngine() {
   const workerRef = useRef<Worker | null>(null);
 
+  const TRACE_OPTIONS = {
+    pathomit: 8,
+    ltres: 0.3,
+    qtres: 0.5,
+    scale: 1,
+    rightangleenhance: true,
+    numberofcolors: 2,
+    colorquantcycles: 2,
+    mincolorgap: 128,
+    // Force an explicit white background + black foreground palette.
+    pal: [
+      { r: 255, g: 255, b: 255, a: 255 },
+      { r: 0, g: 0, b: 0, a: 255 },
+    ],
+    colorsampling: 0,
+  };
+
   useEffect(() => {
     workerRef.current = new TracerWorker();
     return () => {
@@ -59,8 +76,10 @@ export function useVectorEngine() {
       // previously leaking through as ghost areas, producing a crisper silhouette.
       const upData = uCtx.getImageData(0, 0, upCanvas.width, upCanvas.height);
       const d = upData.data;
-      
+
       let hasVisiblePixels = false;
+      let whitePixels = 0;
+      let blackPixels = 0;
 
       for (let i = 0; i < d.length; i += 4) {
           const r = d[i]; const g = d[i + 1]; const b = d[i + 2]; const a = d[i + 3];
@@ -69,13 +88,18 @@ export function useVectorEngine() {
 
           if (a < 128 || brightness > 200) {
               d[i] = 255; d[i+1] = 255; d[i+2] = 255; d[i+3] = 255; // WHITE BG
+              whitePixels++;
           } else {
               d[i] = 0; d[i+1] = 0; d[i+2] = 0; d[i+3] = 255; // BLACK INK
               hasVisiblePixels = true;
+              blackPixels++;
           }
       }
 
       if (!hasVisiblePixels) return reject("Image is completely transparent or too faint.");
+      if (whitePixels === 0 || blackPixels === 0) {
+        return reject('Trace map missing clear foreground/background separation.');
+      }
       
       uCtx.putImageData(upData, 0, 0);
 
@@ -88,9 +112,9 @@ export function useVectorEngine() {
       workerRef.current.addEventListener('message', handleMessage);
       
       try {
-          workerRef.current.postMessage({ imageData: upData }, [upData.data.buffer]);
+          workerRef.current.postMessage({ imageData: upData, traceOptions: TRACE_OPTIONS }, [upData.data.buffer]);
       } catch {
-          workerRef.current.postMessage({ imageData: upData });
+          workerRef.current.postMessage({ imageData: upData, traceOptions: TRACE_OPTIONS });
       }
     });
   }, []);
