@@ -17,8 +17,19 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
     const [dragMode, setDragMode] = useState<DragMode>(null);
     const dragStart = useRef({ x: 0, y: 0, box: { x: 0, y: 0, w: 0, h: 0 } });
     
-    // Kept the upscaler, just renamed it for clarity since we removed vector tracing
     const [smoothness, setSmoothness] = useState<number>(5);
+
+    // Initialize full-image crop box as soon as image loads
+    const handleImageLoad = () => {
+        if (!imgRef.current) return;
+        const rect = imgRef.current.getBoundingClientRect();
+        setCropBox({
+            x: 0,
+            y: 0,
+            w: rect.width,
+            h: rect.height
+        });
+    };
 
     const getPointer = (e: any) => {
         if (!imgRef.current) return { x: 0, y: 0 };
@@ -58,10 +69,13 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
             let nx = sb.x; let ny = sb.y; let nw = sb.w; let nh = sb.h;
 
             if (dragMode === 'new') {
-                nx = Math.min(dragStart.current.x, pt.x); ny = Math.min(dragStart.current.y, pt.y);
-                nw = Math.abs(pt.x - dragStart.current.x); nh = Math.abs(pt.y - dragStart.current.y);
+                nx = Math.min(dragStart.current.x, pt.x); 
+                ny = Math.min(dragStart.current.y, pt.y);
+                nw = Math.abs(pt.x - dragStart.current.x); 
+                nh = Math.abs(pt.y - dragStart.current.y);
             } else if (dragMode === 'move') {
-                nx = Math.max(0, Math.min(sb.x + dx, rect.width - sb.w)); ny = Math.max(0, Math.min(sb.y + dy, rect.height - sb.h));
+                nx = Math.max(0, Math.min(sb.x + dx, rect.width - sb.w)); 
+                ny = Math.max(0, Math.min(sb.y + dy, rect.height - sb.h));
             } else {
                 if (dragMode.includes('w')) { const right = sb.x + sb.w; nx = Math.min(right, Math.max(0, sb.x + dx)); nw = right - nx; }
                 if (dragMode.includes('e')) { nw = Math.max(0, Math.min(sb.w + dx, rect.width - sb.x)); }
@@ -71,46 +85,58 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
             setCropBox({ x: nx, y: ny, w: nw, h: nh });
         };
         const handlePointerUp = () => setDragMode(null);
-        window.addEventListener('mousemove', handlePointerMove); window.addEventListener('mouseup', handlePointerUp);
-        window.addEventListener('touchmove', handlePointerMove, { passive: false }); window.addEventListener('touchend', handlePointerUp);
+        window.addEventListener('mousemove', handlePointerMove); 
+        window.addEventListener('mouseup', handlePointerUp);
+        window.addEventListener('touchmove', handlePointerMove, { passive: false }); 
+        window.addEventListener('touchend', handlePointerUp);
         return () => {
-            window.removeEventListener('mousemove', handlePointerMove); window.removeEventListener('mouseup', handlePointerUp);
-            window.removeEventListener('touchmove', handlePointerMove); window.removeEventListener('touchend', handlePointerUp);
+            window.removeEventListener('mousemove', handlePointerMove); 
+            window.removeEventListener('mouseup', handlePointerUp);
+            window.removeEventListener('touchmove', handlePointerMove); 
+            window.removeEventListener('touchend', handlePointerUp);
         };
     }, [dragMode]);
 
     const executeCrop = () => {
-        if (!cropBox || cropBox.w < 10 || cropBox.h < 10) {
-            // Always pass false for vector tracing here now
-            onCrop(imageUrl, false, smoothness);
-            return;
-        }
         const img = imgRef.current;
         if (!img) return;
 
         const rect = img.getBoundingClientRect();
+
+        // Fallback to full image bounds if crop box wasn't drawn or is too small
+        const targetBox = (cropBox && cropBox.w >= 10 && cropBox.h >= 10) 
+            ? cropBox 
+            : { x: 0, y: 0, w: rect.width, h: rect.height };
+
         const scaleX = img.naturalWidth / rect.width;
         const scaleY = img.naturalHeight / rect.height;
 
-        const sx = cropBox.x * scaleX;
-        const sy = cropBox.y * scaleY;
-        const sw = cropBox.w * scaleX;
-        const sh = cropBox.h * scaleY;
+        const sx = targetBox.x * scaleX;
+        const sy = targetBox.y * scaleY;
+        const sw = targetBox.w * scaleX;
+        const sh = targetBox.h * scaleY;
+
+        // Apply smoothness resolution multiplier
+        const targetWidth = Math.max(1, Math.round(sw * (smoothness / 5)));
+        const targetHeight = Math.max(1, Math.round(sh * (smoothness / 5)));
 
         const canvas = document.createElement('canvas');
-        canvas.width = sw;
-        canvas.height = sh;
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
         const ctx = canvas.getContext('2d');
         
         if (ctx) {
-            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
             onCrop(canvas.toDataURL('image/png'), false, smoothness);
         }
     };
 
     const renderHandle = (mode: DragMode, cursor: string, style: React.CSSProperties) => (
         <div 
-            onMouseDown={(e) => handlePointerDown(e, mode)} onTouchStart={(e) => handlePointerDown(e, mode)}
+            onMouseDown={(e) => handlePointerDown(e, mode)} 
+            onTouchStart={(e) => handlePointerDown(e, mode)}
             className="absolute bg-white border-2 border-[#FF1493] rounded-sm shadow-lg z-30 transition-transform hover:scale-125"
             style={{ ...style, width: '14px', height: '14px', cursor, transform: 'translate(-50%, -50%)', pointerEvents: 'auto' }}
         />
@@ -118,27 +144,64 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
 
     return (
         <div className="fixed inset-0 z-[100] flex flex-col bg-[#0f111a]/95 select-none backdrop-blur-sm">
-            <div className="flex-none p-6 text-white text-center">
-                <h2 className="text-2xl font-black tracking-widest uppercase mb-2">Crop Upload</h2>
-                <p className="text-sm text-slate-400">Click and drag to isolate your sticker. Pull the anchors to adjust.</p>
+            <div className="flex-none p-4 md:p-6 text-white text-center">
+                <h2 className="text-xl md:text-2xl font-black tracking-widest uppercase mb-1">Crop Upload</h2>
+                <p className="text-xs md:text-sm text-slate-400">Click and drag to isolate your sticker. Pull the anchors to adjust.</p>
             </div>
             
-            <div className="flex-1 w-full flex items-center justify-center touch-none p-2 md:p-4 min-h-0">
-                <div ref={containerRef} className="relative max-h-[60vh] max-w-full overflow-hidden flex items-center justify-center bg-slate-900/90 shadow-2xl border border-slate-700 rounded-lg" style={{ fontSize: 0, lineHeight: 0 }}>
-                    <img ref={imgRef} src={imageUrl} alt="Target" className="pointer-events-none block max-w-full max-h-full w-auto h-auto object-contain" draggable={false} />
-                    <div className="absolute inset-0 z-10 cursor-crosshair pointer-events-auto" onMouseDown={(e) => handlePointerDown(e, 'new')} onTouchStart={(e) => handlePointerDown(e, 'new')} />
-                    {cropBox && (cropBox.w > 0 || dragMode === 'new') && (
-                        <div className="absolute z-20 border-[3px] border-[#FF1493] box-border" style={{ left: cropBox.x, top: cropBox.y, width: cropBox.w, height: cropBox.h, boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.7)' }}>
-                            <div className="absolute inset-0 cursor-move pointer-events-auto" onMouseDown={(e) => handlePointerDown(e, 'move')} onTouchStart={(e) => handlePointerDown(e, 'move')} />
-                            {renderHandle('nw', 'nwse-resize', { top: 0, left: 0 })} {renderHandle('n', 'ns-resize', { top: 0, left: '50%' })} {renderHandle('ne', 'nesw-resize', { top: 0, left: '100%' })} {renderHandle('e', 'ew-resize', { top: '50%', left: '100%' })} {renderHandle('se', 'nwse-resize', { top: '100%', left: '100%' })} {renderHandle('s', 'ns-resize', { top: '100%', left: '50%' })} {renderHandle('sw', 'nesw-resize', { top: '100%', left: 0 })} {renderHandle('w', 'ew-resize', { top: '50%', left: 0 })}
-                        </div>
-                    )}
+            <div className="flex-1 w-full flex items-center justify-center touch-none p-2 md:p-4 min-h-0 overflow-hidden">
+                <div 
+                    ref={containerRef} 
+                    className="relative max-h-[75vh] max-w-5xl w-full h-full flex items-center justify-center bg-slate-900/90 shadow-2xl border border-slate-700 rounded-lg p-2" 
+                    style={{ fontSize: 0, lineHeight: 0 }}
+                >
+                    <div className="relative inline-block max-w-full max-h-full">
+                        <img 
+                            ref={imgRef} 
+                            src={imageUrl} 
+                            alt="Target" 
+                            onLoad={handleImageLoad}
+                            className="pointer-events-none block max-w-full max-h-[70vh] w-auto h-auto object-contain rounded" 
+                            draggable={false} 
+                        />
+                        <div 
+                            className="absolute inset-0 z-10 cursor-crosshair pointer-events-auto" 
+                            onMouseDown={(e) => handlePointerDown(e, 'new')} 
+                            onTouchStart={(e) => handlePointerDown(e, 'new')} 
+                        />
+                        {cropBox && (cropBox.w > 0 || dragMode === 'new') && (
+                            <div 
+                                className="absolute z-20 border-[3px] border-[#FF1493] box-border pointer-events-none" 
+                                style={{ 
+                                    left: cropBox.x, 
+                                    top: cropBox.y, 
+                                    width: cropBox.w, 
+                                    height: cropBox.h, 
+                                    boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.75)' 
+                                }}
+                            >
+                                <div 
+                                    className="absolute inset-0 cursor-move pointer-events-auto" 
+                                    onMouseDown={(e) => handlePointerDown(e, 'move')} 
+                                    onTouchStart={(e) => handlePointerDown(e, 'move')} 
+                                />
+                                {renderHandle('nw', 'nwse-resize', { top: 0, left: 0 })} 
+                                {renderHandle('n', 'ns-resize', { top: 0, left: '50%' })} 
+                                {renderHandle('ne', 'nesw-resize', { top: 0, left: '100%' })} 
+                                {renderHandle('e', 'ew-resize', { top: '50%', left: '100%' })} 
+                                {renderHandle('se', 'nwse-resize', { top: '100%', left: '100%' })} 
+                                {renderHandle('s', 'ns-resize', { top: '100%', left: '50%' })} 
+                                {renderHandle('sw', 'nesw-resize', { top: '100%', left: 0 })} 
+                                {renderHandle('w', 'ew-resize', { top: '50%', left: 0 })}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <div className="flex-none p-6 bg-[#181a25] border-t border-slate-800">
-                <div className="max-w-md mx-auto mb-6">
-                    <div className="flex justify-between items-center text-xs font-bold text-[#FF1493] mb-3 uppercase tracking-wider">
+            <div className="flex-none p-4 md:p-6 bg-[#181a25] border-t border-slate-800">
+                <div className="max-w-md mx-auto mb-4 md:mb-6">
+                    <div className="flex justify-between items-center text-xs font-bold text-[#FF1493] mb-2 uppercase tracking-wider">
                         <span>Image Resolution Multiplier</span>
                         <span className="bg-[#FF1493]/20 px-2 py-0.5 rounded">{smoothness}x</span>
                     </div>
@@ -147,12 +210,20 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
                         value={smoothness} onChange={e => setSmoothness(Number(e.target.value))} 
                         className="w-full accent-[#FF1493] cursor-pointer" 
                     />
-                    <p className="text-[10px] text-slate-500 mt-2 text-center">Increase multiplier to upscale the raw image resolution before adding.</p>
+                    <p className="text-[10px] text-slate-500 mt-1 text-center">Increase multiplier to upscale raw image resolution before adding.</p>
                 </div>
 
                 <div className="flex justify-center gap-4">
-                    <button onClick={onCancel} className="px-6 py-3 rounded-lg font-bold text-white bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-600">Cancel</button>
-                    <button onClick={() => executeCrop()} className="px-8 py-3 rounded-lg font-black uppercase tracking-wider text-white bg-[#FF1493] hover:bg-[#ff4da6] transition-all shadow-lg shadow-[#FF1493]/20 hover:shadow-[#FF1493]/40 hover:-translate-y-0.5 active:translate-y-0">
+                    <button 
+                        onClick={onCancel} 
+                        className="px-6 py-3 rounded-lg font-bold text-white bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-600"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={executeCrop} 
+                        className="px-8 py-3 rounded-lg font-black uppercase tracking-wider text-white bg-[#FF1493] hover:bg-[#ff4da6] transition-all shadow-lg shadow-[#FF1493]/20 hover:shadow-[#FF1493]/40 hover:-translate-y-0.5 active:translate-y-0"
+                    >
                         Add to Canvas
                     </button>
                 </div>
