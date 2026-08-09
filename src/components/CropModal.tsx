@@ -33,6 +33,7 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
 
     const handlePointerDown = (e: any, mode: DragMode) => {
         e.stopPropagation();
+        e.preventDefault();
         if (e.type === 'mousedown' && e.button !== 0) return; 
         const pt = getPointer(e);
         setDragMode(mode);
