@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { TRACE_UPSCALE_MULT } from '../utils/constants';
 // Must use Vite's ?worker suffix — omitting it will cause a build failure.
 import TracerWorker from '../workers/tracerWorker.ts?worker';
@@ -7,7 +7,7 @@ import TracerWorker from '../workers/tracerWorker.ts?worker';
 export function useVectorEngine() {
   const workerRef = useRef<Worker | null>(null);
 
-  const TRACE_OPTIONS = {
+  const TRACE_OPTIONS = useMemo(() => ({
     pathomit: 8,
     ltres: 0.3,
     qtres: 0.5,
@@ -22,14 +22,14 @@ export function useVectorEngine() {
       { r: 0, g: 0, b: 0, a: 255 },
     ],
     colorsampling: 0,
-  };
+  }), []);
 
   useEffect(() => {
     workerRef.current = new TracerWorker();
     return () => {
       workerRef.current?.terminate(); 
     };
-  }, []);
+  }, [TRACE_OPTIONS]);
 
   const traceImage = useCallback(async (imageData: ImageData, smoothness: number = 5): Promise<string> => {
     return new Promise((resolve, reject) => {

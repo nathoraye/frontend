@@ -69,7 +69,11 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
     
     // For text, trim trailing spaces and recalculate exact width
     if (activeObj.type === 'textbox' || activeObj.type === 'i-text') {
-        const textObj = activeObj as any;
+        const textObj = activeObj as unknown as {
+          text?: string;
+          set: (key: string, value: string | number) => void;
+          calcTextWidth?: () => number;
+        };
         if (textObj.text) textObj.set('text', textObj.text.trim());
         if (typeof textObj.calcTextWidth === 'function') {
             textObj.set('width', textObj.calcTextWidth());

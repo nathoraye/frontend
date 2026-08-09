@@ -124,7 +124,7 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
             </div>
             
             <div className="flex-1 w-full flex items-center justify-center touch-none p-2 md:p-4 min-h-0">
-                <div ref={containerRef} className="relative w-full max-w-5xl max-h-[85vh] min-h-0 flex items-center justify-center bg-slate-900/90 shadow-2xl border border-slate-700 rounded-lg" style={{ fontSize: 0, lineHeight: 0 }}>
+                <div ref={containerRef} className="relative max-h-[60vh] max-w-full overflow-hidden flex items-center justify-center bg-slate-900/90 shadow-2xl border border-slate-700 rounded-lg" style={{ fontSize: 0, lineHeight: 0 }}>
                     <img ref={imgRef} src={imageUrl} alt="Target" className="pointer-events-none block max-w-full max-h-full w-auto h-auto object-contain" draggable={false} />
                     <div className="absolute inset-0 z-10 cursor-crosshair pointer-events-auto" onMouseDown={(e) => handlePointerDown(e, 'new')} onTouchStart={(e) => handlePointerDown(e, 'new')} />
                     {cropBox && (cropBox.w > 0 || dragMode === 'new') && (
