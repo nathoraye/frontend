@@ -4,6 +4,16 @@ import * as fabric from 'fabric';
 
 export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapshot: (c: fabric.Canvas, i?: boolean) => void) {
 
+    const selectionHasRasterImage = (objs: fabric.Object[]) => {
+        return objs.some((obj: any) => {
+            if (obj?.type === 'image') return true;
+            if (obj?.type === 'group' || obj?.type === 'activeSelection') {
+                return obj.getObjects?.().some((child: any) => child?.type === 'image');
+            }
+            return false;
+        });
+    };
+
   const performBoolean = useCallback(async (operation: 'weld' | 'punch') => {
     if (!canvas) return;
     
@@ -20,6 +30,11 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
     }
 
     if (operation === 'weld') {
+        if (selectionHasRasterImage(actives)) {
+            alert("Weld only works on vector shapes. Trace image layers to vectors first, then weld.");
+            return;
+        }
+
         // 1. Capture the visual fill color before we destroy the objects
         const fillToUse = actives[0].fill || '#FF1493';
 
@@ -39,34 +54,47 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
 
         // Strip the background so we don't accidentally weld a giant background square
         const currentBg = canvas.backgroundColor;
-        // eslint-disable-next-line react-hooks/immutability
-        canvas.backgroundColor = 'transparent';
+        let fullSvg = '';
 
-        // 3. Export the absolute baked SVG
-        const fullSvg = canvas.toSVG();
+        try {
+            // eslint-disable-next-line react-hooks/immutability
+            canvas.backgroundColor = 'transparent';
 
-        // 4. Restore the canvas visibility and background state
-        canvas.backgroundColor = currentBg;
-        allObjs.forEach(obj => {
-            obj.set('visible', visibilityMap.get(obj));
-        });
-
-        // 5. Nuke the original un-baked objects
-        actives.forEach(obj => canvas.remove(obj));
-        canvas.discardActiveObject();
+            // 3. Export the absolute baked SVG
+            fullSvg = canvas.toSVG();
+        } finally {
+            // 4. Always restore the canvas visibility and background state
+            canvas.backgroundColor = currentBg;
+            allObjs.forEach(obj => {
+                obj.set('visible', visibilityMap.get(obj));
+            });
+            canvas.requestRenderAll();
+        }
         
         try {
-            // 6. Parse the newly baked, 1:1 scale paths
+            // 5. Parse the newly baked, 1:1 scale paths
             const { objects, options } = await (fabric as any).loadSVGFromString(fullSvg);
             
             // Filter out any stray canvas workspace rects if Fabric injected one
-            const validObjects = objects.filter((o: any) => o.id !== 'workspace' && o.type !== 'rect' || o.fill !== currentBg);
+            const validObjects = objects.filter((o: any) => {
+                const isWorkspaceRect = o.id === 'workspace';
+                const isBgRect = o.type === 'rect' && o.fill === currentBg;
+                return !isWorkspaceRect && !isBgRect;
+            });
 
-            // 7. Force overlapping lines to visually merge
+            if (!validObjects.length) {
+                throw new Error('Weld produced no vector output.');
+            }
+
+            // 6. Force overlapping lines to visually merge
             validObjects.forEach((obj: any) => { if (obj.set) obj.set({ fillRule: 'nonzero' }); });
             
-            // 8. Wrap into a final, clean tight-bound object
+            // 7. Wrap into a final, clean tight-bound object
             const result = (fabric as any).util.groupSVGElements(validObjects, options);
+
+            // 8. Replace originals only after we have a valid weld result
+            actives.forEach(obj => canvas.remove(obj));
+            canvas.discardActiveObject();
             
             result.set({
                 fill: fillToUse,
@@ -83,6 +111,7 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
             saveHistorySnapshot(canvas, true);
         } catch (err) {
             console.error("Weld Failed:", err);
+            alert("Weld failed. Your original objects were kept unchanged.");
         }
     }
   }, [canvas, saveHistorySnapshot]);
