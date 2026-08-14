@@ -1,0 +1,10 @@
+3D models sourced from poly.pizza (https://poly.pizza), used under their listed licenses:
+
+- hoodie.glb — "Hoodie Character" by Quaternius — CC0 (Public Domain)
+  https://poly.pizza/m/gKLBoRsyKe
+
+- tshirt.glb — "T-shirt" by Poly by Google — CC-BY 3.0 (attribution required)
+  https://poly.pizza/m/bdOMzzh-fSl
+
+- sloppy-joe.glb — "Jumper" by Ben London — CC-BY 3.0 (attribution required)
+  https://poly.pizza/m/dYvRq2e23VF
