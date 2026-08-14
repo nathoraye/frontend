@@ -5,7 +5,7 @@ export interface OrderSubmissionPayload {
   customer: {
     fullName: string;
     email: string;
-    phone: string;
+    phone?: string;
     street: string;
     city: string;
     state: string;

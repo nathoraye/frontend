@@ -54,10 +54,10 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
 
         // Strip the background so we don't accidentally weld a giant background square
         const currentBg = canvas.backgroundColor;
+        // eslint-disable-next-line no-useless-assignment -- read below only if canvas.toSVG() throws before reassigning
         let fullSvg = '';
 
         try {
-            // eslint-disable-next-line react-hooks/immutability
             canvas.backgroundColor = 'transparent';
 
             // 3. Export the absolute baked SVG

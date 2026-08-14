@@ -1,24 +1,29 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import type { CreateOrderData, CreateOrderActions, OnApproveData, OnApproveActions } from '@paypal/paypal-js';
 import * as fabric from 'fabric';
 import { submitOrder } from '../services/orderService';
+import { snapshotDesignAsDataURL } from '../utils/designSnapshot';
+import { ProductViewer3D } from './ProductViewer3D';
+import { PRODUCT_CATALOG, PRODUCT_IDS, type ProductId } from '../three/productCatalog';
 
-type OrderType = 'vinyl' | 'permanent' | 'apparel';
-type GarmentView = 'front' | 'back' | 'left-arm' | 'right-arm';
+type OrderType = 'vinyl' | 'product';
 type Step = 1 | 2 | 3;
+
+const SIZED_PRODUCTS: ProductId[] = ['tshirt', 'hoodie', 'sloppyJoe', 'babyClothes'];
 
 interface PrintConfig {
   scale: number;
   posX: number;
   posY: number;
+  rotationDeg: number;
 }
 
 interface CustomerFormValues {
   fullName: string;
   email: string;
-  phone: string;
+  phone?: string;
   street: string;
   city: string;
   state: string;
@@ -30,14 +35,12 @@ interface OrderConfig {
   orderType: OrderType;
   vinylWidthCm?: number;
   vinylHeightCm?: number;
+  vinylPermanent?: boolean;
   vinylFinish?: string;
-  permanentWidthCm?: number;
-  permanentHeightCm?: number;
-  permanentFinish?: string;
-  apparelType?: string;
-  apparelColor?: string;
-  apparelSize?: string;
-  printConfigs: Record<GarmentView, PrintConfig>;
+  productId?: ProductId;
+  productColor?: string;
+  productSize?: string;
+  printConfigs: Record<string, PrintConfig>;
   quantity: number;
   [key: string]: unknown;
 }
@@ -50,18 +53,17 @@ interface OrderModalProps {
 
 const DEFAULT_PRINT_CONFIG: PrintConfig = {
   scale: 1,
-  posX: 50,
-  posY: 50,
+  posX: 0,
+  posY: 0,
+  rotationDeg: 0,
 };
 
-const GARMENT_VIEWS: GarmentView[] = ['front', 'back', 'left-arm', 'right-arm'];
-
-const UNIT_PRICES = {
+const UNIT_PRICES: Record<OrderType, number> = {
   vinyl: 12.99,
-  permanent: 18.99,
-  apparel: 24.99,
+  product: 24.99,
 };
 
+const PERMANENT_SURCHARGE = 6;
 const SHIPPING_COST = 5.99;
 
 const COUNTRIES = [
@@ -74,9 +76,14 @@ const COUNTRIES = [
 ];
 
 function calculatePrice(config: OrderConfig): number {
-  const unitPrice = UNIT_PRICES[config.orderType];
+  const unitPrice = UNIT_PRICES[config.orderType] + (config.orderType === 'vinyl' && config.vinylPermanent ? PERMANENT_SURCHARGE : 0);
   const subtotal = unitPrice * config.quantity;
   return subtotal + SHIPPING_COST;
+}
+
+function printConfigsForProduct(productId: ProductId): Record<string, PrintConfig> {
+  const views = PRODUCT_CATALOG[productId].views;
+  return Object.fromEntries(views.map((v) => [v.id, { ...DEFAULT_PRINT_CONFIG }]));
 }
 
 interface Step1Props {
@@ -90,21 +97,34 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
   };
 
   const handleOrderTypeChange = (type: OrderType) => {
+    if (type === 'product' && !config.productId) {
+      onConfigChange({
+        ...config,
+        orderType: type,
+        productId: 'tshirt',
+        productColor: PRODUCT_CATALOG.tshirt.colorOptions[0],
+        printConfigs: printConfigsForProduct('tshirt'),
+      });
+      return;
+    }
     onConfigChange({ ...config, orderType: type });
   };
 
-  const handleVinylSizeChange = (w: number, h: number) => {
+  const handleProductChange = (productId: ProductId) => {
     onConfigChange({
       ...config,
-      vinylWidthCm: w,
-      vinylHeightCm: h,
+      productId,
+      productColor: PRODUCT_CATALOG[productId].colorOptions[0],
+      printConfigs: printConfigsForProduct(productId),
     });
   };
+
+  const activeProduct = config.productId ? PRODUCT_CATALOG[config.productId] : undefined;
 
   return (
     <div className="space-y-6">
       <div className="flex gap-2 border-b border-pink-500">
-        {(['vinyl', 'permanent', 'apparel'] as OrderType[]).map((type) => (
+        {(['vinyl', 'product'] as OrderType[]).map((type) => (
           <button
             key={type}
             onClick={() => handleOrderTypeChange(type)}
@@ -114,30 +134,21 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
                 : 'text-gray-400 hover:text-gray-300'
             }`}
           >
-            {type === 'vinyl' && 'Vinyl Sticker'}
-            {type === 'permanent' && 'Permanent Vinyl'}
-            {type === 'apparel' && 'Iron-On Apparel'}
+            {type === 'vinyl' ? 'Vinyl Sticker' : 'Custom Product'}
           </button>
         ))}
       </div>
 
       {config.orderType === 'vinyl' && (
         <div className="space-y-4">
-          <label className="block text-sm font-mono text-gray-300">
-            Size (cm)
-          </label>
+          <label className="block text-sm font-mono text-gray-300">Size (cm)</label>
           <div className="flex gap-4">
             <input
               type="number"
               min="2"
               max="30"
               value={config.vinylWidthCm || 10}
-              onChange={(e) =>
-                handleVinylSizeChange(
-                  parseFloat(e.target.value),
-                  config.vinylHeightCm || 10
-                )
-              }
+              onChange={(e) => onConfigChange({ ...config, vinylWidthCm: parseFloat(e.target.value) })}
               className="w-20 px-2 py-1 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
               placeholder="W"
             />
@@ -147,141 +158,86 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
               min="2"
               max="30"
               value={config.vinylHeightCm || 10}
-              onChange={(e) =>
-                handleVinylSizeChange(
-                  config.vinylWidthCm || 10,
-                  parseFloat(e.target.value)
-                )
-              }
+              onChange={(e) => onConfigChange({ ...config, vinylHeightCm: parseFloat(e.target.value) })}
               className="w-20 px-2 py-1 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
               placeholder="H"
             />
           </div>
+
+          <label className="flex items-center gap-2 text-sm font-mono text-gray-300">
+            <input
+              type="checkbox"
+              checked={config.vinylPermanent ?? false}
+              onChange={(e) => onConfigChange({ ...config, vinylPermanent: e.target.checked })}
+            />
+            Permanent adhesive (+${PERMANENT_SURCHARGE.toFixed(2)})
+          </label>
+
+          {config.vinylPermanent && (
+            <>
+              <label className="block text-sm font-mono text-gray-300">Finish</label>
+              <select
+                value={config.vinylFinish || 'matte'}
+                onChange={(e) => onConfigChange({ ...config, vinylFinish: e.target.value })}
+                className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
+              >
+                <option value="matte">Matte</option>
+                <option value="gloss">Gloss</option>
+                <option value="metallic">Metallic</option>
+              </select>
+            </>
+          )}
         </div>
       )}
 
-      {config.orderType === 'permanent' && (
+      {config.orderType === 'product' && activeProduct && (
         <div className="space-y-4">
-          <label className="block text-sm font-mono text-gray-300">
-            Width: {config.permanentWidthCm || 15} cm
-          </label>
-          <input
-            type="range"
-            min="1"
-            max="29"
-            value={config.permanentWidthCm || 15}
-            onChange={(e) =>
-              onConfigChange({
-                ...config,
-                permanentWidthCm: parseFloat(e.target.value),
-              })
-            }
-            className="w-full"
-          />
-
-          <label className="block text-sm font-mono text-gray-300">
-            Height: {config.permanentHeightCm || 30} cm
-          </label>
-          <input
-            type="range"
-            min="1"
-            max="60"
-            value={config.permanentHeightCm || 30}
-            onChange={(e) =>
-              onConfigChange({
-                ...config,
-                permanentHeightCm: parseFloat(e.target.value),
-              })
-            }
-            className="w-full"
-          />
-
-          <label className="block text-sm font-mono text-gray-300">
-            Finish
-          </label>
+          <label className="block text-sm font-mono text-gray-300">Product</label>
           <select
-            value={config.permanentFinish || 'matte'}
-            onChange={(e) =>
-              onConfigChange({
-                ...config,
-                permanentFinish: e.target.value,
-              })
-            }
+            value={activeProduct.id}
+            onChange={(e) => handleProductChange(e.target.value as ProductId)}
             className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
           >
-            <option value="matte">Matte</option>
-            <option value="gloss">Gloss</option>
-            <option value="metallic">Metallic</option>
-          </select>
-        </div>
-      )}
-
-      {config.orderType === 'apparel' && (
-        <div className="space-y-4">
-          <label className="block text-sm font-mono text-gray-300">
-            Garment Type
-          </label>
-          <select
-            value={config.apparelType || 'tshirt'}
-            onChange={(e) =>
-              onConfigChange({
-                ...config,
-                apparelType: e.target.value,
-              })
-            }
-            className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
-          >
-            <option value="tshirt">T-Shirt</option>
-            <option value="hoodie">Hoodie</option>
-            <option value="longsleeve">Long Sleeve</option>
+            {PRODUCT_IDS.map((id) => (
+              <option key={id} value={id}>{PRODUCT_CATALOG[id].label}</option>
+            ))}
           </select>
 
-          <label className="block text-sm font-mono text-gray-300">
-            Colour
-          </label>
-          <select
-            value={config.apparelColor || 'black'}
-            onChange={(e) =>
-              onConfigChange({
-                ...config,
-                apparelColor: e.target.value,
-              })
-            }
-            className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
-          >
-            <option value="black">Black</option>
-            <option value="white">White</option>
-            <option value="navy">Navy</option>
-            <option value="red">Red</option>
-          </select>
+          <label className="block text-sm font-mono text-gray-300">Colour</label>
+          <div className="flex items-center gap-2">
+            {activeProduct.colorOptions.map((c) => (
+              <button
+                key={c}
+                onClick={() => onConfigChange({ ...config, productColor: c })}
+                className={`w-7 h-7 rounded-full border-2 ${config.productColor === c ? 'border-pink-500' : 'border-gray-700'}`}
+                style={{ backgroundColor: c }}
+                title={c}
+              />
+            ))}
+          </div>
 
-          <label className="block text-sm font-mono text-gray-300">
-            Size
-          </label>
-          <select
-            value={config.apparelSize || 'M'}
-            onChange={(e) =>
-              onConfigChange({
-                ...config,
-                apparelSize: e.target.value,
-              })
-            }
-            className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
-          >
-            <option value="XS">XS</option>
-            <option value="S">S</option>
-            <option value="M">M</option>
-            <option value="L">L</option>
-            <option value="XL">XL</option>
-            <option value="2XL">2XL</option>
-          </select>
+          {SIZED_PRODUCTS.includes(activeProduct.id) && (
+            <>
+              <label className="block text-sm font-mono text-gray-300">Size</label>
+              <select
+                value={config.productSize || 'M'}
+                onChange={(e) => onConfigChange({ ...config, productSize: e.target.value })}
+                className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
+              >
+                <option value="XS">XS</option>
+                <option value="S">S</option>
+                <option value="M">M</option>
+                <option value="L">L</option>
+                <option value="XL">XL</option>
+                <option value="2XL">2XL</option>
+              </select>
+            </>
+          )}
         </div>
       )}
 
       <div className="space-y-2">
-        <label className="block text-sm font-mono text-gray-300">
-          Quantity
-        </label>
+        <label className="block text-sm font-mono text-gray-300">Quantity</label>
         <div className="flex items-center gap-4">
           <button
             onClick={() => handleQuantityChange(config.quantity - 1)}
@@ -289,9 +245,7 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
           >
             −
           </button>
-          <span className="font-mono text-lg text-gray-300 w-8 text-center">
-            {config.quantity}
-          </span>
+          <span className="font-mono text-lg text-gray-300 w-8 text-center">{config.quantity}</span>
           <button
             onClick={() => handleQuantityChange(config.quantity + 1)}
             className="px-3 py-1 bg-gray-800 text-pink-500 border border-pink-500 rounded hover:bg-pink-500 hover:text-gray-900 transition"
@@ -307,87 +261,80 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
 interface Step2Props {
   config: OrderConfig;
   onConfigChange: (config: OrderConfig) => void;
+  designDataUrl: string | null;
 }
 
-function Step2Placement({ config, onConfigChange }: Step2Props) {
-  const [activeView, setActiveView] = useState<GarmentView>('front');
-  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+function Step2Placement({ config, onConfigChange, designDataUrl }: Step2Props) {
+  const product = config.productId ? PRODUCT_CATALOG[config.productId] : undefined;
+  const [activeView, setActiveView] = useState<string>(product?.views[0]?.id ?? 'front');
 
-  useEffect(() => {
-    if (!previewCanvasRef.current || config.orderType === 'vinyl') return;
+  if (config.orderType === 'vinyl') {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-mono text-pink-500">Print Placement</h3>
+        <div className="p-4 bg-gray-900 border border-gray-700 rounded text-sm font-mono text-gray-400">
+          Die-cut stickers use your full design as-is — no placement needed.
+        </div>
+      </div>
+    );
+  }
 
-    const pCtx = previewCanvasRef.current.getContext('2d');
-    if (!pCtx) return;
+  if (!product) return null;
 
-    pCtx.fillStyle = '#1a1a1a';
-    pCtx.fillRect(0, 0, previewCanvasRef.current.width, previewCanvasRef.current.height);
+  const placement = config.printConfigs[activeView] ?? DEFAULT_PRINT_CONFIG;
 
-    pCtx.fillStyle = config.apparelColor === 'white' ? '#e0e0e0' : '#1a1a1a';
-    pCtx.fillRect(100, 50, 300, 400);
-
-    const printConfig = config.printConfigs[activeView];
-    if (printConfig) {
-      pCtx.fillStyle = '#FF1493';
-      pCtx.globalAlpha = 0.7;
-      pCtx.fillRect(
-        printConfig.posX,
-        printConfig.posY,
-        100 * printConfig.scale,
-        100 * printConfig.scale
-      );
-      pCtx.globalAlpha = 1;
-    }
-  }, [activeView, config, previewCanvasRef]);
-
-  const handlePositionChange = (x: number, y: number) => {
-    const newConfigs = { ...config.printConfigs };
-    newConfigs[activeView] = { ...newConfigs[activeView], posX: x, posY: y };
-    onConfigChange({ ...config, printConfigs: newConfigs });
+  const updatePlacement = (patch: Partial<PrintConfig>) => {
+    onConfigChange({
+      ...config,
+      printConfigs: { ...config.printConfigs, [activeView]: { ...placement, ...patch } },
+    });
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <h3 className="text-lg font-mono text-pink-500">Print Placement</h3>
 
-      {config.orderType !== 'vinyl' && (
+      {product.views.length > 1 && (
         <div className="flex gap-2 border-b border-gray-700">
-          {GARMENT_VIEWS.map((view) => (
+          {product.views.map((view) => (
             <button
-              key={view}
-              onClick={() => setActiveView(view)}
+              key={view.id}
+              onClick={() => setActiveView(view.id)}
               className={`px-4 py-2 font-mono text-sm transition ${
-                activeView === view
+                activeView === view.id
                   ? 'text-emerald-400 border-b-2 border-emerald-400'
                   : 'text-gray-400 hover:text-gray-300'
               }`}
             >
-              {view.charAt(0).toUpperCase() + view.slice(1)}
+              {view.label}
             </button>
           ))}
         </div>
       )}
 
-      <div className="bg-gray-900 p-4 rounded border border-gray-700">
-        <canvas
-          ref={previewCanvasRef}
-          width={500}
-          height={500}
-          className="w-full bg-gray-800 rounded cursor-move"
-          onMouseMove={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            if (e.buttons === 1) {
-              handlePositionChange(x, y);
-            }
-          }}
+      <div className="bg-gray-900 rounded border border-gray-700 h-72">
+        <ProductViewer3D
+          productId={product.id}
+          color={config.productColor || product.colorOptions[0]}
+          activeView={activeView}
+          designDataUrl={designDataUrl}
+          placement={placement}
         />
       </div>
 
-      <div className="text-xs font-mono text-gray-400">
-        Position: ({config.printConfigs[activeView]?.posX.toFixed(0)},
-        {config.printConfigs[activeView]?.posY.toFixed(0)}) | Scale:
-        {config.printConfigs[activeView]?.scale.toFixed(2)}x
+      <div className="grid grid-cols-2 gap-4 text-xs font-mono text-gray-400">
+        <label className="flex items-center gap-2">X
+          <input type="range" min={-50} max={50} value={placement.posX} onChange={(e) => updatePlacement({ posX: Number(e.target.value) })} className="flex-1" />
+        </label>
+        <label className="flex items-center gap-2">Y
+          <input type="range" min={-50} max={50} value={placement.posY} onChange={(e) => updatePlacement({ posY: Number(e.target.value) })} className="flex-1" />
+        </label>
+        <label className="flex items-center gap-2">Scale
+          <input type="range" min={0.2} max={2} step={0.05} value={placement.scale} onChange={(e) => updatePlacement({ scale: Number(e.target.value) })} className="flex-1" />
+        </label>
+        <label className="flex items-center gap-2">Rotate
+          <input type="range" min={-180} max={180} value={placement.rotationDeg} onChange={(e) => updatePlacement({ rotationDeg: Number(e.target.value) })} className="flex-1" />
+        </label>
       </div>
     </div>
   );
@@ -413,6 +360,7 @@ function Step3Details({
   });
 
   const totalPrice = calculatePrice(config);
+  const unitPrice = UNIT_PRICES[config.orderType] + (config.orderType === 'vinyl' && config.vinylPermanent ? PERMANENT_SURCHARGE : 0);
 
   const handleApprove = async (orderData: OnApproveData) => {
     const formData = getValues();
@@ -426,7 +374,7 @@ function Step3Details({
       <div className="bg-gray-800 p-4 rounded border border-gray-700 space-y-2 text-sm font-mono">
         <div className="flex justify-between text-gray-300">
           <span>Unit Price:</span>
-          <span>${UNIT_PRICES[config.orderType].toFixed(2)} AUD</span>
+          <span>${unitPrice.toFixed(2)} AUD</span>
         </div>
         <div className="flex justify-between text-gray-300">
           <span>Qty:</span>
@@ -435,7 +383,7 @@ function Step3Details({
         <div className="flex justify-between text-gray-300">
           <span>Subtotal:</span>
           <span>
-            ${(UNIT_PRICES[config.orderType] * config.quantity).toFixed(2)} AUD
+            ${(unitPrice * config.quantity).toFixed(2)} AUD
           </span>
         </div>
         <div className="border-t border-gray-700 pt-2 flex justify-between text-gray-300">
@@ -485,15 +433,10 @@ function Step3Details({
           )}
 
           <input
-            {...register('phone', { required: 'Phone required' })}
-            placeholder="Phone"
+            {...register('phone')}
+            placeholder="Phone (optional)"
             className="col-span-2 px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
           />
-          {errors.phone && (
-            <span className="col-span-2 text-red-400 text-xs">
-              {errors.phone.message}
-            </span>
-          )}
 
           <input
             {...register('street', { required: 'Street required' })}
@@ -535,13 +478,13 @@ function Step3Details({
           </select>
         </div>
 
-        {isValid && !isProcessing && (
-          <PayPalScriptProvider
-            options={{
-              clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID,
-              currency: 'AUD',
-            }}
-          >
+        <PayPalScriptProvider
+          options={{
+            clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID,
+            currency: 'AUD',
+          }}
+        >
+          {isValid && !isProcessing ? (
             <PayPalButtons
               createOrder={(_data: CreateOrderData, actions: CreateOrderActions) =>
                 actions.order.create({
@@ -568,32 +511,39 @@ function Step3Details({
                 console.error('PayPal error:', err);
               }}
             />
-          </PayPalScriptProvider>
-        )}
-
-        {!isValid && (
-          <div className="p-3 bg-red-900 bg-opacity-20 border border-red-700 rounded text-red-400 text-sm font-mono">
-            Please fill in all required fields to proceed to payment.
-          </div>
-        )}
+          ) : (
+            <div className="p-3 bg-red-900 bg-opacity-20 border border-red-700 rounded text-red-400 text-sm font-mono">
+              Please fill in all required fields to proceed to payment.
+            </div>
+          )}
+        </PayPalScriptProvider>
       </form>
     </div>
   );
 }
 
-export function OrderModal({ canvas, onClose }: OrderModalProps) {
+export function OrderModal({ canvas, initialTab, onClose }: OrderModalProps) {
   const [step, setStep] = useState<Step>(1);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [config, setConfig] = useState<OrderConfig>({
-    orderType: 'vinyl',
-    quantity: 1,
-    printConfigs: {
-      front: { ...DEFAULT_PRINT_CONFIG },
-      back: { ...DEFAULT_PRINT_CONFIG },
-      'left-arm': { ...DEFAULT_PRINT_CONFIG },
-      'right-arm': { ...DEFAULT_PRINT_CONFIG },
-    },
+  const [config, setConfig] = useState<OrderConfig>(() => {
+    const orderType: OrderType = initialTab === 'apparel' ? 'product' : 'vinyl';
+    return {
+      orderType,
+      quantity: 1,
+      productId: orderType === 'product' ? 'tshirt' : undefined,
+      productColor: orderType === 'product' ? PRODUCT_CATALOG.tshirt.colorOptions[0] : undefined,
+      printConfigs: orderType === 'product' ? printConfigsForProduct('tshirt') : {},
+    };
   });
+
+  const designDataUrl = useMemo(() => {
+    try {
+      return snapshotDesignAsDataURL(canvas);
+    } catch (error) {
+      console.error('Failed to snapshot design for 3D preview:', error);
+      return null;
+    }
+  }, [canvas]);
 
   const handleNext = () => {
     if (step < 3) {
@@ -663,6 +613,7 @@ export function OrderModal({ canvas, onClose }: OrderModalProps) {
             <Step2Placement
               config={config}
               onConfigChange={setConfig}
+              designDataUrl={designDataUrl}
             />
           )}
           {step === 3 && (

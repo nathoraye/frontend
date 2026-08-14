@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { TRACE_UPSCALE_MULT } from '../utils/constants';
 // Must use Vite's ?worker suffix — omitting it will cause a build failure.
@@ -117,7 +116,7 @@ export function useVectorEngine() {
           workerRef.current.postMessage({ imageData: upData, traceOptions: TRACE_OPTIONS });
       }
     });
-  }, []);
+  }, [TRACE_OPTIONS]);
 
   return { traceImage };
 }

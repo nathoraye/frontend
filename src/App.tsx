@@ -15,8 +15,12 @@ import { RightInspector } from './components/RightInspector';
 import { CropModal } from './components/CropModal';
 import { ContourModal } from './components/ContourModal';
 import { OrderModal } from './components/OrderModal';
+import { ProductViewer3D, type ProductPlacement } from './components/ProductViewer3D';
+import { PRODUCT_CATALOG, PRODUCT_IDS, type ProductId } from './three/productCatalog';
+import { snapshotDesignAsDataURL } from './utils/designSnapshot';
 
 type AppTool = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
+type ViewMode = 'sticker' | 'product';
 
 export default function App() {
   const { canvasRef, containerRef, canvas } = useCanvasEngine();
@@ -60,6 +64,25 @@ export default function App() {
   const [contourTarget, setContourTarget] = useState<fabric.Path | null>(null);
   
   const [activeOrderTab, setActiveOrderTab] = useState<'vinyl' | 'apparel' | null>(null);
+
+  const [viewMode, setViewMode] = useState<ViewMode>('sticker');
+  const [selectedProduct, setSelectedProduct] = useState<ProductId>('tshirt');
+  const [productColor, setProductColor] = useState<string>(PRODUCT_CATALOG.tshirt.colorOptions[0]);
+  const [activeProductView, setActiveProductView] = useState<string>('front');
+  const [productPlacement, setProductPlacement] = useState<ProductPlacement>({ posX: 0, posY: 0, scale: 1, rotationDeg: 0 });
+  const [designSnapshot, setDesignSnapshot] = useState<string | null>(null);
+
+  const handleSelectProduct = (id: ProductId) => {
+    setSelectedProduct(id);
+    setProductColor(PRODUCT_CATALOG[id].colorOptions[0]);
+    setActiveProductView(PRODUCT_CATALOG[id].views[0].id);
+    setProductPlacement({ posX: 0, posY: 0, scale: 1, rotationDeg: 0 });
+  };
+
+  const applyDesignToProduct = useCallback(() => {
+    if (!canvas) return;
+    setDesignSnapshot(snapshotDesignAsDataURL(canvas));
+  }, [canvas]);
 
   const { saveHistorySnapshot, handleUndo, handleRedo } = useHistoryEngine({ setCanvasObjects });
   const clipboard = useRef<fabric.Object | null>(null);
@@ -320,7 +343,14 @@ export default function App() {
             <div className="flex items-center gap-2">
               <button disabled={isGenerating} onClick={handleAIGeneration} className="flex items-center gap-2 bg-[#181a25] border border-slate-700 text-white px-3 py-1.5 rounded-md text-[10px] font-bold hover:bg-slate-800 transition-colors uppercase tracking-wider h-8">{isGenerating ? 'Generating...' : 'Generate AI'}</button>
               <button onClick={handleSafeSVGExport} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-md text-[10px] font-bold transition-colors uppercase tracking-wider h-8">Export SVG</button>
-              
+
+              <div className="w-px h-5 bg-slate-700 mx-1"></div>
+
+              <div className="flex items-center gap-1 bg-slate-500/5 rounded-lg p-1">
+                <button onClick={() => setViewMode('sticker')} className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'sticker' ? 'bg-[#FF1493] text-white' : 'text-slate-400 hover:text-slate-200'}`}>2D Studio</button>
+                <button onClick={() => { setViewMode('product'); applyDesignToProduct(); }} className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'product' ? 'bg-[#FF1493] text-white' : 'text-slate-400 hover:text-slate-200'}`}>3D Preview</button>
+              </div>
+
               <div className="w-px h-5 bg-slate-700 mx-1"></div>
               
               <button onClick={() => setActiveOrderTab('vinyl')} className="h-8 px-3 flex items-center justify-center bg-[#FF1493] hover:bg-[#ff4da6] text-white rounded text-[10px] font-black tracking-wider uppercase transition-colors shadow-sm whitespace-nowrap">
@@ -350,9 +380,57 @@ export default function App() {
               <LeftDock tool={tool} setTool={setTool as any} addText={addText} addShape={addShape} fileInputRef={fileInputRef} handleImageUpload={handleInterceptUpload} borderCol="border-slate-800" bgPanel="bg-[#181a25]" setShowLeftPanel={setShowLeftPanel} />
             )}
             <main className="flex-1 relative min-w-0 touch-manipulation" ref={containerRef}>
-                <canvas ref={canvasRef} />
-                  
-                {quickMenu && quickMenu.show && !contourTarget && (
+                <canvas ref={canvasRef} style={viewMode === 'product' ? { visibility: 'hidden', position: 'absolute' } : undefined} />
+
+                {viewMode === 'product' && (
+                  <div className="absolute inset-0 flex flex-col bg-[#0f111a]">
+                    <div className="flex-1 min-h-0">
+                      <ProductViewer3D
+                        productId={selectedProduct}
+                        color={productColor}
+                        activeView={activeProductView}
+                        designDataUrl={designSnapshot}
+                        placement={productPlacement}
+                      />
+                    </div>
+                    <div className="shrink-0 border-t border-slate-800 bg-[#181a25] p-3 flex flex-wrap items-center gap-3">
+                      <select value={selectedProduct} onChange={(e) => handleSelectProduct(e.target.value as ProductId)} className="bg-slate-800 text-slate-200 text-xs font-mono border border-slate-700 rounded px-2 py-1">
+                        {PRODUCT_IDS.map((id) => (
+                          <option key={id} value={id}>{PRODUCT_CATALOG[id].label}</option>
+                        ))}
+                      </select>
+
+                      <div className="flex items-center gap-1">
+                        {PRODUCT_CATALOG[selectedProduct].colorOptions.map((c) => (
+                          <button key={c} onClick={() => setProductColor(c)} className={`w-5 h-5 rounded-full border-2 ${productColor === c ? 'border-[#FF1493]' : 'border-slate-700'}`} style={{ backgroundColor: c }} title={c} />
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {PRODUCT_CATALOG[selectedProduct].views.map((v) => (
+                          <button key={v.id} onClick={() => setActiveProductView(v.id)} className={`px-2 py-1 rounded text-[10px] font-mono uppercase ${activeProductView === v.id ? 'bg-[#FF1493] text-white' : 'bg-slate-800 text-slate-400'}`}>{v.label}</button>
+                        ))}
+                      </div>
+
+                      <label className="flex items-center gap-1 text-[10px] font-mono text-slate-400">X
+                        <input type="range" min={-50} max={50} value={productPlacement.posX} onChange={(e) => setProductPlacement((p) => ({ ...p, posX: Number(e.target.value) }))} className="w-16" />
+                      </label>
+                      <label className="flex items-center gap-1 text-[10px] font-mono text-slate-400">Y
+                        <input type="range" min={-50} max={50} value={productPlacement.posY} onChange={(e) => setProductPlacement((p) => ({ ...p, posY: Number(e.target.value) }))} className="w-16" />
+                      </label>
+                      <label className="flex items-center gap-1 text-[10px] font-mono text-slate-400">Scale
+                        <input type="range" min={0.2} max={2} step={0.05} value={productPlacement.scale} onChange={(e) => setProductPlacement((p) => ({ ...p, scale: Number(e.target.value) }))} className="w-16" />
+                      </label>
+                      <label className="flex items-center gap-1 text-[10px] font-mono text-slate-400">Rotate
+                        <input type="range" min={-180} max={180} value={productPlacement.rotationDeg} onChange={(e) => setProductPlacement((p) => ({ ...p, rotationDeg: Number(e.target.value) }))} className="w-16" />
+                      </label>
+
+                      <button onClick={applyDesignToProduct} className="ml-auto h-7 px-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded text-[10px] font-black uppercase tracking-wider">Apply Design</button>
+                    </div>
+                  </div>
+                )}
+
+                {quickMenu && quickMenu.show && !contourTarget && viewMode === 'sticker' && (
                   <div className="absolute z-20 flex items-center gap-1 p-1.5 rounded-xl shadow-2xl bg-[#1e2230]/90 border border-slate-700 transform -translate-x-1/2 transition-opacity" style={{ top: quickMenu.top, left: quickMenu.left }}>
                     
                     {showOffsetConfig ? (
