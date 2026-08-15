@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import * as fabric from 'fabric';
 import type {
   CameraView,
   ColorOption,
@@ -66,6 +67,13 @@ interface CustomizerStore {
   updateActiveDecalOpacity: (opacity: number) => void;
 
   reset: () => void;
+
+  /** 2D Fabric editor (garment texture) state — independent of the 3D preview above. */
+  garmentColor: string;
+  fabricCanvas: fabric.Canvas | null;
+  setGarmentColor: (color: string) => void;
+  setFabricCanvas: (canvas: fabric.Canvas | null) => void;
+  addText: () => void;
 }
 
 export const useCustomizerStore = create<CustomizerStore>((set, get) => ({
@@ -142,4 +150,30 @@ export const useCustomizerStore = create<CustomizerStore>((set, get) => ({
       step: 'Customizer',
       phase: 'Overview',
     }),
+
+  garmentColor: '#000000',
+  fabricCanvas: null,
+
+  setGarmentColor: (color) => set({ garmentColor: color }),
+
+  setFabricCanvas: (canvas) => set({ fabricCanvas: canvas }),
+
+  addText: () => {
+    const canvas = get().fabricCanvas;
+    if (!canvas) return;
+
+    const text = new fabric.IText('Double click to edit', {
+      left: canvas.getWidth() / 2,
+      top: canvas.getHeight() / 2,
+      originX: 'center',
+      originY: 'center',
+      fontSize: 28,
+      fill: '#ffffff',
+      fontFamily: 'Arial',
+    });
+
+    canvas.add(text);
+    canvas.setActiveObject(text);
+    canvas.requestRenderAll();
+  },
 }));
