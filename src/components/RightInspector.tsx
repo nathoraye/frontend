@@ -88,8 +88,8 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
   return (
     <aside className={`w-full max-w-[320px] md:w-[320px] border-l ${borderCol} ${bgPanel} flex flex-col z-20 shrink-0 shadow-[-10px_0_30px_rgba(0,0,0,0.05)] touch-manipulation pointer-events-auto h-full`}>
       <div className={`flex border-b ${borderCol}`}>
-        <button onClick={() => setActiveTab('design')} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-colors ${activeTab==='design' ? 'text-[#FF1493] border-b-2 border-[#FF1493] bg-[#FF1493]/5' : `${textMuted} hover:${textMain}`}`}>Design</button>
-        <button onClick={() => setActiveTab('layers')} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-colors ${activeTab==='layers' ? 'text-[#FF1493] border-b-2 border-[#FF1493] bg-[#FF1493]/5' : `${textMuted} hover:${textMain}`}`}>Layers</button>
+        <button onClick={() => setActiveTab('design')} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-colors ${activeTab==='design' ? 'text-accent border-b-2 border-accent bg-accent/5' : `${textMuted} hover:${textMain}`}`}>Design</button>
+        <button onClick={() => setActiveTab('layers')} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-colors ${activeTab==='layers' ? 'text-accent border-b-2 border-accent bg-accent/5' : `${textMuted} hover:${textMain}`}`}>Layers</button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-6 custom-scrollbar">
@@ -98,19 +98,19 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
           <div className={`p-4 rounded-xl border ${borderCol} bg-red-500/5 border-red-500/20`}>
             <h3 className={`text-[10px] uppercase font-bold tracking-widest text-red-500 mb-2 flex items-center gap-1`}>Vector Eraser Engine</h3>
             
-            <div className="flex bg-slate-800/50 rounded-lg p-1 border border-slate-700/50 mb-4 mt-3">
-               <button onClick={() => setEraserMode('layer')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${eraserMode === 'layer' ? 'bg-red-500 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>Selected Layer</button>
-               <button onClick={() => setEraserMode('canvas')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${eraserMode === 'canvas' ? 'bg-red-500 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>Entire Canvas</button>
+            <div className="flex bg-surface-2 rounded-lg p-1 border border-line mb-4 mt-3">
+               <button onClick={() => setEraserMode('layer')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${eraserMode === 'layer' ? 'bg-red-500 text-white shadow' : 'text-muted hover:text-fg'}`}>Selected Layer</button>
+               <button onClick={() => setEraserMode('canvas')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${eraserMode === 'canvas' ? 'bg-red-500 text-white shadow' : 'text-muted hover:text-fg'}`}>Entire Canvas</button>
             </div>
             
-            <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
+            <p className="text-[11px] text-muted mb-4 leading-relaxed">
                {eraserMode === 'layer' ? 'Erases ONLY the currently selected artwork. (Must select a layer first)' : 'Erases straight through everything down to the cutting mat.'}
             </p>
 
             <div className="flex justify-between text-xs mb-3"><span className="font-bold">Eraser Size</span><span className={textMuted}>{brushSize}px</span></div>
              <input type="range" min="1" max="100" value={brushSize} onChange={(e) => {
                 const size = Number(e.target.value); setBrushSize(size);
-             }} className="w-full accent-red-500 mb-2" />
+             }} className="w-full text-red-400 mb-2" />
           </div>
         )}
 
@@ -118,24 +118,24 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
           <div className={`p-4 rounded-xl border ${borderCol} bg-fuchsia-500/5 border-fuchsia-500/20`}>
             <h3 className={`text-[10px] uppercase font-bold tracking-widest text-fuchsia-500 mb-2 flex items-center gap-1`}>Magic Wand Engine</h3>
             
-            <div className="flex bg-slate-800/50 rounded-lg p-1 border border-slate-700/50 mb-4 mt-3">
-               <button onClick={() => setWandMode('erase')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${wandMode === 'erase' ? 'bg-fuchsia-500 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>Erase Color</button>
-               <button onClick={() => setWandMode('extract')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${wandMode === 'extract' ? 'bg-fuchsia-500 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>Extract Shape</button>
+            <div className="flex bg-surface-2 rounded-lg p-1 border border-line mb-4 mt-3">
+               <button onClick={() => setWandMode('erase')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${wandMode === 'erase' ? 'bg-fuchsia-500 text-white shadow' : 'text-muted hover:text-fg'}`}>Erase Color</button>
+               <button onClick={() => setWandMode('extract')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${wandMode === 'extract' ? 'bg-fuchsia-500 text-white shadow' : 'text-muted hover:text-fg'}`}>Extract Shape</button>
             </div>
             
-            <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
+            <p className="text-[11px] text-muted mb-4 leading-relaxed">
                {wandMode === 'erase' ? 'Click to delete a color from the image.' : 'Click a color to extract it into a brand new vector layer.'}
             </p>
             
             <div className="flex justify-between text-xs mb-2"><span className="font-bold">Tolerance</span><span className={textMuted}>{Math.round(wandTolerance * 100)}%</span></div>
-            <input type="range" min="0" max="1" step="0.01" value={wandTolerance} onChange={(e) => setWandTolerance(Number(e.target.value))} className="w-full accent-fuchsia-500" />
+            <input type="range" min="0" max="1" step="0.01" value={wandTolerance} onChange={(e) => setWandTolerance(Number(e.target.value))} className="w-full text-fuchsia-400" />
           </div>
         )}
 
         {tool === 'bucket' && (
-          <div className={`p-4 rounded-xl border ${borderCol} bg-[#FF1493]/5 border-[#FF1493]/20`}>
-            <h3 className={`text-[10px] uppercase font-bold tracking-widest text-[#FF1493] mb-2 flex items-center gap-1`}>Paint Bucket Engine</h3>
-            <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">Select a color below and click inside any vector shape to instantly fill it.</p>
+          <div className={`p-4 rounded-xl border ${borderCol} bg-accent/5 border-accent/20`}>
+            <h3 className={`text-[10px] uppercase font-bold tracking-widest text-accent mb-2 flex items-center gap-1`}>Paint Bucket Engine</h3>
+            <p className="text-[11px] text-muted mb-2 leading-relaxed">Select a color below and click inside any vector shape to instantly fill it.</p>
           </div>
         )}
 
@@ -170,7 +170,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
             {(activeObj || tool === 'draw' || tool === 'track-line' || tool === 'bucket') && (
                <div>
                  <h3 className={`text-[10px] uppercase font-bold tracking-widest ${textMuted} mb-3`}>Color Palette</h3>
-                 <div className={`flex flex-col p-3 rounded-xl border ${borderCol} ${isDark?'bg-[#0f111a]':'bg-slate-50'} mb-3 shadow-inner`}>
+                 <div className={`flex flex-col p-3 rounded-xl border ${borderCol} ${isDark?'bg-bg':'bg-slate-50'} mb-3 shadow-inner`}>
                    <div className="flex items-center justify-between mb-3">
                      <span className="text-xs font-bold">Custom Color</span>
                      <div className="flex gap-2 items-center">
@@ -195,7 +195,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
                      </div>
                    </div>
                    
-                   <div className="grid grid-cols-8 gap-1.5 pt-3 border-t border-slate-700/30">
+                   <div className="grid grid-cols-8 gap-1.5 pt-3 border-t border-line">
                      {SWATCHES.map((hex, i) => (
                        <button key={i} onClick={() => {
                          setBrushColor(hex);
@@ -204,22 +204,22 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
                            else activeObj.set('fill', hex);
                            canvas?.requestRenderAll(); saveHistorySnapshot(canvas!);
                          }
-                       }} className="w-full aspect-square rounded shadow-sm border border-slate-700/50 hover:scale-110 transition-transform" style={{backgroundColor: hex}} title={hex}></button>
+                       }} className="w-full aspect-square rounded shadow-sm border border-line hover:scale-110 transition-transform" style={{backgroundColor: hex}} title={hex}></button>
                      ))}
                    </div>
                  </div>
 
                  {(tool === 'draw' || tool === 'track-line' || activeObj?.type === 'path' || activeObj?.type === 'line' || activeObj?.type === 'polyline') && (
-                   <div className={`p-3 rounded-xl border ${borderCol} ${isDark?'bg-[#0f111a]':'bg-slate-50'}`}>
+                   <div className={`p-3 rounded-xl border ${borderCol} ${isDark?'bg-bg':'bg-slate-50'}`}>
                      <div className="flex justify-between text-xs mb-3"><span className="font-bold">Stroke Width</span><span className={textMuted}>{brushSize}px</span></div>
                      <input type="range" min="1" max="100" value={brushSize} onChange={(e) => {
                         const size = Number(e.target.value); setBrushSize(size);
                         if (activeObj && (activeObj.type === 'line' || activeObj.type === 'path' || activeObj.type === 'polyline')) { activeObj.set('strokeWidth', size); canvas?.requestRenderAll(); saveHistorySnapshot(canvas!); }
-                     }} className="w-full accent-[#FF1493] mb-4" />
+                     }} className="w-full text-accent mb-4" />
                      
-                     <div className="flex bg-slate-800/30 rounded-lg p-1 border border-slate-700/50">
-                        <button onClick={() => setBrushType('round')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${brushType === 'round' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>Round</button>
-                        <button onClick={() => setBrushType('chisel')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${brushType === 'chisel' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>Chisel / Square</button>
+                     <div className="flex bg-surface-2 rounded-lg p-1 border border-line">
+                        <button onClick={() => setBrushType('round')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${brushType === 'round' ? 'bg-surface-3 text-fg shadow' : 'text-muted hover:text-fg'}`}>Round</button>
+                        <button onClick={() => setBrushType('chisel')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${brushType === 'chisel' ? 'bg-surface-3 text-fg shadow' : 'text-muted hover:text-fg'}`}>Chisel / Square</button>
                      </div>
                    </div>
                  )}
@@ -235,21 +235,21 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
                   />
                 </div>
 
-                <div className={`p-4 rounded-xl border ${borderCol} ${isDark?'bg-[#0f111a]':'bg-slate-50'} flex flex-col gap-4 shadow-inner`}>
+                <div className={`p-4 rounded-xl border ${borderCol} ${isDark?'bg-bg':'bg-slate-50'} flex flex-col gap-4 shadow-inner`}>
                   <div>
                     <div className="flex justify-between text-xs mb-2"><span className="font-bold">Letter Spacing</span><span className={textMuted}>{charSpacing}</span></div>
-                    <input type="range" min="-100" max="500" value={charSpacing} onChange={(e) => { setCharSpacing(Number(e.target.value)); handlePropChange('charSpacing', Number(e.target.value)); }} className="w-full accent-blue-500" />
+                    <input type="range" min="-100" max="500" value={charSpacing} onChange={(e) => { setCharSpacing(Number(e.target.value)); handlePropChange('charSpacing', Number(e.target.value)); }} className="w-full text-blue-400" />
                   </div>
                   <div>
                     <div className="flex justify-between text-xs mb-2"><span className="font-bold">Line Height</span><span className={textMuted}>{lineHeight}</span></div>
-                    <input type="range" min="0.5" max="3" step="0.1" value={lineHeight} onChange={(e) => { setLineHeight(Number(e.target.value)); handlePropChange('lineHeight', Number(e.target.value)); }} className="w-full accent-blue-500" />
+                    <input type="range" min="0.5" max="3" step="0.1" value={lineHeight} onChange={(e) => { setLineHeight(Number(e.target.value)); handlePropChange('lineHeight', Number(e.target.value)); }} className="w-full text-blue-400" />
                   </div>
-                  <div className="pt-2 border-t border-slate-700/30">
-                    <div className="flex justify-between text-xs mb-2"><span className="font-bold text-[#FF1493]">Curve / Warp Text</span><span className={textMuted}>{textCurve}</span></div>
-                    <input type="range" min="-150" max="150" value={textCurve} onChange={(e) => applyTextCurve(Number(e.target.value))} className="w-full accent-[#FF1493]" />
+                  <div className="pt-2 border-t border-line">
+                    <div className="flex justify-between text-xs mb-2"><span className="font-bold text-accent">Curve / Warp Text</span><span className={textMuted}>{textCurve}</span></div>
+                    <input type="range" min="-150" max="150" value={textCurve} onChange={(e) => applyTextCurve(Number(e.target.value))} className="w-full text-accent" />
                   </div>
                   
-                  <button onClick={explodeText} className="w-full bg-slate-800 hover:bg-slate-700 text-white text-[10px] uppercase tracking-widest font-bold py-2.5 rounded-lg transition-colors border border-slate-600 flex justify-center items-center gap-2 mt-2">
+                  <button onClick={explodeText} className="w-full bg-surface-2 hover:bg-surface-3 text-fg text-[10px] uppercase tracking-widest font-bold py-2.5 rounded-lg transition-colors border border-line flex justify-center items-center gap-2 mt-2">
                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>
                      Explode (Ungroup Letters)
                   </button>
@@ -260,12 +260,12 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
             {activeObj && (
               <div className="mt-2">
                 <h3 className={`text-[10px] uppercase font-bold tracking-widest text-indigo-400 mb-3`}>Path Offset Layer</h3>
-                <div className={`p-4 rounded-xl border ${borderCol} ${isDark ? 'bg-[#0f111a]' : 'bg-slate-50'}`}>
+                <div className={`p-4 rounded-xl border ${borderCol} ${isDark ? 'bg-bg' : 'bg-slate-50'}`}>
                   <div className="flex justify-between items-center mb-4">
                     <span className={`text-xs font-bold uppercase tracking-wider ${textMuted}`}>Thickness</span>
-                    <span className={`text-xs font-mono bg-slate-500/10 px-2 py-1 rounded ${textMuted}`}>{offsetSize}px</span>
+                    <span className={`text-xs font-mono bg-surface-3 px-2 py-1 rounded ${textMuted}`}>{offsetSize}px</span>
                   </div>
-                  <input type="range" min="1" max="100" value={offsetSize} onChange={(e) => setOffsetSize(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer mb-4 accent-indigo-500" />
+                  <input type="range" min="1" max="100" value={offsetSize} onChange={(e) => setOffsetSize(parseInt(e.target.value))} className="w-full mb-4 text-indigo-400" />
                   <button onClick={handleCreateOffset} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-lg text-xs font-bold transition-all shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M9 3v18"/><path d="M3 9h18"/></svg> Apply Offset Layer
                   </button>
@@ -292,14 +292,14 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
             {[...canvasObjects].reverse().map((obj, i) => {
               const isSelected = activeObj === obj;
               return (
-                <div key={i} onClick={() => { canvas?.setActiveObject(obj); canvas?.requestRenderAll(); setTool('select'); }} className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer border transition-colors ${isSelected ? 'bg-blue-500/10 border-blue-500/50' : `border-transparent ${isDark?'hover:bg-slate-800':'hover:bg-slate-100'}`}`}>
+                <div key={i} onClick={() => { canvas?.setActiveObject(obj); canvas?.requestRenderAll(); setTool('select'); }} className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer border transition-colors ${isSelected ? 'bg-accent/10 border-accent/40' : `border-transparent ${isDark?'hover:bg-surface-2':'hover:bg-slate-100'}`}`}>
                   <div className="flex items-center gap-2 overflow-hidden">
-                    <button onClick={(e) => { e.stopPropagation(); obj.set('visible', !obj.visible); canvas?.requestRenderAll(); saveHistorySnapshot(canvas!, true); }} className={`p-1.5 hover:bg-slate-700/50 rounded ${obj.visible ? textMain : 'text-red-400'}`}>
+                    <button onClick={(e) => { e.stopPropagation(); obj.set('visible', !obj.visible); canvas?.requestRenderAll(); saveHistorySnapshot(canvas!, true); }} className={`p-1.5 hover:bg-surface-3 rounded ${obj.visible ? textMain : 'text-red-400'}`}>
                       {obj.visible ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>}
                     </button>
                     <span className="text-xs font-bold truncate w-28">{obj.type === 'i-text' ? `Text: ${(obj as fabric.IText).text}` : (obj.type === 'image' ? 'Image' : (obj.type === 'path' ? 'Stroke' : (obj.type === 'polyline' ? 'Track Line' : (obj.type === 'polygon' ? 'Shape' : obj.type))))}</span>
                   </div>
-                  <div className="flex items-center bg-slate-800/30 rounded-lg p-0.5 border border-slate-700/50">
+                  <div className="flex items-center bg-surface-2 rounded-lg p-0.5 border border-line">
                     <button onClick={(e) => {
                       e.stopPropagation();
                       const orderedCanvas = canvas as unknown as { bringObjectForward?: (obj: fabric.Object) => void };
@@ -325,7 +325,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
 
 function InspectorBtn({ icon, onClick, tooltip }: { icon: React.ReactNode; onClick: () => void; tooltip?: string }) {
   return (
-    <button onClick={onClick} title={tooltip} className="flex-1 py-2 flex justify-center items-center rounded-lg border border-slate-700 bg-slate-800/30 hover:bg-slate-700 transition-colors text-slate-400">
+    <button onClick={onClick} title={tooltip} className="flex-1 py-2 flex justify-center items-center rounded-lg border border-line bg-surface-2 hover:bg-surface-3 hover:text-fg transition-colors text-muted">
       {icon}
     </button>
   );
@@ -333,8 +333,8 @@ function InspectorBtn({ icon, onClick, tooltip }: { icon: React.ReactNode; onCli
 
 function PropInput({ label, value, onChange, isDark }: { label: string; value: number; onChange: (v: string) => void; isDark: boolean }) {
   return (
-    <div className={`flex items-center rounded-lg border ${isDark?'border-slate-700 bg-[#0f111a]':'border-slate-200 bg-slate-50'} overflow-hidden focus-within:border-blue-500 transition-colors`}>
-      <span className="px-2.5 py-1.5 text-[10px] font-bold text-slate-400 bg-slate-800/50">{label}</span>
+    <div className={`flex items-center rounded-lg border ${isDark?'border-line bg-bg':'border-slate-200 bg-slate-50'} overflow-hidden focus-within:border-accent transition-colors`}>
+      <span className="px-2.5 py-1.5 text-[10px] font-bold text-muted bg-surface-2">{label}</span>
       <input type="number" value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-transparent text-xs font-bold p-1.5 outline-none font-mono" />
     </div>
   );

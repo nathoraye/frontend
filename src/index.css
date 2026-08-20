@@ -1,1 +1,93 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Inter", ui-sans-serif, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Surfaces — graphite neutrals */
+  --color-bg: #0b0b0e;
+  --color-surface: #141418;
+  --color-surface-2: #1c1c22;
+  --color-surface-3: #26262e;
+  --color-line: #2a2a32;
+  --color-line-strong: #3a3a44;
+
+  /* Text */
+  --color-fg: #ececef;
+  --color-muted: #8b8b96;
+
+  /* Signature accent — vinyl magenta */
+  --color-accent: #ff1493;
+  --color-accent-hover: #ff45ac;
+
+  /* Secondary — apparel */
+  --color-apparel: #10b981;
+  --color-apparel-hover: #34d399;
+
+  --radius: 0.625rem;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+}
+
+/* Refined scrollbars for panels */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-line-strong);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-accent);
+}
+
+/* Consistent range slider baseline */
+input[type="range"] {
+  height: 4px;
+  border-radius: 9999px;
+  background-color: var(--color-surface-3);
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent);
+  transition: transform 0.12s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+/* Faint dotted work-surface for the canvas region */
+.studio-canvas {
+  background-color: var(--color-bg);
+  background-image: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--color-line) 60%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}

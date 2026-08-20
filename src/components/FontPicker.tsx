@@ -123,7 +123,7 @@ export function FontPicker({ currentFont, onSelectFont }: FontPickerProps) {
 
   return (
     <div className="relative w-full select-none" ref={dropdownRef}>
-      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+      <label className="block text-[10px] font-bold text-muted uppercase tracking-widest mb-2">
         Typography & Font
       </label>
 
@@ -132,12 +132,12 @@ export function FontPicker({ currentFont, onSelectFont }: FontPickerProps) {
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="flex-1 bg-slate-800 border border-slate-700 hover:border-slate-500 rounded-xl p-3 flex items-center justify-between text-white transition-colors shadow-inner"
+          className="flex-1 bg-surface-2 border border-line hover:border-line-strong rounded-xl p-3 flex items-center justify-between text-fg transition-colors"
         >
           <span className="truncate text-lg" style={{ fontFamily: currentFont }}>
             {currentFont || 'Select Font'}
           </span>
-          <svg className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-4 h-4 text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
           </svg>
         </button>

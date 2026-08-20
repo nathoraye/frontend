@@ -339,55 +339,74 @@ export default function App() {
   }, [handleUndo, handleRedo, canvas, saveHistorySnapshot, deleteSelected]);
 
   return (
-    <div className="fixed inset-0 flex flex-col font-sans select-none overflow-hidden bg-[#0f111a] text-slate-200">
-        <header className="h-14 border-b border-slate-800 bg-[#181a25] flex items-center justify-between px-4 z-20 shrink-0 shadow-sm">
-            <div className="flex items-center gap-4">
-              <span className="font-black tracking-widest uppercase text-sm">West Vinyl Studio</span>
-              <div className="h-5 w-px bg-slate-800 mx-1"></div>
-              <div className="flex items-center gap-1 bg-slate-500/5 rounded-lg p-1">
-                <button onClick={() => handleUndo(canvas)} className="p-1.5 rounded-md transition-colors hover:bg-slate-700/50 text-slate-300" title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
-                <button onClick={() => handleRedo(canvas)} className="p-1.5 rounded-md transition-colors hover:bg-slate-700/50 text-slate-300" title="Redo (Ctrl+Y)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
-                <div className="h-4 w-px bg-slate-800 mx-1"></div>
-                <button onClick={() => {if(canvas){ canvas.clear(); saveHistorySnapshot(canvas, true);}}} className="p-1.5 rounded-md transition-colors hover:bg-red-500/10 hover:text-red-500 text-slate-400" title="Clear Mat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+    <div className="fixed inset-0 flex flex-col font-sans select-none overflow-hidden bg-bg text-fg">
+        <header className="relative h-14 border-b border-line bg-surface flex items-center justify-between px-3 sm:px-4 z-20 shrink-0">
+            {/* Brand + history */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-white shadow-[0_2px_12px_rgba(255,20,147,0.4)]">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                </span>
+                <div className="hidden sm:flex flex-col leading-none">
+                  <span className="font-display font-bold tracking-tight text-sm text-fg">West Vinyl</span>
+                  <span className="text-[9px] font-semibold uppercase tracking-[0.25em] text-muted mt-0.5">Studio</span>
+                </div>
+              </div>
+
+              <div className="h-6 w-px bg-line mx-1"></div>
+
+              <div className="flex items-center gap-0.5 rounded-lg bg-surface-2 p-1 border border-line">
+                <button onClick={() => handleUndo(canvas)} className="p-1.5 rounded-md transition-colors hover:bg-surface-3 text-muted hover:text-fg" title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
+                <button onClick={() => handleRedo(canvas)} className="p-1.5 rounded-md transition-colors hover:bg-surface-3 text-muted hover:text-fg" title="Redo (Ctrl+Y)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
+                <div className="h-4 w-px bg-line mx-0.5"></div>
+                <button onClick={() => {if(canvas){ canvas.clear(); saveHistorySnapshot(canvas, true);}}} className="p-1.5 rounded-md transition-colors hover:bg-red-500/10 hover:text-red-400 text-muted" title="Clear Mat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
               </div>
             </div>
 
+            {/* Center: workspace mode */}
+            <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-1 rounded-xl bg-surface-2 p-1 border border-line">
+              <button onClick={() => setViewMode('sticker')} className={`h-7 px-3.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${viewMode === 'sticker' && !showThreeMockup ? 'bg-accent text-white shadow-[0_2px_10px_rgba(255,20,147,0.35)]' : 'text-muted hover:text-fg'}`}>2D Studio</button>
+              <button
+                type="button"
+                onClick={toggleThreeMockup}
+                aria-pressed={showThreeMockup}
+                className={`h-7 px-3.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${showThreeMockup ? 'bg-accent text-white shadow-[0_2px_10px_rgba(255,20,147,0.35)]' : 'text-muted hover:text-fg'}`}
+              >
+                3D Preview
+              </button>
+            </div>
+
+            {/* Actions */}
             <div className="flex items-center gap-2">
-              <button disabled={isGenerating} onClick={handleAIGeneration} className="flex items-center gap-2 bg-[#181a25] border border-slate-700 text-white px-3 py-1.5 rounded-md text-[10px] font-bold hover:bg-slate-800 transition-colors uppercase tracking-wider h-8">{isGenerating ? 'Generating...' : 'Generate AI'}</button>
-              <button onClick={handleSafeSVGExport} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-md text-[10px] font-bold transition-colors uppercase tracking-wider h-8">Export SVG</button>
-
-              <div className="w-px h-5 bg-slate-700 mx-1"></div>
-
-              <div className="flex items-center gap-1 bg-slate-500/5 rounded-lg p-1">
-                <button onClick={() => setViewMode('sticker')} className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'sticker' && !showThreeMockup ? 'bg-[#FF1493] text-white' : 'text-slate-400 hover:text-slate-200'}`}>2D Studio</button>
-                <button
-                  type="button"
-                  onClick={toggleThreeMockup}
-                  aria-pressed={showThreeMockup}
-                  className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${showThreeMockup ? 'bg-[#FF1493] text-white' : 'text-slate-400 hover:text-slate-200'}`}
-                >
-                  3D Preview
-                </button>
-              </div>
-
-              <div className="w-px h-5 bg-slate-700 mx-1"></div>
-              
-              <button onClick={() => setActiveOrderTab('vinyl')} className="h-8 px-3 flex items-center justify-center bg-[#FF1493] hover:bg-[#ff4da6] text-white rounded text-[10px] font-black tracking-wider uppercase transition-colors shadow-sm whitespace-nowrap">
-                  Buy Sticker
+              <button disabled={isGenerating} onClick={handleAIGeneration} className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-line bg-surface-2 text-fg text-[10px] font-bold uppercase tracking-wider hover:bg-surface-3 hover:border-line-strong transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isGenerating ? 'animate-spin text-accent' : 'text-accent'}><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3Z"/></svg>
+                <span className="hidden sm:inline">{isGenerating ? 'Generating' : 'Generate AI'}</span>
               </button>
-              <button onClick={() => setActiveOrderTab('apparel')} className="h-8 px-3 flex items-center justify-center bg-emerald-500 hover:bg-emerald-400 text-white rounded text-[10px] font-black tracking-wider uppercase transition-colors shadow-sm whitespace-nowrap">
-                  Buy Apparel
+              <button onClick={handleSafeSVGExport} className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-line bg-surface-2 text-muted text-[10px] font-bold uppercase tracking-wider hover:bg-surface-3 hover:text-fg transition-colors" title="Export SVG">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span className="hidden md:inline">Export</span>
               </button>
 
-              <div className="w-px h-5 bg-slate-700 mx-1"></div>
-              <button type="button" onClick={(e) => { e.stopPropagation(); setShowRightPanel((prev) => !prev); }} className={`p-1.5 h-8 flex items-center justify-center rounded-md transition-colors hover:bg-slate-700/50 touch-manipulation ${!showRightPanel ? 'text-[#FF1493] bg-[#FF1493]/10' : 'text-slate-400'}`} title="Toggle Inspector Panel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
+              <div className="w-px h-6 bg-line mx-0.5"></div>
+
+              <button onClick={() => setActiveOrderTab('vinyl')} className="h-8 px-3.5 flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-[10px] font-black tracking-wider uppercase transition-colors shadow-[0_2px_10px_rgba(255,20,147,0.3)] whitespace-nowrap">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 12l6.5-2.5"/></svg>
+                  <span className="hidden sm:inline">Sticker</span>
+              </button>
+              <button onClick={() => setActiveOrderTab('apparel')} className="h-8 px-3.5 flex items-center gap-1.5 bg-apparel hover:bg-apparel-hover text-white rounded-lg text-[10px] font-black tracking-wider uppercase transition-colors shadow-[0_2px_10px_rgba(16,185,129,0.25)] whitespace-nowrap">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M20 6l-4-3-4 2-4-2-4 3 2 4 2-1v10h8V9l2 1 2-4Z"/></svg>
+                  <span className="hidden sm:inline">Apparel</span>
+              </button>
+
+              <div className="w-px h-6 bg-line mx-0.5"></div>
+              <button type="button" onClick={(e) => { e.stopPropagation(); setShowRightPanel((prev) => !prev); }} className={`p-1.5 h-8 w-8 flex items-center justify-center rounded-lg border transition-colors touch-manipulation ${!showRightPanel ? 'text-accent bg-accent/10 border-accent/30' : 'text-muted border-line hover:bg-surface-3 hover:text-fg'}`} title="Toggle Inspector Panel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
             </div>
         </header>
         {!showLeftPanel && (
           <button
             type="button"
             onClick={() => setShowLeftPanel(true)}
-            className="fixed top-4 left-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-[#181a25]/95 text-slate-300 shadow-lg shadow-black/30 transition-transform hover:scale-110 hover:text-white hover:bg-slate-700 touch-manipulation pointer-events-auto"
+            className="fixed top-[4.5rem] left-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-surface/95 backdrop-blur text-muted shadow-lg shadow-black/40 transition-transform hover:scale-110 hover:text-fg hover:bg-surface-3 touch-manipulation pointer-events-auto"
             aria-label="Open sidebar"
             title="Toggle Sidebar"
           >
@@ -396,13 +415,13 @@ export default function App() {
         )}
         <div className="flex-1 flex overflow-hidden">
             {showLeftPanel && (
-              <LeftDock tool={tool} setTool={setTool as any} addText={addText} addShape={addShape} fileInputRef={fileInputRef} handleImageUpload={handleInterceptUpload} borderCol="border-slate-800" bgPanel="bg-[#181a25]" setShowLeftPanel={setShowLeftPanel} />
+              <LeftDock tool={tool} setTool={setTool as any} addText={addText} addShape={addShape} fileInputRef={fileInputRef} handleImageUpload={handleInterceptUpload} borderCol="border-line" bgPanel="bg-surface" setShowLeftPanel={setShowLeftPanel} />
             )}
-            <main className="flex-1 relative min-w-0 touch-manipulation" ref={containerRef}>
+            <main className="flex-1 relative min-w-0 touch-manipulation studio-canvas" ref={containerRef}>
                 <canvas ref={canvasRef} style={viewMode === 'product' ? { visibility: 'hidden', position: 'absolute' } : undefined} />
 
                 {viewMode === 'product' && (
-                  <div className="absolute inset-0 flex flex-col bg-[#0f111a]">
+                  <div className="absolute inset-0 flex flex-col bg-bg">
                     <div className="flex-1 min-h-0">
                       <ProductViewer3D
                         productId={selectedProduct}
@@ -412,58 +431,58 @@ export default function App() {
                         placement={productPlacement}
                       />
                     </div>
-                    <div className="shrink-0 border-t border-slate-800 bg-[#181a25] p-3 flex flex-wrap items-center gap-3">
-                      <select value={selectedProduct} onChange={(e) => handleSelectProduct(e.target.value as ProductId)} className="bg-slate-800 text-slate-200 text-xs font-mono border border-slate-700 rounded px-2 py-1">
+                    <div className="shrink-0 border-t border-line bg-surface p-3 flex flex-wrap items-center gap-3">
+                      <select value={selectedProduct} onChange={(e) => handleSelectProduct(e.target.value as ProductId)} className="bg-surface-2 text-fg text-xs font-mono border border-line rounded-lg px-2.5 py-1.5 focus:border-accent outline-none">
                         {PRODUCT_IDS.map((id) => (
                           <option key={id} value={id}>{PRODUCT_CATALOG[id].label}</option>
                         ))}
                       </select>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         {PRODUCT_CATALOG[selectedProduct].colorOptions.map((c) => (
-                          <button key={c} onClick={() => setProductColor(c)} className={`w-5 h-5 rounded-full border-2 ${productColor === c ? 'border-[#FF1493]' : 'border-slate-700'}`} style={{ backgroundColor: c }} title={c} />
+                          <button key={c} onClick={() => setProductColor(c)} className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${productColor === c ? 'border-accent ring-2 ring-accent/30' : 'border-line-strong'}`} style={{ backgroundColor: c }} title={c} />
                         ))}
                       </div>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 rounded-lg bg-surface-2 p-1 border border-line">
                         {PRODUCT_CATALOG[selectedProduct].views.map((v) => (
-                          <button key={v.id} onClick={() => setActiveProductView(v.id)} className={`px-2 py-1 rounded text-[10px] font-mono uppercase ${activeProductView === v.id ? 'bg-[#FF1493] text-white' : 'bg-slate-800 text-slate-400'}`}>{v.label}</button>
+                          <button key={v.id} onClick={() => setActiveProductView(v.id)} className={`px-2.5 py-1 rounded-md text-[10px] font-mono uppercase transition-colors ${activeProductView === v.id ? 'bg-accent text-white' : 'text-muted hover:text-fg'}`}>{v.label}</button>
                         ))}
                       </div>
 
-                      <label className="flex items-center gap-1 text-[10px] font-mono text-slate-400">X
-                        <input type="range" min={-50} max={50} value={productPlacement.posX} onChange={(e) => setProductPlacement((p) => ({ ...p, posX: Number(e.target.value) }))} className="w-16" />
+                      <label className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted">X
+                        <input type="range" min={-50} max={50} value={productPlacement.posX} onChange={(e) => setProductPlacement((p) => ({ ...p, posX: Number(e.target.value) }))} className="w-16 text-accent" />
                       </label>
-                      <label className="flex items-center gap-1 text-[10px] font-mono text-slate-400">Y
-                        <input type="range" min={-50} max={50} value={productPlacement.posY} onChange={(e) => setProductPlacement((p) => ({ ...p, posY: Number(e.target.value) }))} className="w-16" />
+                      <label className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted">Y
+                        <input type="range" min={-50} max={50} value={productPlacement.posY} onChange={(e) => setProductPlacement((p) => ({ ...p, posY: Number(e.target.value) }))} className="w-16 text-accent" />
                       </label>
-                      <label className="flex items-center gap-1 text-[10px] font-mono text-slate-400">Scale
-                        <input type="range" min={0.2} max={2} step={0.05} value={productPlacement.scale} onChange={(e) => setProductPlacement((p) => ({ ...p, scale: Number(e.target.value) }))} className="w-16" />
+                      <label className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted">Scale
+                        <input type="range" min={0.2} max={2} step={0.05} value={productPlacement.scale} onChange={(e) => setProductPlacement((p) => ({ ...p, scale: Number(e.target.value) }))} className="w-16 text-accent" />
                       </label>
-                      <label className="flex items-center gap-1 text-[10px] font-mono text-slate-400">Rotate
-                        <input type="range" min={-180} max={180} value={productPlacement.rotationDeg} onChange={(e) => setProductPlacement((p) => ({ ...p, rotationDeg: Number(e.target.value) }))} className="w-16" />
+                      <label className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted">Rotate
+                        <input type="range" min={-180} max={180} value={productPlacement.rotationDeg} onChange={(e) => setProductPlacement((p) => ({ ...p, rotationDeg: Number(e.target.value) }))} className="w-16 text-accent" />
                       </label>
 
-                      <button onClick={applyDesignToProduct} className="ml-auto h-7 px-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded text-[10px] font-black uppercase tracking-wider">Apply Design</button>
+                      <button onClick={applyDesignToProduct} className="ml-auto h-8 px-4 bg-apparel hover:bg-apparel-hover text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors">Apply Design</button>
                     </div>
                   </div>
                 )}
 
                 {quickMenu && quickMenu.show && !contourTarget && viewMode === 'sticker' && (
-                  <div className="absolute z-20 flex items-center gap-1 p-1.5 rounded-xl shadow-2xl bg-[#1e2230]/90 border border-slate-700 transform -translate-x-1/2 transition-opacity" style={{ top: quickMenu.top, left: quickMenu.left }}>
+                  <div className="absolute z-20 flex items-center gap-1 p-1.5 rounded-xl shadow-2xl shadow-black/50 bg-surface-2/95 backdrop-blur border border-line-strong transform -translate-x-1/2 transition-opacity" style={{ top: quickMenu.top, left: quickMenu.left }}>
                     
                     {showOffsetConfig ? (
                         <div className="flex items-center gap-2 px-2 py-1">
                             <span className="text-[10px] font-bold text-[#FF1493] uppercase tracking-wider">Offset</span>
                             <input type="range" min="1" max="100" value={offsetSize} onChange={(e) => setOffsetSize(Number(e.target.value))} className="w-24 accent-[#FF1493]" />
                             <span className="text-xs w-6 text-center font-mono">{offsetSize}</span>
-                            <div className="w-px h-5 mx-1 bg-slate-700"></div>
+                            <div className="w-px h-5 mx-1 bg-line-strong"></div>
                             <button onClick={() => { handleCreateOffset(); setShowOffsetConfig(false); setQuickMenu(null); }} className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-emerald-500 transition-colors" title="Apply Offset"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg></button>
                             <button onClick={() => setShowOffsetConfig(false)} className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-500 transition-colors" title="Cancel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                         </div>
                     ) : (
                         <>
-                            <button onClick={duplicateSelected} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300" title="Duplicate (Ctrl+C, Ctrl+V)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            <button onClick={duplicateSelected} className="p-1.5 rounded-lg hover:bg-surface-3 text-fg" title="Duplicate (Ctrl+C, Ctrl+V)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                             
                             {activeObj?.type === 'image' && (
                                 <button onClick={handleTraceCanvasImage} className="p-1.5 rounded-lg hover:bg-[#FF1493]/20 text-[#FF1493] transition-colors" title="Trace Image to Vector"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
@@ -473,27 +492,27 @@ export default function App() {
                                 <button onClick={() => { setContourTarget(activeObj as fabric.Path); setQuickMenu(null); }} className="p-1.5 rounded-lg hover:bg-[#FF1493]/20 text-[#FF1493] transition-colors" title="Contour (Hide Internal Cuts)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="4" strokeDasharray="2 2" /></svg></button>
                             )}
 
-                            <div className="w-px h-5 mx-1 bg-slate-700"></div>
+                            <div className="w-px h-5 mx-1 bg-line-strong"></div>
                             
                             <button onClick={() => setShowOffsetConfig(true)} className="p-1.5 rounded-lg hover:bg-amber-500/20 text-amber-500 transition-colors" title="Create Offset Outline"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16v16H4z" strokeDasharray="2 2" /><path d="M8 8h8v8H8z" fill="currentColor" opacity="0.5" /></svg></button>
                             <button onClick={() => { addWeedingBox(); setQuickMenu(null); }} className="p-1.5 rounded-lg hover:bg-[#00FFFF]/20 text-[#00FFFF] transition-colors" title="Add Weeding Box"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeDasharray="3 3"/><path d="M9 9h6v6H9z" fill="currentColor" stroke="none" opacity="0.5"/></svg></button>
                             
                             {(canvas?.getActiveObjects()?.length || 0) > 1 && activeObj?.type !== 'group' && (
-                              <button onClick={() => { const sel = canvas?.getActiveObject() as fabric.ActiveSelection | null; if (sel && sel.type === 'activeSelection') { const group = (sel as any).toGroup(); canvas?.setActiveObject(group); canvas?.requestRenderAll(); saveHistorySnapshot(canvas!, true); setQuickMenu(null); } }} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300" title="Group Objects"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></button>
+                              <button onClick={() => { const sel = canvas?.getActiveObject() as fabric.ActiveSelection | null; if (sel && sel.type === 'activeSelection') { const group = (sel as any).toGroup(); canvas?.setActiveObject(group); canvas?.requestRenderAll(); saveHistorySnapshot(canvas!, true); setQuickMenu(null); } }} className="p-1.5 rounded-lg hover:bg-surface-3 text-fg" title="Group Objects"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></button>
                             )}
                             {activeObj?.type === 'group' && (
-                              <button onClick={() => { const group = canvas?.getActiveObject() as fabric.Group | null; if (group && group.type === 'group') { const sel = (group as any).toActiveSelection(); canvas?.setActiveObject(sel); canvas?.requestRenderAll(); saveHistorySnapshot(canvas!, true); setQuickMenu(null); } }} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300" title="Ungroup"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3h18v18H3z"/></svg></button>
+                              <button onClick={() => { const group = canvas?.getActiveObject() as fabric.Group | null; if (group && group.type === 'group') { const sel = (group as any).toActiveSelection(); canvas?.setActiveObject(sel); canvas?.requestRenderAll(); saveHistorySnapshot(canvas!, true); setQuickMenu(null); } }} className="p-1.5 rounded-lg hover:bg-surface-3 text-fg" title="Ungroup"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3h18v18H3z"/></svg></button>
                             )}
                             {((canvas?.getActiveObjects()?.length || 0) > 1 || activeObj?.type === 'group') && (
                               <>
-                                <div className="w-px h-5 mx-1 bg-slate-700"></div>
+                                <div className="w-px h-5 mx-1 bg-line-strong"></div>
                                 <button onClick={() => { performBoolean('weld'); setQuickMenu(null); }} className="p-1.5 rounded-lg hover:bg-[#FF1493]/20 text-[#FF1493] transition-colors" title="Weld (Merge Solid)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></button>
                               </>
                             )}
-                            <div className="w-px h-5 mx-1 bg-slate-700"></div>
-                            <button onClick={() => { if(canvas && activeObj){ const orderedCanvas = canvas as unknown as { bringObjectForward?: (obj: fabric.Object) => void }; orderedCanvas.bringObjectForward?.(activeObj); saveHistorySnapshot(canvas, true); } }} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300" title="Bring Forward"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m18 15-6-6-6 6"/></svg></button>
-                            <button onClick={() => { if(canvas && activeObj){ const orderedCanvas = canvas as unknown as { sendObjectBackwards?: (obj: fabric.Object) => void }; orderedCanvas.sendObjectBackwards?.(activeObj); saveHistorySnapshot(canvas, true); } }} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300" title="Send Backward"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg></button>
-                            <div className="w-px h-5 mx-1 bg-slate-700"></div>
+                            <div className="w-px h-5 mx-1 bg-line-strong"></div>
+                            <button onClick={() => { if(canvas && activeObj){ const orderedCanvas = canvas as unknown as { bringObjectForward?: (obj: fabric.Object) => void }; orderedCanvas.bringObjectForward?.(activeObj); saveHistorySnapshot(canvas, true); } }} className="p-1.5 rounded-lg hover:bg-surface-3 text-fg" title="Bring Forward"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m18 15-6-6-6 6"/></svg></button>
+                            <button onClick={() => { if(canvas && activeObj){ const orderedCanvas = canvas as unknown as { sendObjectBackwards?: (obj: fabric.Object) => void }; orderedCanvas.sendObjectBackwards?.(activeObj); saveHistorySnapshot(canvas, true); } }} className="p-1.5 rounded-lg hover:bg-surface-3 text-fg" title="Send Backward"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg></button>
+                            <div className="w-px h-5 mx-1 bg-line-strong"></div>
                             <button onClick={deleteSelected} className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-500" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
                         </>
                     )}
@@ -514,13 +533,13 @@ export default function App() {
                         textCurve={textCurve} charSpacing={charSpacing} setCharSpacing={setCharSpacing}
                         lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
                         performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} 
-                        saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
+                        saveHistorySnapshot={saveHistorySnapshot} borderCol="border-line" bgPanel="bg-surface" isDark={true} textMuted="text-muted" textMain="text-fg" btnHover="hover:bg-surface-3"
                       />
                     )}
                   </div>
                 </div>
                 {!showRightPanel && (
-                  <button type="button" onClick={() => setShowRightPanel(true)} className="fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-[#181a25]/95 text-[#FF1493] shadow-lg shadow-black/30 transition-transform hover:scale-105 touch-manipulation" aria-label="Open inspector">
+                  <button type="button" onClick={() => setShowRightPanel(true)} className="fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-line bg-surface/95 backdrop-blur text-accent shadow-lg shadow-black/40 transition-transform hover:scale-105 touch-manipulation" aria-label="Open inspector">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
                   </button>
                 )}
@@ -534,7 +553,7 @@ export default function App() {
                 textCurve={textCurve} charSpacing={charSpacing} setCharSpacing={setCharSpacing}
                 lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
                 performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} 
-                saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
+                saveHistorySnapshot={saveHistorySnapshot} borderCol="border-line" bgPanel="bg-surface" isDark={true} textMuted="text-muted" textMain="text-fg" btnHover="hover:bg-surface-3"
               />
             ) : null}
         </div>
