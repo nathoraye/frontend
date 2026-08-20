@@ -16,6 +16,7 @@ import { CropModal } from './components/CropModal';
 import { ContourModal } from './components/ContourModal';
 import { OrderModal } from './components/OrderModal';
 import { ProductViewer3D, type ProductPlacement } from './components/ProductViewer3D';
+import { ThreeMockupViewer } from './components/ThreeMockupViewer';
 import { PRODUCT_CATALOG, PRODUCT_IDS, type ProductId } from './three/productCatalog';
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
 
@@ -66,6 +67,7 @@ export default function App() {
   const [activeOrderTab, setActiveOrderTab] = useState<'vinyl' | 'apparel' | null>(null);
 
   const [viewMode, setViewMode] = useState<ViewMode>('sticker');
+  const [showThreeMockup, setShowThreeMockup] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductId>('tshirt');
   const [productColor, setProductColor] = useState<string>(PRODUCT_CATALOG.tshirt.colorOptions[0]);
   const [activeProductView, setActiveProductView] = useState<string>('front');
@@ -82,6 +84,16 @@ export default function App() {
   const applyDesignToProduct = useCallback(() => {
     if (!canvas) return;
     setDesignSnapshot(snapshotDesignAsDataURL(canvas));
+  }, [canvas]);
+
+  const toggleThreeMockup = useCallback(() => {
+    setShowThreeMockup((prev) => {
+      const next = !prev;
+      if (next && canvas) {
+        setDesignSnapshot(snapshotDesignAsDataURL(canvas));
+      }
+      return next;
+    });
   }, [canvas]);
 
   const { saveHistorySnapshot, handleUndo, handleRedo } = useHistoryEngine({ setCanvasObjects });
@@ -347,8 +359,15 @@ export default function App() {
               <div className="w-px h-5 bg-slate-700 mx-1"></div>
 
               <div className="flex items-center gap-1 bg-slate-500/5 rounded-lg p-1">
-                <button onClick={() => setViewMode('sticker')} className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'sticker' ? 'bg-[#FF1493] text-white' : 'text-slate-400 hover:text-slate-200'}`}>2D Studio</button>
-                <button onClick={() => { setViewMode('product'); applyDesignToProduct(); }} className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'product' ? 'bg-[#FF1493] text-white' : 'text-slate-400 hover:text-slate-200'}`}>3D Preview</button>
+                <button onClick={() => setViewMode('sticker')} className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'sticker' && !showThreeMockup ? 'bg-[#FF1493] text-white' : 'text-slate-400 hover:text-slate-200'}`}>2D Studio</button>
+                <button
+                  type="button"
+                  onClick={toggleThreeMockup}
+                  aria-pressed={showThreeMockup}
+                  className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${showThreeMockup ? 'bg-[#FF1493] text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  3D Preview
+                </button>
               </div>
 
               <div className="w-px h-5 bg-slate-700 mx-1"></div>
@@ -531,6 +550,13 @@ export default function App() {
         {/* --- INJECTED ROUTED STOREFRONT MODAL --- */}
         {activeOrderTab && canvas && (
             <OrderModal canvas={canvas} initialTab={activeOrderTab} onClose={() => setActiveOrderTab(null)} />
+        )}
+
+        {showThreeMockup && (
+          <ThreeMockupViewer
+            designDataUrl={designSnapshot}
+            onClose={() => setShowThreeMockup(false)}
+          />
         )}
     </div>
   );
