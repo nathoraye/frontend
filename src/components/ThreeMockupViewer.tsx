@@ -7,13 +7,13 @@ import * as THREE from 'three';
 const BLANK_PIXEL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 
-export interface ShirtColorOption {
+interface ShirtColorOption {
   id: string;
   label: string;
   hex: string;
 }
 
-export const SHIRT_COLOR_PALETTE: readonly ShirtColorOption[] = [
+const SHIRT_COLOR_PALETTE: readonly ShirtColorOption[] = [
   { id: 'black', label: 'Black', hex: '#111111' },
   { id: 'white', label: 'White', hex: '#f5f5f5' },
   { id: 'heather-grey', label: 'Heather Grey', hex: '#9e9e9e' },
