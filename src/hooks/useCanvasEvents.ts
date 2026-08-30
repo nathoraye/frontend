@@ -281,10 +281,15 @@ export function useCanvasEvents(props: CanvasEventProps) {
                         const traced = await tracedSvgToObject(svgString, {
                             keepOnlyBlack: true,
                             source: target,
-                            fill: p.current.brushColor,
+                            fill: clickedHex,
                             scaleDivisor: TRACE_UPSCALE_MULT,
                         });
                         if (traced) {
+                            const paint = (obj: any) => {
+                                obj.set({ fill: clickedHex, dirty: true });
+                                if (typeof obj.getObjects === 'function') obj.getObjects().forEach(paint);
+                            };
+                            paint(traced);
                             canvas.add(traced);
                             canvas.setActiveObject(traced);
                             canvas.requestRenderAll();
