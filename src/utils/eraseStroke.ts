@@ -277,6 +277,56 @@ function eraseVectorObject(canvas: fabric.Canvas, target: fabric.Object, strokeP
   return true;
 }
 
+async function eraseVectorByRaster(
+  canvas: fabric.Canvas,
+  target: fabric.Object,
+  strokePath: fabric.Path,
+): Promise<boolean> {
+  const el = (target as fabric.Object & { toCanvasElement?: (mult?: number) => HTMLCanvasElement }).toCanvasElement?.(2);
+  if (!el) return false;
+  const ctx = el.getContext('2d');
+  if (!ctx) return false;
+
+  const bounds = target.getBoundingRect();
+  const scaleX = el.width / Math.max(1, bounds.width);
+  const scaleY = el.height / Math.max(1, bounds.height);
+
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = Math.max(2, (strokePath.strokeWidth || 8) * ((scaleX + scaleY) / 2));
+  ctx.strokeStyle = '#000';
+
+  const points = samplePathPoints(strokePath, 1.5);
+  if (points.length < 2) return false;
+  ctx.beginPath();
+  points.forEach((pt, i) => {
+    const x = (pt.x - bounds.left) * scaleX;
+    const y = (pt.y - bounds.top) * scaleY;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  const nextImg = await fabric.Image.fromURL(el.toDataURL('image/png'));
+  nextImg.set({
+    originX: 'center',
+    originY: 'center',
+    left: bounds.left + bounds.width / 2,
+    top: bounds.top + bounds.height / 2,
+    scaleX: 1 / 2,
+    scaleY: 1 / 2,
+    cornerColor: '#FF1493',
+    transparentCorners: false,
+    cornerStyle: 'circle',
+    objectCaching: true,
+  });
+  canvas.remove(target);
+  canvas.add(nextImg);
+  canvas.setActiveObject(nextImg);
+  return true;
+}
+
 export async function applyEraserStroke(
   canvas: fabric.Canvas,
   strokePath: fabric.Path,
@@ -298,10 +348,10 @@ export async function applyEraserStroke(
 
   let changed = false;
   for (const obj of targets) {
-    if (obj.type === 'image') {
+    if ((obj.type || '').toLowerCase() === 'image') {
       changed = (await eraseRasterImage(canvas, obj as fabric.Image, strokePath)) || changed;
     } else {
-      changed = eraseVectorObject(canvas, obj, strokePath) || changed;
+      changed = eraseVectorObject(canvas, obj, strokePath) || (await eraseVectorByRaster(canvas, obj, strokePath)) || changed;
     }
   }
   return changed;

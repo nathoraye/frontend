@@ -62,7 +62,7 @@ export function useVectorMath({
   const handleCreateOffset = useCallback(async (activeObj: fabric.Object | null, offsetSize: number) => {
     if (!canvas || !activeObj || isProcessingRef.current) return;
 
-    if (activeObj.type === 'image') {
+    if ((activeObj.type || '').toLowerCase() === 'image') {
       alert("Raster Image Detected!\n\nVinyl cutters cannot offset pixels. Trace to SVG first, then apply a kiss-cut border.");
       return;
     }
