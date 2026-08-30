@@ -383,6 +383,18 @@ export default function App() {
             <main className="flex-1 relative min-w-0 touch-manipulation" ref={containerRef}>
                 <canvas ref={canvasRef} style={viewMode === 'product' ? { visibility: 'hidden', position: 'absolute' } : undefined} />
 
+                {viewMode === 'sticker' && tool === 'wand' && (
+                  <div className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-fuchsia-500/30 bg-[#1e2230]/95 p-1 shadow-xl">
+                    <button type="button" onClick={() => setWandMode('erase')} className={`rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'erase' ? 'bg-fuchsia-500 text-white' : 'text-slate-400 hover:text-white'}`}>Erase Color</button>
+                    <button type="button" onClick={() => setWandMode('extract')} className={`rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'extract' ? 'bg-fuchsia-500 text-white' : 'text-slate-400 hover:text-white'}`}>Extract Shape</button>
+                  </div>
+                )}
+                {viewMode === 'sticker' && tool === 'eraser' && (
+                  <div className="absolute top-3 left-1/2 z-30 -translate-x-1/2 rounded-xl border border-red-500/30 bg-[#1e2230]/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-400 shadow-xl">
+                    {eraserMode === 'layer' ? 'Eraser: draw on the selected layer' : 'Eraser: stroke through overlapping objects'}
+                  </div>
+                )}
+
                 {viewMode === 'product' && (
                   <div className="absolute inset-0 flex flex-col bg-[#0f111a]">
                     <div className="flex-1 min-h-0">

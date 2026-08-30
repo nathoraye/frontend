@@ -86,7 +86,7 @@ export function useCanvasEvents(props: CanvasEventProps) {
   useEffect(() => {
     if (!canvas) return;
     const canvasInstance = canvas;
-    canvasInstance.isDrawingMode = props.tool === 'draw';
+    canvasInstance.isDrawingMode = props.tool === 'draw' || props.tool === 'eraser';
     
     if (canvasInstance.isDrawingMode) {
         if (!(canvasInstance as any).freeDrawingBrush) {
@@ -94,7 +94,7 @@ export function useCanvasEvents(props: CanvasEventProps) {
         }
         const brush = (canvasInstance as any).freeDrawingBrush;
         if (brush) {
-            brush.color = props.brushColor;
+            brush.color = props.tool === 'eraser' ? 'rgba(255, 20, 147, 0.5)' : props.brushColor;
             brush.width = props.brushSize;
             brush.strokeLineCap = props.brushType === 'chisel' ? 'square' : 'round';
             brush.strokeLineJoin = props.brushType === 'chisel' ? 'miter' : 'round';
