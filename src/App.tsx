@@ -18,6 +18,8 @@ import { OrderModal } from './components/OrderModal';
 import { ApparelMockupViewer, type ProductPlacement } from './components/ApparelMockupViewer';
 import { PRODUCT_CATALOG, PRODUCT_IDS, type ProductId } from './three/productCatalog';
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
+import { TRACE_UPSCALE_MULT } from './utils/constants';
+import { tracedSvgToObject } from './utils/placeTracedSvg';
 
 type AppTool = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
 type ViewMode = 'sticker' | 'product';
@@ -30,6 +32,8 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const matOverlayRef = useRef<HTMLDivElement>(null); 
   const isProcessingRef = useRef<boolean>(false);
+  const quickMenuRef = useRef<HTMLDivElement>(null);
+  const eraserTargetRef = useRef<fabric.Object | null>(null);
   
   const [tool, setTool] = useState<AppTool>('select');
   const [activeTab, setActiveTab] = useState<'design' | 'layers'>('design');
@@ -146,21 +150,15 @@ export default function App() {
                       const rawImgData = tCtx.getImageData(0, 0, tCan.width, tCan.height);
                       
                       const svgString = await traceImage(rawImgData, smoothness);
-                      const result = await (fabric as any).loadSVGFromString(svgString);
-                      const wrapper = (fabric as any).util.groupSVGElements(result.objects || result, result.options || {});
-
-                      const maxDim = 800;
-                      let scale = 1;
-                      if (wrapper.width > maxDim || wrapper.height > maxDim) {
-                          scale = Math.min(maxDim / wrapper.width, maxDim / wrapper.height);
+                      const traced = await tracedSvgToObject(svgString, {
+                          fill: brushColor,
+                          scaleDivisor: TRACE_UPSCALE_MULT,
+                      });
+                      if (traced) {
+                          traced.set({ left: 600, top: 600, originX: 'center', originY: 'center' });
+                          traced.setCoords();
+                          canvas.add(traced); canvas.setActiveObject(traced); canvas.requestRenderAll(); saveHistorySnapshot(canvas, true);
                       }
-
-                      wrapper.set({ left: 600, top: 600, originX: 'center', originY: 'center', scaleX: scale, scaleY: scale });
-
-                      const paths = wrapper.type === 'group' ? wrapper.getObjects() : [wrapper];
-                      paths.forEach((p: any) => { p.set({ fill: brushColor, stroke: '', strokeWidth: 0, objectCaching: true }); });
-
-                      canvas.add(wrapper); canvas.setActiveObject(wrapper); canvas.requestRenderAll(); saveHistorySnapshot(canvas, true);
                   }
               } catch (err) { console.error("Direct Trace Failed:", err); } 
               finally { isProcessingRef.current = false; setIsTracing(false); }
@@ -193,18 +191,14 @@ export default function App() {
               const rawImgData = tCtx.getImageData(0, 0, tCan.width, tCan.height);
               
               const svgString = await traceImage(rawImgData, 5);
-              const result = await (fabric as any).loadSVGFromString(svgString);
-              const wrapper = (fabric as any).util.groupSVGElements(result.objects || result, result.options || {});
-              
-              wrapper.set({
-                  left: img.left, top: img.top, originX: img.originX, originY: img.originY,
-                  scaleX: img.scaleX, scaleY: img.scaleY, angle: img.angle
+              const traced = await tracedSvgToObject(svgString, {
+                  source: img,
+                  fill: brushColor,
+                  scaleDivisor: TRACE_UPSCALE_MULT,
               });
-              
-              const paths = wrapper.type === 'group' ? wrapper.getObjects() : [wrapper];
-              paths.forEach((p: any) => { p.set({ fill: brushColor, stroke: '', strokeWidth: 0, objectCaching: true }); });
-              
-              canvas.remove(img); canvas.add(wrapper); canvas.setActiveObject(wrapper); canvas.requestRenderAll(); saveHistorySnapshot(canvas, true);
+              if (traced) {
+                  canvas.remove(img); canvas.add(traced); canvas.setActiveObject(traced); canvas.requestRenderAll(); saveHistorySnapshot(canvas, true);
+              }
           }
       } catch (err) { console.error("In-Canvas Trace Failed:", err); }
       finally { isProcessingRef.current = false; setIsTracing(false); }
@@ -231,6 +225,7 @@ export default function App() {
     setShowOffsetConfig(false); 
     const actives = canvas.getActiveObjects();
     setActiveObj(actives.length === 1 ? actives[0] : null);
+    if (actives.length === 1) eraserTargetRef.current = actives[0];
     
     if (actives.length > 0) {
       let targetForColor: any = actives[0];
@@ -269,8 +264,8 @@ export default function App() {
     canvas.requestRenderAll(); saveHistorySnapshot(canvas);
   };
 
-  useCanvasEvents({ canvas, matOverlayRef, isProcessingRef, tool, brushColor, brushSize, brushType, wandTolerance, wandMode, eraserMode, setIsTracing, setQuickMenu, updateUIFromSelection, saveHistorySnapshot, traceImage, setTool });
-  useToolEngine({ canvas, tool, brushColor, brushSize, brushType, setQuickMenu });
+  useCanvasEvents({ canvas, matOverlayRef, isProcessingRef, tool, brushColor, brushSize, brushType, wandTolerance, wandMode, eraserMode, setIsTracing, setQuickMenu, updateUIFromSelection, saveHistorySnapshot, traceImage, setTool, quickMenuRef, eraserTargetRef });
+  useToolEngine({ canvas, tool, brushColor, brushSize, brushType, setQuickMenu, eraserTargetRef });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -397,6 +392,8 @@ export default function App() {
                         activeView={activeProductView}
                         designDataUrl={designSnapshot}
                         placement={productPlacement}
+                        interactive
+                        onPlacementChange={setProductPlacement}
                       />
                     </div>
                     <div className="shrink-0 border-t border-slate-800 bg-[#181a25] p-3 flex flex-wrap items-center gap-3">
@@ -418,26 +415,14 @@ export default function App() {
                         ))}
                       </div>
 
-                      <label className="flex items-center gap-1 text-[10px] font-mono text-slate-400">X
-                        <input type="range" min={-50} max={50} value={productPlacement.posX} onChange={(e) => setProductPlacement((p) => ({ ...p, posX: Number(e.target.value) }))} className="w-16" />
-                      </label>
-                      <label className="flex items-center gap-1 text-[10px] font-mono text-slate-400">Y
-                        <input type="range" min={-50} max={50} value={productPlacement.posY} onChange={(e) => setProductPlacement((p) => ({ ...p, posY: Number(e.target.value) }))} className="w-16" />
-                      </label>
-                      <label className="flex items-center gap-1 text-[10px] font-mono text-slate-400">Scale
-                        <input type="range" min={0.2} max={2} step={0.05} value={productPlacement.scale} onChange={(e) => setProductPlacement((p) => ({ ...p, scale: Number(e.target.value) }))} className="w-16" />
-                      </label>
-                      <label className="flex items-center gap-1 text-[10px] font-mono text-slate-400">Rotate
-                        <input type="range" min={-180} max={180} value={productPlacement.rotationDeg} onChange={(e) => setProductPlacement((p) => ({ ...p, rotationDeg: Number(e.target.value) }))} className="w-16" />
-                      </label>
-
                       <button onClick={applyDesignToProduct} className="ml-auto h-7 px-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded text-[10px] font-black uppercase tracking-wider">Apply Design</button>
+                      <p className="w-full text-[10px] font-mono text-slate-500">Drag the print to move. Corner handles scale. Top handle rotates.</p>
                     </div>
                   </div>
                 )}
 
                 {quickMenu && quickMenu.show && !contourTarget && viewMode === 'sticker' && (
-                  <div className="absolute z-20 flex items-center gap-1 p-1.5 rounded-xl shadow-2xl bg-[#1e2230]/90 border border-slate-700 transform -translate-x-1/2 transition-opacity" style={{ top: quickMenu.top, left: quickMenu.left }}>
+                  <div ref={quickMenuRef} className="absolute z-20 flex items-center gap-1 p-1.5 rounded-xl shadow-2xl bg-[#1e2230]/90 border border-slate-700 transform -translate-x-1/2" style={{ top: quickMenu.top, left: quickMenu.left }}>
                     
                     {showOffsetConfig ? (
                         <div className="flex items-center gap-2 px-2 py-1">

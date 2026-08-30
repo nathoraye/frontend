@@ -6,6 +6,7 @@ import * as fabric from 'fabric';
 import { submitOrder } from '../services/orderService';
 import { snapshotDesignAsDataURL } from '../utils/designSnapshot';
 import { ApparelMockupViewer } from './ApparelMockupViewer';
+import { VinylSizePreview } from './VinylSizePreview';
 import { PRODUCT_CATALOG, PRODUCT_IDS, type ProductId } from '../three/productCatalog';
 
 type OrderType = 'vinyl' | 'product';
@@ -270,12 +271,12 @@ function Step2Placement({ config, onConfigChange, designDataUrl }: Step2Props) {
 
   if (config.orderType === 'vinyl') {
     return (
-      <div className="space-y-4">
-        <h3 className="text-lg font-mono text-pink-500">Print Placement</h3>
-        <div className="p-4 bg-gray-900 border border-gray-700 rounded text-sm font-mono text-gray-400">
-          Die-cut stickers use your full design as-is — no placement needed.
-        </div>
-      </div>
+      <VinylSizePreview
+        designDataUrl={designDataUrl}
+        widthCm={config.vinylWidthCm || 10}
+        heightCm={config.vinylHeightCm || 10}
+        onSizeChange={(widthCm, heightCm) => onConfigChange({ ...config, vinylWidthCm: widthCm, vinylHeightCm: heightCm })}
+      />
     );
   }
 
@@ -319,23 +320,11 @@ function Step2Placement({ config, onConfigChange, designDataUrl }: Step2Props) {
           activeView={activeView}
           designDataUrl={designDataUrl}
           placement={placement}
+          interactive
+          onPlacementChange={(next) => updatePlacement(next)}
         />
       </div>
-
-      <div className="grid grid-cols-2 gap-4 text-xs font-mono text-gray-400">
-        <label className="flex items-center gap-2">X
-          <input type="range" min={-50} max={50} value={placement.posX} onChange={(e) => updatePlacement({ posX: Number(e.target.value) })} className="flex-1" />
-        </label>
-        <label className="flex items-center gap-2">Y
-          <input type="range" min={-50} max={50} value={placement.posY} onChange={(e) => updatePlacement({ posY: Number(e.target.value) })} className="flex-1" />
-        </label>
-        <label className="flex items-center gap-2">Scale
-          <input type="range" min={0.2} max={2} step={0.05} value={placement.scale} onChange={(e) => updatePlacement({ scale: Number(e.target.value) })} className="flex-1" />
-        </label>
-        <label className="flex items-center gap-2">Rotate
-          <input type="range" min={-180} max={180} value={placement.rotationDeg} onChange={(e) => updatePlacement({ rotationDeg: Number(e.target.value) })} className="flex-1" />
-        </label>
-      </div>
+      <p className="text-[10px] font-mono text-slate-500">Drag the print to move. Pink handle scales. Green handle rotates.</p>
     </div>
   );
 }
@@ -530,6 +519,8 @@ export function OrderModal({ canvas, initialTab, onClose }: OrderModalProps) {
     return {
       orderType,
       quantity: 1,
+      vinylWidthCm: 10,
+      vinylHeightCm: 10,
       productId: orderType === 'product' ? 'tshirt' : undefined,
       productColor: orderType === 'product' ? PRODUCT_CATALOG.tshirt.colorOptions[0] : undefined,
       printConfigs: orderType === 'product' ? printConfigsForProduct('tshirt') : {},

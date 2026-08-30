@@ -7,9 +7,9 @@ export function useVectorEngine() {
   const workerRef = useRef<Worker | null>(null);
 
   const TRACE_OPTIONS = useMemo(() => ({
-    pathomit: 8,
-    ltres: 0.3,
-    qtres: 0.5,
+    pathomit: 2,
+    ltres: 0.2,
+    qtres: 0.4,
     scale: 1,
     rightangleenhance: true,
     numberofcolors: 2,
@@ -67,12 +67,11 @@ export function useVectorEngine() {
       
       uCtx.imageSmoothingEnabled = true;
       uCtx.imageSmoothingQuality = 'high';
-      uCtx.filter = `blur(${Math.max(1, smoothness)}px)`;
+      uCtx.filter = `blur(${Math.max(0.4, smoothness * 0.35)}px)`;
       uCtx.drawImage(preCanvas, 0, 0, upCanvas.width, upCanvas.height);
       
       // 4. THE RAZOR SNAP
-      // Tightened brightness threshold (200 vs old 230) captures mid-tones that were
-      // previously leaking through as ghost areas, producing a crisper silhouette.
+      // Threshold 220 keeps lighter interior details that 200 was dropping.
       const upData = uCtx.getImageData(0, 0, upCanvas.width, upCanvas.height);
       const d = upData.data;
 
@@ -85,7 +84,7 @@ export function useVectorEngine() {
           
           const brightness = (r * 0.299 + g * 0.587 + b * 0.114);
 
-          if (a < 128 || brightness > 200) {
+          if (a < 128 || brightness > 220) {
               d[i] = 255; d[i+1] = 255; d[i+2] = 255; d[i+3] = 255; // WHITE BG
               whitePixels++;
           } else {

@@ -2,6 +2,9 @@
 /* eslint-disable react-hooks/immutability */
 import * as fabric from 'fabric';
 import { useEffect, useRef } from 'react';
+import { TRACE_UPSCALE_MULT } from '../utils/constants';
+import { tracedSvgToObject } from '../utils/placeTracedSvg';
+import { applyEraserStroke } from '../utils/eraseStroke';
 
 interface CanvasEventProps {
   canvas: fabric.Canvas | null;
@@ -18,8 +21,10 @@ interface CanvasEventProps {
   setQuickMenu: (menu: any) => void;
   updateUIFromSelection: () => void;
   saveHistorySnapshot: (canvas: fabric.Canvas, immediate?: boolean) => void;
-  traceImage: (imageData: ImageData) => Promise<string>;
-  setTool?: (tool: 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser') => void; 
+  traceImage: (imageData: ImageData, smoothness?: number) => Promise<string>;
+  setTool?: (tool: 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser') => void;
+  quickMenuRef?: React.RefObject<HTMLDivElement | null>;
+  eraserTargetRef?: React.MutableRefObject<fabric.Object | null>;
 }
 
 // --- VECTOR SMOOTHING ENGINE (B&W FORCE) ---
@@ -131,23 +136,39 @@ export function useCanvasEvents(props: CanvasEventProps) {
       }
     };
 
-    const showMenu = (obj: any) => {
-      if (!obj) return;
-      obj.setCoords(); 
+    const menuScreenPoint = (obj: any) => {
+      obj.setCoords();
       const br = obj.getBoundingRect();
       const centerX = br.left + (br.width / 2);
       const topY = br.top;
       const vpt = canvas.viewportTransform || [1, 0, 0, 1, 0, 0];
       const screenPt = (fabric as any).util.transformPoint({ x: centerX, y: topY }, vpt);
-      const safeTop = isNaN(screenPt.y) ? 10 : Math.max(10, screenPt.y - 90);
-      const safeLeft = isNaN(screenPt.x) ? 100 : screenPt.x;
-      p.current.setQuickMenu({ top: safeTop, left: safeLeft, show: true });
+      return {
+        top: isNaN(screenPt.y) ? 10 : Math.max(10, screenPt.y - 90),
+        left: isNaN(screenPt.x) ? 100 : screenPt.x,
+      };
     };
 
     const updateMenuPosition = () => {
-        const obj = canvas.getActiveObject();
-        if (obj && p.current.tool === 'select') showMenu(obj);
-        else p.current.setQuickMenu(null);
+      const obj = canvas.getActiveObject();
+      const el = p.current.quickMenuRef?.current;
+      if (obj && p.current.tool === 'select') {
+        const { top, left } = menuScreenPoint(obj);
+        if (el) {
+          el.style.display = 'flex';
+          el.style.top = `${top}px`;
+          el.style.left = `${left}px`;
+        }
+        return { top, left };
+      }
+      if (el) el.style.display = 'none';
+      return null;
+    };
+
+    const showMenu = (obj: any) => {
+      if (!obj) return;
+      const pos = updateMenuPosition();
+      if (pos) p.current.setQuickMenu({ top: pos.top, left: pos.left, show: true });
     };
 
     const finishPolyline = (autoClose: boolean = false) => {
@@ -237,61 +258,37 @@ export function useCanvasEvents(props: CanvasEventProps) {
                         const data = imgData.data;
                         let hasPixels = false;
                         
-                        // Force B&W Mask mapping
                         for (let i = 0; i < data.length; i += 4) {
-                            if (data[i + 3] === 0) continue;
+                            if (data[i + 3] < 128) {
+                                data[i] = 255; data[i+1] = 255; data[i+2] = 255; data[i+3] = 255;
+                                continue;
+                            }
                             const dist = Math.sqrt(Math.pow(data[i] - targetRGB.r, 2) + Math.pow(data[i+1] - targetRGB.g, 2) + Math.pow(data[i+2] - targetRGB.b, 2)) / 441.67;
 
                             if (dist <= p.current.wandTolerance) {
-                                data[i] = 0; data[i+1] = 0; data[i+2] = 0; data[i+3] = 255; // Target becomes BLACK
+                                data[i] = 0; data[i+1] = 0; data[i+2] = 0; data[i+3] = 255;
                                 hasPixels = true;
                             } else {
-                                data[i] = 255; data[i+1] = 255; data[i+2] = 255; data[i+3] = 255; // Reject becomes WHITE
-                            }
-                        }
-
-                        // Catch any raw transparent pixels missed above and force them White
-                        for (let i = 0; i < data.length; i += 4) {
-                            if (data[i+3] < 128) {
-                                data[i] = 255; data[i+1] = 255; data[i+2] = 255; data[i+3] = 255; // White
+                                data[i] = 255; data[i+1] = 255; data[i+2] = 255; data[i+3] = 255;
                             }
                         }
 
                         if (!hasPixels) { p.current.isProcessingRef.current = false; return; }
                         tempCtx.putImageData(imgData, 0, 0);
 
-                        const smoothedImgData = applyVectorSmoothing(tempCanvas) || imgData;
-
                         p.current.setIsTracing(true);
-                        const svgString = await p.current.traceImage(smoothedImgData);
-                        const result = await (fabric as any).loadSVGFromString(svgString);
-                        
-                        const wrapper = (fabric as any).util.groupSVGElements(result.objects || result, result.options || {});
-
-                        wrapper.set({ left: target.left, top: target.top, originX: target.originX, originY: target.originY, scaleX: target.scaleX, scaleY: target.scaleY, angle: target.angle });
-                        
-                        canvas.add(wrapper);
-                        const activeSel = wrapper.toActiveSelection();
-                        const extractedPaths = activeSel.getObjects();
-                        canvas.discardActiveObject();
-                        
-                        const validPaths: any[] = [];
-                        
-                        // PERFECT FILTER: Deletes the giant white background rect, keeps the black target shape
-                        extractedPaths.forEach((path: any) => {
-                            const fillString = path.fill ? path.fill.toString().toLowerCase().replace(/\s/g, '') : '';
-                            const isBlack = fillString === '#000000' || fillString === 'black' || fillString === 'rgb(0,0,0)' || fillString === '#000';
-                            
-                            if (isBlack) {
-                                path.set({ fill: p.current.brushColor, stroke: '', strokeWidth: 0, objectCaching: true });
-                                validPaths.push(path);
-                            }
-                            canvas.remove(path); 
+                        const svgString = await p.current.traceImage(imgData);
+                        const traced = await tracedSvgToObject(svgString, {
+                            keepOnlyBlack: true,
+                            source: target,
+                            fill: p.current.brushColor,
+                            scaleDivisor: TRACE_UPSCALE_MULT,
                         });
-                        
-                        if (validPaths.length > 0) {
-                            const finalGroup = new (fabric as any).Group(validPaths, { cornerColor: '#FF1493', transparentCorners: false, cornerStyle: 'circle' as const, objectCaching: true });
-                            canvas.add(finalGroup); canvas.setActiveObject(finalGroup); canvas.requestRenderAll(); p.current.saveHistorySnapshot(canvas, true);
+                        if (traced) {
+                            canvas.add(traced);
+                            canvas.setActiveObject(traced);
+                            canvas.requestRenderAll();
+                            p.current.saveHistorySnapshot(canvas, true);
                         }
                         p.current.setIsTracing(false);
                     }
@@ -467,33 +464,24 @@ export function useCanvasEvents(props: CanvasEventProps) {
                    const smoothedImgData = applyVectorSmoothing(tempCanvas) || tempCtx.getImageData(0, 0, 1200, 1200);
 
                    const svgString = await p.current.traceImage(smoothedImgData);
-                   const result = await (fabric as any).loadSVGFromString(svgString);
-                   
-                   const wrapper = (fabric as any).util.groupSVGElements(result.objects || result, result.options || {});
-                   const bucketScale = Math.max(1, Math.min(1500 / 1200, 1500 / 1200)); 
-                   const invBucketScale = 1 / bucketScale; 
-                   
-                   wrapper.set({ left: 0, top: 0, originX: 'left', originY: 'top', scaleX: invBucketScale, scaleY: invBucketScale });
-                   canvas.add(wrapper);
-                   const activeSel = wrapper.toActiveSelection(); const extractedPaths = activeSel.getObjects(); canvas.discardActiveObject(); 
-                   
-                   const validPaths: any[] = [];
-                   
-                   // PERFECT FILTER: Ignore the white background block, keep the black fill
-                   extractedPaths.forEach((path: any) => {
-                       const fillString = path.fill ? path.fill.toString().toLowerCase().replace(/\s/g, '') : '';
-                       const isBlack = fillString === '#000000' || fillString === 'black' || fillString === 'rgb(0,0,0)' || fillString === '#000';
-                       
-                       if (isBlack) {
-                           path.set({ fill: p.current.brushColor, stroke: p.current.brushColor, strokeWidth: 0, objectCaching: true });
-                           validPaths.push(path);
-                       }
-                       canvas.remove(path);
+                   const traced = await tracedSvgToObject(svgString, {
+                       keepOnlyBlack: true,
+                       fill: p.current.brushColor,
                    });
-                   
-                   if (validPaths.length > 0) {
-                      const finalGroup = new (fabric as any).Group(validPaths, { cornerColor: '#FF1493', transparentCorners: false, cornerStyle: 'circle' as const, objectCaching: true });
-                      canvas.add(finalGroup); canvas.setActiveObject(finalGroup); canvas.requestRenderAll(); p.current.saveHistorySnapshot(canvas, true);
+                   if (traced) {
+                      traced.set({
+                          originX: 'left',
+                          originY: 'top',
+                          left: 0,
+                          top: 0,
+                          scaleX: 1 / TRACE_UPSCALE_MULT,
+                          scaleY: 1 / TRACE_UPSCALE_MULT,
+                      });
+                      traced.setCoords();
+                      canvas.add(traced);
+                      canvas.setActiveObject(traced);
+                      canvas.requestRenderAll();
+                      p.current.saveHistorySnapshot(canvas, true);
                    }
                } catch (e) { console.error("Bucket Trace Error:", e); } finally { p.current.isProcessingRef.current = false; p.current.setIsTracing(false); }
             };
@@ -540,9 +528,31 @@ export function useCanvasEvents(props: CanvasEventProps) {
       if (p.current.tool === 'select') { const obj = canvas.getActiveObject(); if (obj) showMenu(obj); }
     };
 
-    const onPathCreated = (e: any) => { 
+    const onPathCreated = async (e: any) => { 
        if(!e.path) return;
        const path = e.path;
+       if (p.current.tool === 'eraser') {
+           canvas.remove(path);
+           const target = p.current.eraserTargetRef?.current || canvas.getActiveObject() || null;
+           if (p.current.eraserMode === 'layer' && !target) {
+               alert('Select a layer first, then erase. The eraser only punches the stroke you draw — it will not delete the whole object.');
+               return;
+           }
+           try {
+               p.current.isProcessingRef.current = true;
+               await applyEraserStroke(canvas, path, target, p.current.eraserMode);
+               canvas.requestRenderAll();
+               p.current.saveHistorySnapshot(canvas, true);
+               if (target && p.current.eraserTargetRef) {
+                   p.current.eraserTargetRef.current = canvas.getActiveObject() || target;
+               }
+           } catch (err) {
+               console.error('Eraser failed:', err);
+           } finally {
+               p.current.isProcessingRef.current = false;
+           }
+           return;
+       }
        path.set({ objectCaching: true, strokeLineCap: p.current.brushType === 'chisel' ? 'square' : 'round', strokeLineJoin: p.current.brushType === 'chisel' ? 'miter' : 'round' }); 
        p.current.saveHistorySnapshot(canvas, true); 
     };

@@ -64,9 +64,9 @@ self.onmessage = function(e: MessageEvent) {
     // rightangleenhance keeps crisp 90° corners where the design genuinely has them.
     // colorquantcycles:2 and mincolorgap:128 ensure strict black/white separation.
     const svgString = ImageTracer.imagedataToSVG(normalizedImageData, {
-      pathomit: 8,
-      ltres: 0.3,
-      qtres: 0.5,
+      pathomit: 2,
+      ltres: 0.2,
+      qtres: 0.4,
       scale: 1,
       rightangleenhance: true,
       numberofcolors: 2,
