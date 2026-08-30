@@ -353,7 +353,7 @@ export default function App() {
                   onClick={() => { setViewMode('product'); applyDesignToProduct(); }}
                   className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'product' ? 'bg-[#FF1493] text-white' : 'text-slate-400 hover:text-slate-200'}`}
                 >
-                  3D Preview
+                  Product Review
                 </button>
               </div>
 

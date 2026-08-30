@@ -540,7 +540,7 @@ export function OrderModal({ canvas, initialTab, onClose }: OrderModalProps) {
     try {
       return snapshotDesignAsDataURL(canvas);
     } catch (error) {
-      console.error('Failed to snapshot design for 3D preview:', error);
+      console.error('Failed to snapshot design for product review:', error);
       return null;
     }
   }, [canvas]);
