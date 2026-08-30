@@ -2,6 +2,7 @@
 import * as fabric from 'fabric';
 import { useCallback } from 'react';
 import { TRACE_UPSCALE_MULT } from '../utils/constants';
+import { tracedSvgToObject } from '../utils/placeTracedSvg';
 
 interface VectorMathProps {
   canvas: fabric.Canvas | null;
@@ -11,19 +12,18 @@ interface VectorMathProps {
   saveHistorySnapshot: (canvas: fabric.Canvas, immediate?: boolean) => void;
 }
 
-export function useVectorMath({ 
-    canvas, 
-    isProcessingRef, 
-    setIsTracing, 
-    traceImage, 
-    saveHistorySnapshot 
+export function useVectorMath({
+  canvas,
+  isProcessingRef,
+  setIsTracing,
+  traceImage,
+  saveHistorySnapshot,
 }: VectorMathProps) {
-
   const handleVectorTrace = useCallback(async (activeObj: fabric.Object | null) => {
     if (!canvas || !activeObj || isProcessingRef.current) return;
-    
+
     if (activeObj.type !== 'image') {
-      alert("This object is already a vector design!");
+      alert('Select a raster image to trace. Vector shapes are already cut-ready.');
       return;
     }
 
@@ -31,138 +31,89 @@ export function useVectorMath({
     setIsTracing(true);
 
     try {
-      const img = activeObj as any;
-      
-      const imgCanvas = img.toCanvasElement();
+      const img = activeObj as fabric.Image;
+      const imgCanvas = (img as any).toCanvasElement();
       const ctx = imgCanvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx) throw new Error("Could not read image data.");
-      
+      if (!ctx) throw new Error('Could not read image data.');
+
       const imgData = ctx.getImageData(0, 0, imgCanvas.width, imgCanvas.height);
       const svgString = await traceImage(imgData);
-      
-      const result = await (fabric as any).loadSVGFromString(svgString);
-      let objects = result.objects || result;
-      const options = result.options || {};
-      
-      if (!objects || !Array.isArray(objects) || objects.length === 0) {
-          throw new Error("Tracer returned an empty path.");
-      }
-
-      // STRICT FILTER: Delete any stray background boxes.
-      // Matches hex white (#fff / #ffffff), named transparent/none, and rgba(255,255,255,...).
-      objects = objects.filter((obj: any) => {
-        const fill = obj.fill ? obj.fill.toString().toLowerCase().replace(/\s/g, '') : '';
-        if (
-          fill === 'transparent' ||
-          fill === 'none' ||
-          fill === '#ffffff' ||
-          fill === '#fff' ||
-          fill === 'rgb(255,255,255)' ||
-          /^rgba\(255,255,255,/.test(fill)
-        ) return false;
-        return true;
+      const traced = await tracedSvgToObject(svgString, {
+        source: img,
+        scaleDivisor: TRACE_UPSCALE_MULT,
+        fill: '#FF1493',
       });
+      if (!traced) throw new Error('No solid shapes found to trace after background removal.');
 
-      if (objects.length === 0) throw new Error("No solid shapes found to trace after background removal.");
-
-      objects.forEach((obj: any) => {
-         obj.set({
-            fill: '#FF1493', 
-            stroke: '',
-            strokeWidth: 0,
-            objectCaching: true
-         });
-      });
-      
-      const tracedGroup = (fabric as any).util.groupSVGElements(objects, options);
-
-      // EXACT REVERSE-SCALE MATH: divide by TRACE_UPSCALE_MULT to snap traced paths
-      // back to their original visual size on the canvas.
-      const finalScaleX = (img.scaleX || 1) / TRACE_UPSCALE_MULT;
-      const finalScaleY = (img.scaleY || 1) / TRACE_UPSCALE_MULT;
-
-      // Grab the absolute center of the original image to prevent alignment shifts
-      const center = img.getCenterPoint();
-
-      tracedGroup.set({
-        originX: 'center',
-        originY: 'center',
-        left: center.x,
-        top: center.y,
-        scaleX: finalScaleX,
-        scaleY: finalScaleY,
-        angle: img.angle || 0,
-        cornerColor: '#FF1493',
-        transparentCorners: false,
-        objectCaching: true
-      });
-
-      tracedGroup.setCoords();
-
-      // Nuke the old raster image and drop in the fresh vector
       canvas.remove(img);
-      canvas.add(tracedGroup);
-      canvas.setActiveObject(tracedGroup);
+      canvas.add(traced);
+      canvas.setActiveObject(traced);
       canvas.requestRenderAll();
       saveHistorySnapshot(canvas, true);
-
     } catch (error) {
-      console.error("Vector Trace Failed:", error);
-      alert("Failed to trace image. The design might be too faint or completely transparent.");
+      console.error('Vector Trace Failed:', error);
+      alert('Failed to trace image. The design might be too faint or completely transparent.');
     } finally {
       isProcessingRef.current = false;
       setIsTracing(false);
     }
   }, [canvas, isProcessingRef, setIsTracing, traceImage, saveHistorySnapshot]);
 
-
   const handleCreateOffset = useCallback(async (activeObj: fabric.Object | null, offsetSize: number) => {
     if (!canvas || !activeObj || isProcessingRef.current) return;
 
     if (activeObj.type === 'image') {
-        alert("⚠️ Raster Image Detected!\n\nVinyl cutters cannot offset pixels. You must click 'Trace to Razor SVG' first to convert this image into vector paths before applying a Kiss Cut border.");
-        return;
+      alert("Raster Image Detected!\n\nVinyl cutters cannot offset pixels. Trace to SVG first, then apply a kiss-cut border.");
+      return;
     }
 
     isProcessingRef.current = true;
 
     try {
       const clonedObj = await (activeObj as any).clone();
-      
-      const offsetColor = '#FF1493'; 
-      
+      const offsetColor = '#FF1493';
+
       clonedObj.set({
         fill: offsetColor,
         stroke: offsetColor,
-        strokeWidth: offsetSize * 2, 
+        strokeWidth: offsetSize * 2,
         strokeLineJoin: 'round',
         strokeLineCap: 'round',
-        evented: true, 
-        objectCaching: true
+        strokeUniform: true,
+        originX: 'center',
+        originY: 'center',
+        evented: true,
+        objectCaching: true,
       });
 
       if (clonedObj.type === 'group' || clonedObj.type === 'activeSelection') {
-         clonedObj.getObjects().forEach((child: any) => {
-             child.set({
-                fill: offsetColor,
-                stroke: offsetColor,
-                strokeWidth: offsetSize * 2,
-                strokeLineJoin: 'round',
-                strokeLineCap: 'round'
-             });
-         });
+        clonedObj.getObjects().forEach((child: any) => {
+          child.set({
+            fill: offsetColor,
+            stroke: offsetColor,
+            strokeWidth: offsetSize * 2,
+            strokeLineJoin: 'round',
+            strokeLineCap: 'round',
+            strokeUniform: true,
+          });
+        });
       }
 
+      const center = activeObj.getCenterPoint();
+      clonedObj.set({ left: center.x, top: center.y, originX: 'center', originY: 'center' });
       clonedObj.setCoords();
 
       canvas.add(clonedObj);
-      (canvas as any).sendToBack(clonedObj);
-
+      if (typeof (canvas as any).sendObjectToBack === 'function') {
+        (canvas as any).sendObjectToBack(clonedObj);
+      } else if (typeof (canvas as any).sendToBack === 'function') {
+        (canvas as any).sendToBack(clonedObj);
+      }
+      canvas.setActiveObject(activeObj);
       canvas.requestRenderAll();
       saveHistorySnapshot(canvas, true);
-      
     } catch (error) {
-      console.error("Offset Generation Failed:", error);
+      console.error('Offset Generation Failed:', error);
     } finally {
       isProcessingRef.current = false;
     }

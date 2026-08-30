@@ -104,7 +104,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
             </div>
             
             <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
-               {eraserMode === 'layer' ? 'Erases ONLY the currently selected artwork. (Must select a layer first)' : 'Erases straight through everything down to the cutting mat.'}
+               {eraserMode === 'layer' ? 'Draw over the selected object. Only the stroke is subtracted — the rest of the artwork stays. Works on photos and vector paths.' : 'Stroke-erases through every object the brush crosses, without deleting whole layers.'}
             </p>
 
             <div className="flex justify-between text-xs mb-3"><span className="font-bold">Eraser Size</span><span className={textMuted}>{brushSize}px</span></div>

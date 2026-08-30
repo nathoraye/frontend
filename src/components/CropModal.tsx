@@ -18,8 +18,8 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
     const dragStart = useRef({ x: 0, y: 0, box: { x: 0, y: 0, w: 0, h: 0 } });
     
     const [smoothness, setSmoothness] = useState<number>(5);
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
-    // Initialize full-image crop box as soon as image loads
     const handleImageLoad = () => {
         if (!imgRef.current) return;
         const rect = imgRef.current.getBoundingClientRect();
@@ -103,7 +103,6 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
 
         const rect = img.getBoundingClientRect();
 
-        // Fallback to full image bounds if crop box wasn't drawn or is too small
         const targetBox = (cropBox && cropBox.w >= 10 && cropBox.h >= 10) 
             ? cropBox 
             : { x: 0, y: 0, w: rect.width, h: rect.height };
@@ -116,7 +115,6 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
         const sw = targetBox.w * scaleX;
         const sh = targetBox.h * scaleY;
 
-        // Apply smoothness resolution multiplier
         const targetWidth = Math.max(1, Math.round(sw * (smoothness / 5)));
         const targetHeight = Math.max(1, Math.round(sh * (smoothness / 5)));
 
@@ -143,16 +141,16 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
     );
 
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-[#0f111a]/95 select-none backdrop-blur-sm">
-            <div className="flex-none p-4 md:p-6 text-white text-center">
-                <h2 className="text-xl md:text-2xl font-black tracking-widest uppercase mb-1">Crop Upload</h2>
+        <div className="fixed inset-0 z-[100] grid grid-rows-[auto_minmax(0,1fr)_auto] bg-[#0f111a]/95 select-none backdrop-blur-sm">
+            <div className="p-3 md:p-4 text-white text-center shrink-0">
+                <h2 className="text-lg md:text-2xl font-black tracking-widest uppercase mb-1">Crop Upload</h2>
                 <p className="text-xs md:text-sm text-slate-400">Click and drag to isolate your sticker. Pull the anchors to adjust.</p>
             </div>
             
-            <div className="flex-1 w-full flex items-center justify-center touch-none p-2 md:p-4 min-h-0 overflow-hidden">
+            <div className="min-h-0 overflow-hidden w-full flex items-center justify-center p-2 md:p-3">
                 <div 
                     ref={containerRef} 
-                    className="relative max-h-[75vh] max-w-5xl w-full h-full flex items-center justify-center bg-slate-900/90 shadow-2xl border border-slate-700 rounded-lg p-2" 
+                    className="relative h-full w-full max-w-5xl flex items-center justify-center bg-slate-900/90 shadow-2xl border border-slate-700 rounded-lg p-2" 
                     style={{ fontSize: 0, lineHeight: 0 }}
                 >
                     <div className="relative inline-block max-w-full max-h-full">
@@ -161,7 +159,7 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
                             src={imageUrl} 
                             alt="Target" 
                             onLoad={handleImageLoad}
-                            className="pointer-events-none block max-w-full max-h-[70vh] w-auto h-auto object-contain rounded" 
+                            className="pointer-events-none block max-w-full max-h-full w-auto h-auto object-contain rounded" 
                             draggable={false} 
                         />
                         <div 
@@ -199,30 +197,38 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
                 </div>
             </div>
 
-            <div className="flex-none p-4 md:p-6 bg-[#181a25] border-t border-slate-800">
-                <div className="max-w-md mx-auto mb-4 md:mb-6">
-                    <div className="flex justify-between items-center text-xs font-bold text-[#FF1493] mb-2 uppercase tracking-wider">
-                        <span>Image Resolution Multiplier</span>
-                        <span className="bg-[#FF1493]/20 px-2 py-0.5 rounded">{smoothness}x</span>
+            <div className="shrink-0 p-3 md:p-4 bg-[#181a25] border-t border-slate-800">
+                <button
+                    type="button"
+                    onClick={() => setShowAdvanced((v) => !v)}
+                    className="mx-auto mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300"
+                >
+                    {showAdvanced ? 'Hide resolution' : 'Resolution options'}
+                </button>
+                {showAdvanced && (
+                    <div className="max-w-md mx-auto mb-3">
+                        <div className="flex justify-between items-center text-xs font-bold text-[#FF1493] mb-2 uppercase tracking-wider">
+                            <span>Image Resolution Multiplier</span>
+                            <span className="bg-[#FF1493]/20 px-2 py-0.5 rounded">{smoothness}x</span>
+                        </div>
+                        <input 
+                            type="range" min="1" max="10" 
+                            value={smoothness} onChange={e => setSmoothness(Number(e.target.value))} 
+                            className="w-full accent-[#FF1493] cursor-pointer" 
+                        />
                     </div>
-                    <input 
-                        type="range" min="1" max="10" 
-                        value={smoothness} onChange={e => setSmoothness(Number(e.target.value))} 
-                        className="w-full accent-[#FF1493] cursor-pointer" 
-                    />
-                    <p className="text-[10px] text-slate-500 mt-1 text-center">Increase multiplier to upscale raw image resolution before adding.</p>
-                </div>
+                )}
 
                 <div className="flex justify-center gap-4">
                     <button 
                         onClick={onCancel} 
-                        className="px-6 py-3 rounded-lg font-bold text-white bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-600"
+                        className="px-6 py-2.5 rounded-lg font-bold text-white bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-600"
                     >
                         Cancel
                     </button>
                     <button 
                         onClick={executeCrop} 
-                        className="px-8 py-3 rounded-lg font-black uppercase tracking-wider text-white bg-[#FF1493] hover:bg-[#ff4da6] transition-all shadow-lg shadow-[#FF1493]/20 hover:shadow-[#FF1493]/40 hover:-translate-y-0.5 active:translate-y-0"
+                        className="px-8 py-2.5 rounded-lg font-black uppercase tracking-wider text-white bg-[#FF1493] hover:bg-[#ff4da6] transition-all shadow-lg shadow-[#FF1493]/20"
                     >
                         Add to Canvas
                     </button>

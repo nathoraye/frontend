@@ -42,49 +42,49 @@ const TSHIRT_ZONES = {
 const MOCKUP_ASSETS: Partial<Record<ProductId, Record<string, MockupColorAssets>>> = {
   hoodie: {
     '#ffffff': {
-      front: '/mockups/hoodie/white-front.jpg',
-      back: '/mockups/hoodie/white-back.jpg',
+      front: '/tshirt-front.svg',
+      back: '/tshirt-back.svg',
       printZones: HOODIE_ZONES,
     },
     '#111111': {
-      front: '/mockups/hoodie/black-front.jpg',
-      back: '/mockups/hoodie/black-back.jpg',
+      front: '/tshirt-front.svg',
+      back: '/tshirt-back.svg',
       printZones: HOODIE_ZONES,
     },
   },
   sloppyJoe: {
     '#ffffff': {
-      front: '/mockups/sloppy-joe/white-front.jpg',
-      back: '/mockups/sloppy-joe/white-back.jpg',
+      front: '/tshirt-front.svg',
+      back: '/tshirt-back.svg',
       printZones: SLOPPY_JOE_ZONES,
     },
     '#111111': {
-      front: '/mockups/sloppy-joe/black-front.jpg',
-      back: '/mockups/sloppy-joe/black-back.jpg',
+      front: '/tshirt-front.svg',
+      back: '/tshirt-back.svg',
       printZones: SLOPPY_JOE_ZONES,
     },
   },
   tshirt: {
     '#ffffff': {
-      front: '/mockups/tshirt/white-front.jpg',
-      back: '/mockups/tshirt/white-back.jpg',
+      front: '/tshirt-front.svg',
+      back: '/tshirt-back.svg',
       printZones: TSHIRT_ZONES,
     },
     '#111111': {
-      front: '/mockups/tshirt/black-front.jpg',
-      back: '/mockups/tshirt/black-back.jpg',
+      front: '/tshirt-front.svg',
+      back: '/tshirt-back.svg',
       printZones: TSHIRT_ZONES,
     },
   },
   babyClothes: {
     '#ffffff': {
-      front: '/mockups/tshirt/white-front.jpg',
-      back: '/mockups/tshirt/white-back.jpg',
+      front: '/tshirt-front.svg',
+      back: '/tshirt-back.svg',
       printZones: TSHIRT_ZONES,
     },
     '#111111': {
-      front: '/mockups/tshirt/black-front.jpg',
-      back: '/mockups/tshirt/black-back.jpg',
+      front: '/tshirt-front.svg',
+      back: '/tshirt-back.svg',
       printZones: TSHIRT_ZONES,
     },
   },
