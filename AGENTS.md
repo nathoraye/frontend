@@ -9,7 +9,7 @@ A browser-based custom vinyl sticker and iron-on apparel design studio (React 19
 Running the product end-to-end locally requires **two** processes:
 
 1. **Order backend** — `node server.mjs` (listens on port `3001`, persists to `data/orders.json`). There is no npm script for this; it must be started directly. Endpoints: `GET /api/health`, `GET /api/orders`, `GET /api/orders/:id`, `POST /api/orders`.
-2. **Vite dev server (frontend)** — `npm run dev` (port `5173`). The Vite config proxies `/api` → `http://localhost:3001`, so start the backend first for order/health calls to work.
+2. **Vite dev server (frontend)** — `npm run dev -- --host 0.0.0.0 --port 5173`. The Vite config proxies `/api` → `http://localhost:3001`, so start the backend first for order/health calls to work. Default `npm run dev` can bind IPv6 localhost (`::1`) only, which makes `http://127.0.0.1:5173` fail.
 
 Standard scripts are in `package.json`: `dev`, `build` (`tsc -b && vite build`), `lint` (`eslint .`), `preview`, `validate-export`.
 
