@@ -31,19 +31,19 @@ export const PRODUCT_CATALOG: Record<ProductId, ProductDef> = {
   tshirt: {
     id: 'tshirt',
     label: 'T-Shirt',
-    colorOptions: ['#111111', '#ffffff', '#1d3557', '#c62828'],
+    colorOptions: ['#ffffff', '#111111'],
     views: APPAREL_VIEWS,
   },
   hoodie: {
     id: 'hoodie',
     label: 'Jumper / Hoodie',
-    colorOptions: ['#111111', '#607d8b', '#37474f', '#8d6e63'],
+    colorOptions: ['#ffffff', '#111111'],
     views: APPAREL_VIEWS,
   },
   sloppyJoe: {
     id: 'sloppyJoe',
     label: 'Sloppy Joe',
-    colorOptions: ['#e0e0e0', '#455a64', '#6d4c41', '#263238'],
+    colorOptions: ['#ffffff', '#111111'],
     views: APPAREL_VIEWS,
   },
   babyClothes: {

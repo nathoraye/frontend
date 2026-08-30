@@ -11,6 +11,7 @@ export interface ProductPlacement {
 
 export interface ApparelMockupViewerProps {
   productId: ProductId;
+  color: string;
   activeView: string;
   designDataUrl: string | null;
   placement: ProductPlacement;
@@ -19,11 +20,12 @@ export interface ApparelMockupViewerProps {
 /** Front/back flat mockup with the current design composited onto the print zone. */
 export function ApparelMockupViewer({
   productId,
+  color,
   activeView,
   designDataUrl,
   placement,
 }: ApparelMockupViewerProps) {
-  const mockup = useMemo(() => getMockupView(productId, activeView), [productId, activeView]);
+  const mockup = useMemo(() => getMockupView(productId, activeView, color), [productId, activeView, color]);
 
   const designStyle = useMemo(() => {
     if (!mockup) return undefined;

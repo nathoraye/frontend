@@ -315,6 +315,7 @@ function Step2Placement({ config, onConfigChange, designDataUrl }: Step2Props) {
       <div className="bg-gray-900 rounded border border-gray-700 h-72">
         <ApparelMockupViewer
           productId={product.id}
+          color={config.productColor || product.colorOptions[0]}
           activeView={activeView}
           designDataUrl={designDataUrl}
           placement={placement}
