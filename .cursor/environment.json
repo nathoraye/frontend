@@ -1,0 +1,16 @@
+{
+  "install": "npm install",
+  "start": "",
+  "terminals": [
+    {
+      "name": "order-backend",
+      "command": "node server.mjs",
+      "description": "Order API on port 3001"
+    },
+    {
+      "name": "vite-dev",
+      "command": "npm run dev",
+      "description": "Vite frontend on port 5173"
+    }
+  ]
+}

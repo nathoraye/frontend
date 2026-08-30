@@ -11,6 +11,8 @@ Running the product end-to-end locally requires **two** processes:
 1. **Order backend** — `node server.mjs` (listens on port `3001`, persists to `data/orders.json`). There is no npm script for this; it must be started directly. Endpoints: `GET /api/health`, `GET /api/orders`, `GET /api/orders/:id`, `POST /api/orders`.
 2. **Vite dev server (frontend)** — `npm run dev` (port `5173`). The Vite config proxies `/api` → `http://localhost:3001`, so start the backend first for order/health calls to work.
 
+Cloud Agents auto-start both via `.cursor/environment.json` terminals (`order-backend`, `vite-dev`).
+
 Standard scripts are in `package.json`: `dev`, `build` (`tsc -b && vite build`), `lint` (`eslint .`), `preview`, `validate-export`.
 
 ### Non-obvious notes
