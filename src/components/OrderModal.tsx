@@ -5,7 +5,7 @@ import type { CreateOrderData, CreateOrderActions, OnApproveData, OnApproveActio
 import * as fabric from 'fabric';
 import { submitOrder } from '../services/orderService';
 import { snapshotDesignAsDataURL } from '../utils/designSnapshot';
-import { ProductViewer3D } from './ProductViewer3D';
+import { ApparelMockupViewer } from './ApparelMockupViewer';
 import { PRODUCT_CATALOG, PRODUCT_IDS, type ProductId } from '../three/productCatalog';
 
 type OrderType = 'vinyl' | 'product';
@@ -313,9 +313,8 @@ function Step2Placement({ config, onConfigChange, designDataUrl }: Step2Props) {
       )}
 
       <div className="bg-gray-900 rounded border border-gray-700 h-72">
-        <ProductViewer3D
+        <ApparelMockupViewer
           productId={product.id}
-          color={config.productColor || product.colorOptions[0]}
           activeView={activeView}
           designDataUrl={designDataUrl}
           placement={placement}
