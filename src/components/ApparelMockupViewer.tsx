@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ProductId } from '../three/productCatalog';
 import { getMockupView } from '../three/mockupCatalog';
@@ -51,10 +51,6 @@ export function ApparelMockupViewer({
   const garmentRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ kind: DragKind; startX: number; startY: number; origin: ProductPlacement } | null>(null);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
-
-  useEffect(() => {
-    setFailedSrc(null);
-  }, [mockup?.imageSrc]);
 
   const designStyle = useMemo(() => {
     if (!mockup) return undefined;
