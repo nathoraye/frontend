@@ -21,10 +21,10 @@ export default defineConfig({
       // Service worker is injected at build time only — dev server is unaffected.
       devOptions: { enabled: false },
       manifest: false, // We maintain our own public/manifest.json
-      includeAssets: ['favicon.svg', 'icons/*.png', 'icons.svg', 'mockups/**/*.svg', 'tshirt-front.svg', 'tshirt-back.svg'],
+      includeAssets: ['favicon.svg', 'icons/*.png', 'icons.svg', 'mockups/**/*.{svg,jpg,jpeg}', 'tshirt-front.svg', 'tshirt-back.svg'],
       workbox: {
         // Static assets: serve from cache, refresh in background
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff2}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [

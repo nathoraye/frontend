@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ProductId } from '../three/productCatalog';
 import { getMockupView } from '../three/mockupCatalog';
@@ -44,10 +44,17 @@ export function ApparelMockupViewer({
   interactive = false,
   onPlacementChange,
 }: ApparelMockupViewerProps) {
-  const mockup = useMemo(() => getMockupView(productId, activeView), [productId, activeView]);
+  const mockup = useMemo(
+    () => getMockupView(productId, activeView, color),
+    [productId, activeView, color],
+  );
   const garmentRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ kind: DragKind; startX: number; startY: number; origin: ProductPlacement } | null>(null);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFailedSrc(null);
+  }, [mockup?.imageSrc]);
 
   const designStyle = useMemo(() => {
     if (!mockup) return undefined;
@@ -122,6 +129,7 @@ export function ApparelMockupViewer({
   }
 
   const imageSrc = failedSrc === mockup.imageSrc ? FALLBACK_SRC : mockup.imageSrc;
+  const tintWithColor = mockup.tintWithColor === true;
   const darkGarment = isDarkHex(color);
   const maskStyle = {
     backgroundColor: color,
@@ -146,20 +154,24 @@ export function ApparelMockupViewer({
       >
         <img
           src={imageSrc}
-          alt=""
-          aria-hidden
-          className="h-full w-auto max-w-full select-none object-contain opacity-0"
-          draggable={false}
-        />
-        <div className="absolute inset-0" style={maskStyle} />
-        <img
-          src={imageSrc}
-          alt={`${mockup.label} mockup`}
-          className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain"
-          style={{ mixBlendMode: darkGarment ? 'screen' : 'multiply', opacity: darkGarment ? 0.28 : 0.5 }}
+          alt={tintWithColor ? '' : `${mockup.label} mockup`}
+          aria-hidden={tintWithColor || undefined}
+          className={`h-full w-auto max-w-full select-none object-contain ${tintWithColor ? 'opacity-0' : ''}`}
           draggable={false}
           onError={() => setFailedSrc(mockup.imageSrc)}
         />
+        {tintWithColor ? (
+          <>
+            <div className="absolute inset-0" style={maskStyle} />
+            <img
+              src={imageSrc}
+              alt={`${mockup.label} mockup`}
+              className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain"
+              style={{ mixBlendMode: darkGarment ? 'screen' : 'multiply', opacity: darkGarment ? 0.28 : 0.5 }}
+              draggable={false}
+            />
+          </>
+        ) : null}
 
         {designDataUrl ? (
           <div
