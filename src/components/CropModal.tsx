@@ -158,7 +158,12 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
     );
 
     const imgMaxStyle: React.CSSProperties = stagePx.w > 0 && stagePx.h > 0
-        ? { maxWidth: stagePx.w, maxHeight: stagePx.h, width: 'auto', height: 'auto' }
+        ? {
+            maxWidth: Math.max(40, stagePx.w - 16),
+            maxHeight: Math.max(40, stagePx.h - 32),
+            width: 'auto',
+            height: 'auto',
+          }
         : { maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' };
 
     return (
@@ -168,7 +173,7 @@ export function CropModal({ imageUrl, onCrop, onCancel }: CropModalProps) {
                 <p className="text-[11px] text-slate-400">Drag to isolate the sticker. Pull the anchors to adjust.</p>
             </div>
 
-            <div ref={stageRef} className="min-h-0 flex-1 overflow-hidden px-2">
+            <div ref={stageRef} className="min-h-0 flex-1 overflow-hidden px-3 py-2">
                 <div className="flex h-full w-full items-center justify-center">
                     <div className="relative inline-block" style={{ fontSize: 0, lineHeight: 0 }}>
                         <img
