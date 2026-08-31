@@ -1,19 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 540">
-  <!-- Hoodie with hood, kangaroo pocket, and rib cuffs. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 560">
+  <!-- Hoodie with hood, long sleeves, kangaroo pocket, and rib cuffs. -->
   <path fill="#ffffff" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" fill-rule="evenodd"
-    d="M128 92 Q200 10 272 92 L286 132 L330 122 L372 112 L394 228 L318 248 L318 498 Q318 516 298 516 L102 516 Q82 516 82 498 L82 248 L6 228 L28 112 L70 122 L114 132 Z
-       M162 108 Q200 158 238 108 Q200 72 162 108 Z"/>
-  <!-- Drawstrings -->
-  <path d="M176 132 L170 188" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M224 132 L230 188" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
-  <circle cx="170" cy="192" r="4" fill="#64748b"/>
-  <circle cx="230" cy="192" r="4" fill="#64748b"/>
-  <!-- Kangaroo pocket -->
-  <path d="M128 318 L272 318 Q280 318 280 328 L274 402 Q200 424 126 402 L120 328 Q120 318 128 318 Z"
+    d="M130 88 Q200 8 270 88 L282 128 L318 118 L355 155 L362 390 Q362 408 344 408 L318 400 L318 512 Q318 528 300 528 L100 528 Q82 528 82 512 L82 400 L56 408 Q38 408 38 390 L45 155 L82 118 L118 128 Z
+       M164 108 Q200 158 236 108 Q200 72 164 108 Z"/>
+  <path d="M178 132 L172 192" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M222 132 L228 192" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="172" cy="196" r="4" fill="#64748b"/>
+  <circle cx="228" cy="196" r="4" fill="#64748b"/>
+  <path d="M128 318 L272 318 Q280 318 280 328 L274 408 Q200 430 126 408 L120 328 Q120 318 128 318 Z"
     fill="none" stroke="#64748b" stroke-width="2.2"/>
-  <path d="M200 318 L200 412" fill="none" stroke="#94a3b8" stroke-width="1.4" opacity="0.55"/>
-  <!-- Rib hem + cuffs -->
-  <path d="M82 478 L318 478" fill="none" stroke="#94a3b8" stroke-width="6" opacity="0.35"/>
-  <path d="M6 210 L28 112" fill="none" stroke="#94a3b8" stroke-width="5" opacity="0.25"/>
-  <path d="M394 210 L372 112" fill="none" stroke="#94a3b8" stroke-width="5" opacity="0.25"/>
+  <path d="M200 318 L200 418" fill="none" stroke="#94a3b8" stroke-width="1.4" opacity="0.55"/>
+  <path d="M82 492 L318 492" fill="none" stroke="#94a3b8" stroke-width="8" opacity="0.35"/>
+  <path d="M38 390 L56 408" fill="none" stroke="#94a3b8" stroke-width="6" opacity="0.35"/>
+  <path d="M362 390 L344 408" fill="none" stroke="#94a3b8" stroke-width="6" opacity="0.35"/>
 </svg>

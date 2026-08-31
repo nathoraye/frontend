@@ -24,8 +24,8 @@ const TSHIRT_ZONES = {
 } as const;
 
 const HOODIE_ZONES = {
-  front: { centerX: 50, centerY: 38, widthPct: 28, heightPct: 20 },
-  back: { centerX: 50, centerY: 42, widthPct: 30, heightPct: 24 },
+  front: { centerX: 50, centerY: 36, widthPct: 26, heightPct: 18 },
+  back: { centerX: 50, centerY: 40, widthPct: 28, heightPct: 22 },
 } as const;
 
 const SLOPPY_JOE_ZONES = {
