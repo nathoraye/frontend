@@ -18,8 +18,8 @@ import { OrderModal } from './components/OrderModal';
 import { ApparelMockupViewer, type ProductPlacement } from './components/ApparelMockupViewer';
 import { PRODUCT_CATALOG, PRODUCT_IDS, type ProductId } from './three/productCatalog';
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
-import { TRACE_UPSCALE_MULT } from './utils/constants';
 import { tracedSvgToObject } from './utils/placeTracedSvg';
+import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
 
 type AppTool = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
 type ViewMode = 'sticker' | 'product';
@@ -141,25 +141,22 @@ export default function App() {
           if (asVector) {
               isProcessingRef.current = true;
               setIsTracing(true);
+              await yieldToPaint();
               try {
-                  const tCan = document.createElement('canvas');
-                  tCan.width = img.naturalWidth; tCan.height = img.naturalHeight;
-                  const tCtx = tCan.getContext('2d', { willReadFrequently: true });
-                  if (tCtx) {
-                      tCtx.drawImage(img, 0, 0);
-                      const rawImgData = tCtx.getImageData(0, 0, tCan.width, tCan.height);
-                      
+                      const rawImgData = rasterToImageData(img);
                       const svgString = await traceImage(rawImgData, smoothness);
                       const traced = await tracedSvgToObject(svgString, {
                           fill: brushColor,
-                          scaleDivisor: TRACE_UPSCALE_MULT,
                       });
                       if (traced) {
-                          traced.set({ left: 600, top: 600, originX: 'center', originY: 'center' });
+                          const maxDim = 800;
+                          const gw = traced.width || 1;
+                          const gh = traced.height || 1;
+                          const scale = Math.min(1, maxDim / gw, maxDim / gh);
+                          traced.set({ left: 600, top: 600, originX: 'center', originY: 'center', scaleX: scale, scaleY: scale });
                           traced.setCoords();
                           canvas.add(traced); canvas.setActiveObject(traced); canvas.requestRenderAll(); saveHistorySnapshot(canvas, true);
                       }
-                  }
               } catch (err) { console.error("Direct Trace Failed:", err); } 
               finally { isProcessingRef.current = false; setIsTracing(false); }
           } else {
@@ -178,27 +175,17 @@ export default function App() {
       isProcessingRef.current = true;
       setIsTracing(true);
       setQuickMenu(null);
+      await yieldToPaint();
       try {
           const img = activeObj as fabric.Image;
-          const htmlImg = img.getElement() as HTMLImageElement;
-          const tCan = document.createElement('canvas');
-          tCan.width = htmlImg.naturalWidth || htmlImg.width;
-          tCan.height = htmlImg.naturalHeight || htmlImg.height;
-          const tCtx = tCan.getContext('2d', { willReadFrequently: true });
-          
-          if (tCtx) {
-              tCtx.drawImage(htmlImg, 0, 0);
-              const rawImgData = tCtx.getImageData(0, 0, tCan.width, tCan.height);
-              
-              const svgString = await traceImage(rawImgData, 5);
-              const traced = await tracedSvgToObject(svgString, {
-                  source: img,
-                  fill: brushColor,
-                  scaleDivisor: TRACE_UPSCALE_MULT,
-              });
-              if (traced) {
-                  canvas.remove(img); canvas.add(traced); canvas.setActiveObject(traced); canvas.requestRenderAll(); saveHistorySnapshot(canvas, true);
-              }
+          const rawImgData = rasterToImageData(img.getElement());
+          const svgString = await traceImage(rawImgData, 5);
+          const traced = await tracedSvgToObject(svgString, {
+              source: img,
+              fill: brushColor,
+          });
+          if (traced) {
+              canvas.remove(img); canvas.add(traced); canvas.setActiveObject(traced); canvas.requestRenderAll(); saveHistorySnapshot(canvas, true);
           }
       } catch (err) { console.error("In-Canvas Trace Failed:", err); }
       finally { isProcessingRef.current = false; setIsTracing(false); }
