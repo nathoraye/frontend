@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 520">
+  <!-- Baby onesie: envelope neck, short legs, crotch snaps. -->
+  <path fill="#ffffff" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" fill-rule="evenodd"
+    d="M156 86 L118 122 L58 102 L36 168 L96 184 L96 330 L70 390 Q62 430 86 458 L150 478 L168 430 L200 438 L232 430 L250 478 L314 458 Q338 430 330 390 L304 330 L304 184 L364 168 L342 102 L282 122 L244 86 Q200 108 156 86 Z
+       M176 96 L200 122 L224 96 Q200 84 176 96 Z"/>
+  <!-- Snap placket -->
+  <circle cx="186" cy="400" r="5" fill="none" stroke="#64748b" stroke-width="1.8"/>
+  <circle cx="200" cy="412" r="5" fill="none" stroke="#64748b" stroke-width="1.8"/>
+  <circle cx="214" cy="400" r="5" fill="none" stroke="#64748b" stroke-width="1.8"/>
+  <path d="M168 250 Q200 262 232 250" fill="none" stroke="#94a3b8" stroke-width="1.4" opacity="0.45"/>
+</svg>

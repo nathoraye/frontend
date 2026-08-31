@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 520">
+  <!-- Crew-neck sloppy joe: long sleeves, rib collar and hem, no hood. -->
+  <path fill="#ffffff" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" fill-rule="evenodd"
+    d="M150 108 L108 150 L28 128 L8 250 L86 268 L86 478 Q86 494 104 494 L296 494 Q314 494 314 478 L314 268 L392 250 L372 128 L292 150 L250 108 Q200 90 150 108 Z
+       M168 116 Q200 146 232 116 Q200 100 168 116 Z"/>
+  <!-- Rib collar -->
+  <path d="M168 116 Q200 146 232 116 Q200 128 168 116 Z" fill="none" stroke="#64748b" stroke-width="7" opacity="0.4"/>
+  <!-- Rib hem -->
+  <path d="M86 458 L314 458" fill="none" stroke="#94a3b8" stroke-width="8" opacity="0.35"/>
+  <!-- Cuffs -->
+  <path d="M8 232 L86 250" fill="none" stroke="#94a3b8" stroke-width="7" opacity="0.3"/>
+  <path d="M392 232 L314 250" fill="none" stroke="#94a3b8" stroke-width="7" opacity="0.3"/>
+</svg>

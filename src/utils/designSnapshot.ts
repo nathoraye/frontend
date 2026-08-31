@@ -7,7 +7,7 @@ export function snapshotDesignAsDataURL(canvas: FabricCanvas): string {
 
   const objects = canvas.getObjects();
   if (!objects.length) {
-    return canvas.toDataURL({ format: 'png', multiplier: 1 });
+    return '';
   }
 
   let minX = Infinity;

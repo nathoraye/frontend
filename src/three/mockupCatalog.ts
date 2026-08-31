@@ -14,117 +14,77 @@ export interface MockupViewConfig {
   printZone: MockupPrintZone;
 }
 
-interface MockupColorAssets {
-  front: string;
-  back: string;
-  printZones: {
-    front: MockupPrintZone;
-    back: MockupPrintZone;
-  };
+interface ProductMockup {
+  views: MockupViewConfig[];
 }
 
+const TSHIRT_ZONES = {
+  front: { centerX: 50, centerY: 42, widthPct: 32, heightPct: 26 },
+  back: { centerX: 50, centerY: 44, widthPct: 34, heightPct: 28 },
+} as const;
+
 const HOODIE_ZONES = {
-  front: { centerX: 50, centerY: 44, widthPct: 30, heightPct: 24 },
-  back: { centerX: 50, centerY: 46, widthPct: 32, heightPct: 26 },
+  front: { centerX: 50, centerY: 38, widthPct: 28, heightPct: 20 },
+  back: { centerX: 50, centerY: 42, widthPct: 30, heightPct: 24 },
 } as const;
 
 const SLOPPY_JOE_ZONES = {
-  front: { centerX: 50, centerY: 42, widthPct: 28, heightPct: 22 },
-  back: { centerX: 50, centerY: 44, widthPct: 30, heightPct: 24 },
+  front: { centerX: 50, centerY: 40, widthPct: 28, heightPct: 22 },
+  back: { centerX: 50, centerY: 42, widthPct: 30, heightPct: 24 },
 } as const;
 
-const TSHIRT_ZONES = {
-  front: { centerX: 50, centerY: 40, widthPct: 34, heightPct: 28 },
-  back: { centerX: 50, centerY: 42, widthPct: 36, heightPct: 30 },
+const ONESIE_ZONES = {
+  front: { centerX: 50, centerY: 36, widthPct: 26, heightPct: 20 },
+  back: { centerX: 50, centerY: 38, widthPct: 28, heightPct: 22 },
 } as const;
 
-/** Photo mockups keyed by product and garment colour hex. */
-const MOCKUP_ASSETS: Partial<Record<ProductId, Record<string, MockupColorAssets>>> = {
+/**
+ * Flat silhouettes in public/mockups. Garment colour is applied in the viewer
+ * via CSS mask + background, so one SVG serves every swatch.
+ */
+const MOCKUPS: Partial<Record<ProductId, ProductMockup>> = {
+  tshirt: {
+    views: [
+      { id: 'front', label: 'Front', imageSrc: '/mockups/tshirt-front.svg', printZone: TSHIRT_ZONES.front },
+      { id: 'back', label: 'Back', imageSrc: '/mockups/tshirt-back.svg', printZone: TSHIRT_ZONES.back },
+    ],
+  },
   hoodie: {
-    '#ffffff': {
-      front: '/tshirt-front.svg',
-      back: '/tshirt-back.svg',
-      printZones: HOODIE_ZONES,
-    },
-    '#111111': {
-      front: '/tshirt-front.svg',
-      back: '/tshirt-back.svg',
-      printZones: HOODIE_ZONES,
-    },
+    views: [
+      { id: 'front', label: 'Front', imageSrc: '/mockups/hoodie-front.svg', printZone: HOODIE_ZONES.front },
+      { id: 'back', label: 'Back', imageSrc: '/mockups/hoodie-back.svg', printZone: HOODIE_ZONES.back },
+    ],
   },
   sloppyJoe: {
-    '#ffffff': {
-      front: '/tshirt-front.svg',
-      back: '/tshirt-back.svg',
-      printZones: SLOPPY_JOE_ZONES,
-    },
-    '#111111': {
-      front: '/tshirt-front.svg',
-      back: '/tshirt-back.svg',
-      printZones: SLOPPY_JOE_ZONES,
-    },
-  },
-  tshirt: {
-    '#ffffff': {
-      front: '/tshirt-front.svg',
-      back: '/tshirt-back.svg',
-      printZones: TSHIRT_ZONES,
-    },
-    '#111111': {
-      front: '/tshirt-front.svg',
-      back: '/tshirt-back.svg',
-      printZones: TSHIRT_ZONES,
-    },
+    views: [
+      { id: 'front', label: 'Front', imageSrc: '/mockups/crew-front.svg', printZone: SLOPPY_JOE_ZONES.front },
+      { id: 'back', label: 'Back', imageSrc: '/mockups/crew-back.svg', printZone: SLOPPY_JOE_ZONES.back },
+    ],
   },
   babyClothes: {
-    '#ffffff': {
-      front: '/tshirt-front.svg',
-      back: '/tshirt-back.svg',
-      printZones: TSHIRT_ZONES,
-    },
-    '#111111': {
-      front: '/tshirt-front.svg',
-      back: '/tshirt-back.svg',
-      printZones: TSHIRT_ZONES,
-    },
+    views: [
+      { id: 'front', label: 'Front', imageSrc: '/mockups/onesie-front.svg', printZone: ONESIE_ZONES.front },
+      { id: 'back', label: 'Back', imageSrc: '/mockups/onesie-back.svg', printZone: ONESIE_ZONES.back },
+    ],
+  },
+  clock: {
+    views: [
+      { id: 'front', label: 'Face', imageSrc: '/mockups/clock.svg', printZone: { centerX: 50, centerY: 50, widthPct: 42, heightPct: 42 } },
+    ],
+  },
+  drinkBottle: {
+    views: [
+      { id: 'front', label: 'Wrap', imageSrc: '/mockups/bottle.svg', printZone: { centerX: 50, centerY: 56, widthPct: 36, heightPct: 40 } },
+    ],
   },
 };
 
-function resolveColorKey(productId: ProductId, color: string): string | null {
-  const palette = MOCKUP_ASSETS[productId];
-  if (!palette) return null;
-  if (palette[color]) return color;
-
-  const normalized = color.toLowerCase();
-  const isLight = normalized === '#ffffff' || normalized === '#f5f5f5' || normalized === '#e0e0e0';
-  const fallback = isLight ? '#ffffff' : '#111111';
-  return palette[fallback] ? fallback : Object.keys(palette)[0] ?? null;
+export function getMockupViews(productId: ProductId): MockupViewConfig[] | null {
+  return MOCKUPS[productId]?.views ?? null;
 }
 
-export function getMockupViews(productId: ProductId, color: string): MockupViewConfig[] | null {
-  const palette = MOCKUP_ASSETS[productId];
-  const colorKey = resolveColorKey(productId, color);
-  if (!palette || !colorKey) return null;
-
-  const assets = palette[colorKey];
-  return [
-    {
-      id: 'front',
-      label: 'Front',
-      imageSrc: assets.front,
-      printZone: assets.printZones.front,
-    },
-    {
-      id: 'back',
-      label: 'Back',
-      imageSrc: assets.back,
-      printZone: assets.printZones.back,
-    },
-  ];
-}
-
-export function getMockupView(productId: ProductId, viewId: string, color: string): MockupViewConfig | null {
-  const views = getMockupViews(productId, color);
+export function getMockupView(productId: ProductId, viewId: string): MockupViewConfig | null {
+  const views = getMockupViews(productId);
   if (!views) return null;
   return views.find((view) => view.id === viewId) ?? views[0];
 }

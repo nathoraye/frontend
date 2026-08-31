@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500">
+  <!-- Short-sleeve crew T-shirt, front. White fill so CSS masks can tint. -->
+  <path fill="#ffffff" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" fill-rule="evenodd"
+    d="M148 90 L105 132 L40 110 L16 204 L88 222 L88 452 Q88 466 104 466 L296 466 Q312 466 312 452 L312 222 L384 204 L360 110 L295 132 L252 90 Q200 68 148 90 Z
+       M170 98 Q200 130 230 98 Q200 80 170 98 Z"/>
+  <path d="M88 222 L312 222" fill="none" stroke="#94a3b8" stroke-width="1.5" opacity="0.45"/>
+  <path d="M148 90 Q200 78 252 90" fill="none" stroke="#64748b" stroke-width="2" opacity="0.55"/>
+</svg>

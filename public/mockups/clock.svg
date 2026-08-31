@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <!-- Wall clock face. Print sits on the inner disc. -->
+  <circle cx="200" cy="200" r="168" fill="#ffffff" stroke="#94a3b8" stroke-width="4"/>
+  <circle cx="200" cy="200" r="152" fill="none" stroke="#64748b" stroke-width="3"/>
+  <!-- Hour ticks -->
+  <g stroke="#64748b" stroke-width="3" stroke-linecap="round">
+    <path d="M200 58 L200 78"/>
+    <path d="M200 322 L200 342"/>
+    <path d="M58 200 L78 200"/>
+    <path d="M322 200 L342 200"/>
+    <path d="M99 99 L114 114"/>
+    <path d="M286 286 L301 301"/>
+    <path d="M301 99 L286 114"/>
+    <path d="M114 286 L99 301"/>
+  </g>
+  <circle cx="200" cy="200" r="8" fill="#64748b"/>
+</svg>

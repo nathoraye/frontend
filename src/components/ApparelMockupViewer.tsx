@@ -22,10 +22,17 @@ export interface ApparelMockupViewerProps {
 
 type DragKind = 'move' | 'scale' | 'rotate' | null;
 
-const FALLBACK_SRC: Record<string, string> = {
-  front: '/tshirt-front.svg',
-  back: '/tshirt-back.svg',
-};
+const FALLBACK_SRC = '/mockups/tshirt-front.svg';
+
+function isDarkHex(color: string): boolean {
+  const hex = color.replace('#', '');
+  if (hex.length !== 6 && hex.length !== 3) return false;
+  const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 < 80;
+}
 
 /** Front/back flat mockup with the current design composited onto the print zone. */
 export function ApparelMockupViewer({
@@ -37,10 +44,10 @@ export function ApparelMockupViewer({
   interactive = false,
   onPlacementChange,
 }: ApparelMockupViewerProps) {
-  const mockup = useMemo(() => getMockupView(productId, activeView, color), [productId, activeView, color]);
-  const stageRef = useRef<HTMLDivElement>(null);
+  const mockup = useMemo(() => getMockupView(productId, activeView), [productId, activeView]);
+  const garmentRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ kind: DragKind; startX: number; startY: number; origin: ProductPlacement } | null>(null);
-  const [brokenSrc, setBrokenSrc] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
   const designStyle = useMemo(() => {
     if (!mockup) return undefined;
@@ -49,7 +56,7 @@ export function ApparelMockupViewer({
       left: `${zone.centerX + placement.posX * 0.25}%`,
       top: `${zone.centerY - placement.posY * 0.25}%`,
       width: `${zone.widthPct * placement.scale}%`,
-      maxHeight: `${zone.heightPct * placement.scale}%`,
+      height: `${zone.heightPct * placement.scale}%`,
       transform: `translate(-50%, -50%) rotate(${placement.rotationDeg}deg)`,
     };
   }, [mockup, placement.posX, placement.posY, placement.scale, placement.rotationDeg]);
@@ -70,9 +77,9 @@ export function ApparelMockupViewer({
   };
 
   const onPointerMove = (event: ReactPointerEvent) => {
-    if (!dragRef.current || !onPlacementChange || !stageRef.current) return;
+    if (!dragRef.current || !onPlacementChange || !garmentRef.current || !mockup) return;
     const { kind, startX, startY, origin } = dragRef.current;
-    const bounds = stageRef.current.getBoundingClientRect();
+    const bounds = garmentRef.current.getBoundingClientRect();
     const dx = event.clientX - startX;
     const dy = event.clientY - startY;
 
@@ -90,8 +97,9 @@ export function ApparelMockupViewer({
     }
 
     if (kind === 'rotate') {
-      const centerX = bounds.left + bounds.width / 2;
-      const centerY = bounds.top + bounds.height * 0.44;
+      const zone = mockup.printZone;
+      const centerX = bounds.left + (bounds.width * (zone.centerX + origin.posX * 0.25)) / 100;
+      const centerY = bounds.top + (bounds.height * (zone.centerY - origin.posY * 0.25)) / 100;
       const startAngle = Math.atan2(startY - centerY, startX - centerX);
       const nowAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX);
       const deg = origin.rotationDeg + ((nowAngle - startAngle) * 180) / Math.PI;
@@ -113,29 +121,56 @@ export function ApparelMockupViewer({
     );
   }
 
-  const imageSrc = brokenSrc ? (FALLBACK_SRC[mockup.id] || FALLBACK_SRC.front) : mockup.imageSrc;
+  const imageSrc = failedSrc === mockup.imageSrc ? FALLBACK_SRC : mockup.imageSrc;
+  const darkGarment = isDarkHex(color);
+  const maskStyle = {
+    backgroundColor: color,
+    WebkitMaskImage: `url(${imageSrc})`,
+    WebkitMaskRepeat: 'no-repeat',
+    WebkitMaskPosition: 'center',
+    WebkitMaskSize: 'contain',
+    maskImage: `url(${imageSrc})`,
+    maskRepeat: 'no-repeat',
+    maskPosition: 'center',
+    maskSize: 'contain',
+  } as const;
 
   return (
     <div className="relative flex h-full w-full items-center justify-center bg-[#0f111a] p-4">
-      <div ref={stageRef} className="relative w-full max-w-[520px]" onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
+      <div
+        ref={garmentRef}
+        className="relative flex h-full max-h-[min(72vh,640px)] w-auto max-w-[520px] items-center justify-center"
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
+        <img
+          src={imageSrc}
+          alt=""
+          aria-hidden
+          className="h-full w-auto max-w-full select-none object-contain opacity-0"
+          draggable={false}
+        />
+        <div className="absolute inset-0" style={maskStyle} />
         <img
           src={imageSrc}
           alt={`${mockup.label} mockup`}
-          className="mx-auto h-auto max-h-[min(72vh,640px)] w-full select-none object-contain"
+          className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain"
+          style={{ mixBlendMode: darkGarment ? 'screen' : 'multiply', opacity: darkGarment ? 0.28 : 0.5 }}
           draggable={false}
-          onError={() => setBrokenSrc(true)}
+          onError={() => setFailedSrc(mockup.imageSrc)}
         />
 
         {designDataUrl ? (
           <div
-            className={`absolute object-contain ${interactive ? 'cursor-move touch-none' : 'pointer-events-none'}`}
+            className={`absolute ${interactive ? 'cursor-move touch-none' : 'pointer-events-none'}`}
             style={designStyle}
             onPointerDown={(event) => beginDrag('move', event)}
           >
             <img
               src={designDataUrl}
               alt="Design preview"
-              className="pointer-events-none max-h-full w-full select-none object-contain drop-shadow-md"
+              className="pointer-events-none h-full w-full select-none object-contain drop-shadow-md"
               draggable={false}
             />
             {interactive && (

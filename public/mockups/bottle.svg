@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 560">
+  <!-- Drink bottle with cap. Print sits on the body wrap. -->
+  <path fill="#ffffff" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round"
+    d="M108 86 L108 128 Q72 148 72 190 L72 500 Q72 528 100 528 L180 528 Q208 528 208 500 L208 190 Q208 148 172 128 L172 86 Z"/>
+  <rect x="96" y="36" width="88" height="52" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="3"/>
+  <path d="M108 86 L172 86" fill="none" stroke="#64748b" stroke-width="4"/>
+  <path d="M88 220 L192 220" fill="none" stroke="#94a3b8" stroke-width="1.5" opacity="0.45"/>
+  <path d="M88 470 L192 470" fill="none" stroke="#94a3b8" stroke-width="1.5" opacity="0.45"/>
+</svg>
