@@ -119,8 +119,8 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
             <h3 className={`text-[10px] uppercase font-bold tracking-widest text-fuchsia-500 mb-2 flex items-center gap-1`}>Magic Wand Engine</h3>
             
             <div className="flex bg-slate-800/50 rounded-lg p-1 border border-slate-700/50 mb-4 mt-3">
-               <button onClick={() => setWandMode('erase')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${wandMode === 'erase' ? 'bg-fuchsia-500 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>Erase Color</button>
-               <button onClick={() => setWandMode('extract')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${wandMode === 'extract' ? 'bg-fuchsia-500 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>Extract Shape</button>
+               <button onClick={() => setWandMode('erase')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${wandMode === 'erase' ? 'bg-fuchsia-500 text-black shadow' : 'text-slate-300 hover:text-white'}`}>Erase Color</button>
+               <button onClick={() => setWandMode('extract')} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${wandMode === 'extract' ? 'bg-fuchsia-500 text-black shadow' : 'text-slate-300 hover:text-white'}`}>Extract Shape</button>
             </div>
             
             <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">

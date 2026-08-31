@@ -176,8 +176,9 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
 
           {config.vinylPermanent && (
             <>
-              <label className="block text-sm font-mono text-gray-300">Finish</label>
+              <label htmlFor="order-vinyl-finish" className="block text-sm font-mono text-gray-300">Finish</label>
               <select
+                id="order-vinyl-finish"
                 value={config.vinylFinish || 'matte'}
                 onChange={(e) => onConfigChange({ ...config, vinylFinish: e.target.value })}
                 className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
@@ -193,8 +194,9 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
 
       {config.orderType === 'product' && activeProduct && (
         <div className="space-y-4">
-          <label className="block text-sm font-mono text-gray-300">Product</label>
+          <label htmlFor="order-product" className="block text-sm font-mono text-gray-300">Product</label>
           <select
+            id="order-product"
             value={activeProduct.id}
             onChange={(e) => handleProductChange(e.target.value as ProductId)}
             className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
@@ -213,14 +215,16 @@ function Step1Configure({ config, onConfigChange }: Step1Props) {
                 className={`w-7 h-7 rounded-full border-2 ${config.productColor === c ? 'border-pink-500' : 'border-gray-700'}`}
                 style={{ backgroundColor: c }}
                 title={c}
+                aria-label={`Colour ${c}`}
               />
             ))}
           </div>
 
           {SIZED_PRODUCTS.includes(activeProduct.id) && (
             <>
-              <label className="block text-sm font-mono text-gray-300">Size</label>
+              <label htmlFor="order-product-size" className="block text-sm font-mono text-gray-300">Size</label>
               <select
+                id="order-product-size"
                 value={config.productSize || 'M'}
                 onChange={(e) => onConfigChange({ ...config, productSize: e.target.value })}
                 className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
@@ -324,7 +328,7 @@ function Step2Placement({ config, onConfigChange, designDataUrl }: Step2Props) {
           onPlacementChange={(next) => updatePlacement(next)}
         />
       </div>
-      <p className="text-[10px] font-mono text-slate-500">Drag the print to move. Pink handle scales. Green handle rotates.</p>
+      <p className="text-[10px] font-mono text-slate-300">Drag the print to move. Pink handle scales. Green handle rotates.</p>
     </div>
   );
 }
@@ -455,6 +459,8 @@ function Step3Details({
             className="px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
           />
           <select
+            id="order-country"
+            aria-label="Country"
             {...register('country', { required: 'Country required' })}
             className="px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
           >

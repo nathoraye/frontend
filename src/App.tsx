@@ -337,31 +337,18 @@ export default function App() {
 
             <div className="flex items-center gap-2">
               <button disabled={isGenerating} onClick={handleAIGeneration} className="flex items-center gap-2 bg-[#181a25] border border-slate-700 text-white px-3 py-1.5 rounded-md text-[10px] font-bold hover:bg-slate-800 transition-colors uppercase tracking-wider h-8">{isGenerating ? 'Generating...' : 'Generate AI'}</button>
-              <button onClick={handleSafeSVGExport} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-md text-[10px] font-bold transition-colors uppercase tracking-wider h-8">Export SVG</button>
-
-              <div className="w-px h-5 bg-slate-700 mx-1"></div>
 
               <div className="flex items-center gap-1 bg-slate-500/5 rounded-lg p-1">
-                <button onClick={() => setViewMode('sticker')} className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'sticker' ? 'bg-[#FF1493] text-white' : 'text-slate-400 hover:text-slate-200'}`}>2D Studio</button>
+                <button onClick={() => setViewMode('sticker')} className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'sticker' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}>2D Studio</button>
                 <button
                   type="button"
                   onClick={() => { setViewMode('product'); applyDesignToProduct(); }}
-                  className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'product' ? 'bg-[#FF1493] text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                  className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'product' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}
                 >
                   Product Preview
                 </button>
               </div>
 
-              <div className="w-px h-5 bg-slate-700 mx-1"></div>
-              
-              <button onClick={() => setActiveOrderTab('vinyl')} className="h-8 px-3 flex items-center justify-center bg-[#FF1493] hover:bg-[#ff4da6] text-white rounded text-[10px] font-black tracking-wider uppercase transition-colors shadow-sm whitespace-nowrap">
-                  Buy Sticker
-              </button>
-              <button onClick={() => setActiveOrderTab('apparel')} className="h-8 px-3 flex items-center justify-center bg-emerald-500 hover:bg-emerald-400 text-white rounded text-[10px] font-black tracking-wider uppercase transition-colors shadow-sm whitespace-nowrap">
-                  Buy Apparel
-              </button>
-
-              <div className="w-px h-5 bg-slate-700 mx-1"></div>
               <button type="button" onClick={(e) => { e.stopPropagation(); setShowRightPanel((prev) => !prev); }} className={`p-1.5 h-8 flex items-center justify-center rounded-md transition-colors hover:bg-slate-700/50 touch-manipulation ${!showRightPanel ? 'text-[#FF1493] bg-[#FF1493]/10' : 'text-slate-400'}`} title="Toggle Inspector Panel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
             </div>
         </header>
@@ -385,8 +372,8 @@ export default function App() {
 
                 {viewMode === 'sticker' && tool === 'wand' && (
                   <div className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-fuchsia-500/30 bg-[#1e2230]/95 p-1 shadow-xl">
-                    <button type="button" onClick={() => setWandMode('erase')} className={`rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'erase' ? 'bg-fuchsia-500 text-white' : 'text-slate-400 hover:text-white'}`}>Erase Color</button>
-                    <button type="button" onClick={() => setWandMode('extract')} className={`rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'extract' ? 'bg-fuchsia-500 text-white' : 'text-slate-400 hover:text-white'}`}>Extract Shape</button>
+                    <button type="button" onClick={() => setWandMode('erase')} className={`rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'erase' ? 'bg-fuchsia-500 text-black' : 'text-slate-300 hover:text-white'}`}>Erase Color</button>
+                    <button type="button" onClick={() => setWandMode('extract')} className={`rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'extract' ? 'bg-fuchsia-500 text-black' : 'text-slate-300 hover:text-white'}`}>Extract Shape</button>
                   </div>
                 )}
                 {viewMode === 'sticker' && tool === 'eraser' && (
@@ -409,7 +396,13 @@ export default function App() {
                       />
                     </div>
                     <div className="shrink-0 border-t border-slate-800 bg-[#181a25] p-3 flex flex-wrap items-center gap-3">
-                      <select value={selectedProduct} onChange={(e) => handleSelectProduct(e.target.value as ProductId)} className="bg-slate-800 text-slate-200 text-xs font-mono border border-slate-700 rounded px-2 py-1">
+                      <select
+                        id="preview-product"
+                        aria-label="Product"
+                        value={selectedProduct}
+                        onChange={(e) => handleSelectProduct(e.target.value as ProductId)}
+                        className="bg-slate-800 text-slate-200 text-xs font-mono border border-slate-700 rounded px-2 py-1"
+                      >
                         {PRODUCT_IDS.map((id) => (
                           <option key={id} value={id}>{PRODUCT_CATALOG[id].label}</option>
                         ))}
@@ -417,18 +410,24 @@ export default function App() {
 
                       <div className="flex items-center gap-1">
                         {PRODUCT_CATALOG[selectedProduct].colorOptions.map((c) => (
-                          <button key={c} onClick={() => setProductColor(c)} className={`w-5 h-5 rounded-full border-2 ${productColor === c ? 'border-[#FF1493]' : 'border-slate-700'}`} style={{ backgroundColor: c }} title={c} />
+                          <button key={c} onClick={() => setProductColor(c)} className={`w-5 h-5 rounded-full border-2 ${productColor === c ? 'border-[#FF1493]' : 'border-slate-700'}`} style={{ backgroundColor: c }} title={c} aria-label={`Colour ${c}`} />
                         ))}
                       </div>
 
                       <div className="flex items-center gap-1">
                         {PRODUCT_CATALOG[selectedProduct].views.map((v) => (
-                          <button key={v.id} onClick={() => setActiveProductView(v.id)} className={`px-2 py-1 rounded text-[10px] font-mono uppercase ${activeProductView === v.id ? 'bg-[#FF1493] text-white' : 'bg-slate-800 text-slate-400'}`}>{v.label}</button>
+                          <button key={v.id} onClick={() => setActiveProductView(v.id)} className={`px-2 py-1 rounded text-[10px] font-mono uppercase ${activeProductView === v.id ? 'bg-[#FF1493] text-black' : 'bg-slate-800 text-slate-300'}`}>{v.label}</button>
                         ))}
                       </div>
 
-                      <button onClick={applyDesignToProduct} className="ml-auto h-7 px-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded text-[10px] font-black uppercase tracking-wider">Apply Design</button>
-                      <p className="w-full text-[10px] font-mono text-slate-500">Drag the print to move. Corner handles scale. Top handle rotates.</p>
+                      <button onClick={applyDesignToProduct} className="h-8 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-black uppercase tracking-wider">Apply Design</button>
+
+                      <div className="ml-auto flex flex-wrap items-center gap-2">
+                        <button onClick={handleSafeSVGExport} className="h-8 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-black uppercase tracking-wider">Export SVG</button>
+                        <button onClick={() => setActiveOrderTab('vinyl')} className="h-8 px-3 bg-[#FF1493] hover:bg-[#ff4da6] text-black rounded text-[10px] font-black uppercase tracking-wider shadow-sm">Buy Sticker</button>
+                        <button onClick={() => setActiveOrderTab('apparel')} className="h-8 px-3 bg-emerald-500 hover:bg-emerald-400 text-black rounded text-[10px] font-black uppercase tracking-wider">Buy Apparel</button>
+                      </div>
+                      <p className="w-full text-[10px] font-mono text-slate-300">Drag the print to move. Corner handles scale. Top handle rotates.</p>
                     </div>
                   </div>
                 )}
