@@ -12,7 +12,6 @@ export function useVectorEngine() {
   }, []);
 
   const traceImage = useCallback(async (imageData: ImageData, smoothness: number = 5): Promise<string> => {
-    void smoothness;
     return new Promise((resolve, reject) => {
       if (!workerRef.current) return reject('Worker thread offline.');
 
@@ -26,9 +25,9 @@ export function useVectorEngine() {
 
       const copy = new ImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height);
       try {
-        workerRef.current.postMessage({ imageData: copy }, [copy.data.buffer]);
+        workerRef.current.postMessage({ imageData: copy, smoothness }, [copy.data.buffer]);
       } catch {
-        workerRef.current.postMessage({ imageData: copy });
+        workerRef.current.postMessage({ imageData: copy, smoothness });
       }
     });
   }, []);

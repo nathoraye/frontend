@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { keyOutBackground } from '../src/utils/tracePrep.ts';
+import { keyOutBackground, otsuThreshold, fitTraceSize, prepareTraceRaster, TRACE_MIN_EDGE } from '../src/utils/tracePrep.ts';
 
 function fillRgba(
   w: number,
@@ -87,4 +87,46 @@ test('black artwork on white paper stays ink', () => {
   assert.equal(paper, 1200);
   assert.deepEqual(sample(data, w, 0, 0), [255, 255, 255, 255]);
   assert.deepEqual(sample(data, w, 20, 20), [0, 0, 0, 255]);
+});
+
+test('Otsu finds a mid threshold on a bimodal black/white image', () => {
+  const w = 32;
+  const h = 32;
+  const data = fillRgba(w, h, 255, 255, 255, 255);
+  setRect(data, w, 0, 0, 16, 32, 0, 0, 0, 255);
+  const t = otsuThreshold(data);
+  assert.ok(t >= 64 && t <= 192, `expected mid-gray Otsu, got ${t}`);
+});
+
+test('fitTraceSize upsamples tiny logos (capped at 3×) and downsamples huge ones', () => {
+  const tiny = fitTraceSize(100, 80);
+  assert.equal(tiny.width, 300);
+  assert.equal(tiny.height, 240);
+
+  const mid = fitTraceSize(600, 400);
+  assert.equal(mid.width, 600);
+  assert.equal(mid.height, 400);
+
+  const huge = fitTraceSize(2000, 500);
+  assert.equal(huge.width, 1000);
+  assert.equal(huge.height, 250);
+
+  const minEdge = fitTraceSize(TRACE_MIN_EDGE, TRACE_MIN_EDGE);
+  assert.equal(minEdge.width, TRACE_MIN_EDGE);
+});
+
+test('prepareTraceRaster keeps black-on-white ink after blur and binarize', () => {
+  const w = 40;
+  const h = 40;
+  const data = fillRgba(w, h, 255, 255, 255, 255);
+  setRect(data, w, 10, 10, 30, 30, 0, 0, 0, 255);
+  const prepared = prepareTraceRaster(data, w, h);
+  assert.ok(prepared.width >= w);
+  assert.ok(prepared.height >= h);
+  assert.ok(prepared.ink > 800, `ink vanished (${prepared.ink})`);
+  assert.ok(prepared.paper > prepared.ink, 'paper should remain the majority');
+  const cx = Math.floor(prepared.width / 2);
+  const cy = Math.floor(prepared.height / 2);
+  assert.deepEqual(sample(prepared.data, prepared.width, 1, 1), [255, 255, 255, 255]);
+  assert.deepEqual(sample(prepared.data, prepared.width, cx, cy), [0, 0, 0, 255]);
 });
