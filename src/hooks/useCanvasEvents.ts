@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import { tracedSvgToObject } from '../utils/placeTracedSvg';
 import { applyEraserStroke } from '../utils/eraseStroke';
 import { yieldToPaint } from '../utils/tracePrep';
+import type { ColorTraceParams } from '../utils/traceParams';
 
 interface CanvasEventProps {
   canvas: fabric.Canvas | null;
@@ -21,7 +22,7 @@ interface CanvasEventProps {
   setQuickMenu: (menu: any) => void;
   updateUIFromSelection: () => void;
   saveHistorySnapshot: (canvas: fabric.Canvas, immediate?: boolean) => void;
-  traceImage: (imageData: ImageData, smoothness?: number) => Promise<string>;
+  traceImage: (imageData: ImageData, params?: ColorTraceParams) => Promise<string>;
   setTool?: (tool: 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser') => void;
   quickMenuRef?: React.RefObject<HTMLDivElement | null>;
   eraserTargetRef?: React.MutableRefObject<fabric.Object | null>;

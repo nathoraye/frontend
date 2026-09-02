@@ -14,12 +14,14 @@ import { LeftDock } from './components/LeftDock';
 import { RightInspector } from './components/RightInspector';
 import { CropModal } from './components/CropModal';
 import { ContourModal } from './components/ContourModal';
+import { TracePreviewModal } from './components/TracePreviewModal';
 import { OrderModal } from './components/OrderModal';
 import { ApparelMockupViewer, type ProductPlacement } from './components/ApparelMockupViewer';
 import { PRODUCT_CATALOG, PRODUCT_IDS, type ProductId } from './three/productCatalog';
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
 import { tracedSvgToObject } from './utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
+import { imageDataToPngDataUrl } from './utils/imageDataPng';
 
 type AppTool = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
 type ViewMode = 'sticker' | 'product';
@@ -67,6 +69,11 @@ export default function App() {
   const [quickMenu, setQuickMenu] = useState<{ top: number, left: number, show: boolean } | null>(null);
   
   const [pendingCropImage, setPendingCropImage] = useState<string | null>(null);
+  const [pendingTrace, setPendingTrace] = useState<{
+    imageData: ImageData;
+    dataUrl: string;
+    source?: fabric.Object;
+  } | null>(null);
   const [showOffsetConfig, setShowOffsetConfig] = useState<boolean>(false);
   const [contourTarget, setContourTarget] = useState<fabric.Path | null>(null);
   
@@ -96,8 +103,23 @@ export default function App() {
   const clipboard = useRef<fabric.Object | null>(null);
 
   const { performBoolean } = useBooleanEngine(canvas, saveHistorySnapshot);
-  const { handleVectorTrace: traceCore, handleCreateOffset: offsetCore } = useVectorMath({ canvas, isProcessingRef, setIsTracing, traceImage, saveHistorySnapshot });
-  const handleVectorTrace = () => traceCore(activeObj);
+  const { handleCreateOffset: offsetCore } = useVectorMath({ canvas, isProcessingRef, setIsTracing, traceImage, saveHistorySnapshot });
+  const openImageTrace = useCallback((img: fabric.Image) => {
+    const imageData = rasterToImageData(img.getElement());
+    setQuickMenu(null);
+    setPendingTrace({
+      imageData,
+      dataUrl: imageDataToPngDataUrl(imageData),
+      source: img,
+    });
+  }, []);
+  const handleVectorTrace = () => {
+    if (!activeObj || activeObj.type !== 'image') {
+      alert('Select a raster image to trace. Vector shapes are already cut-ready.');
+      return;
+    }
+    openImageTrace(activeObj as fabric.Image);
+  };
   const handleCreateOffset = () => offsetCore(activeObj, offsetSize);
 
   const { alignObject, applyTextCurve, explodeText, addText, addShape, handleAIGeneration, addWeedingBox } = useStudioActions({
@@ -137,6 +159,7 @@ export default function App() {
   };
 
   const handleConfirmCrop = async (base64: string, asVector: boolean, smoothness: number) => {
+      void smoothness;
       setPendingCropImage(null);
       if (!canvas) return;
       
@@ -148,19 +171,10 @@ export default function App() {
               await yieldToPaint();
               try {
                       const rawImgData = rasterToImageData(img);
-                      const svgString = await traceImage(rawImgData, smoothness);
-                      const traced = await tracedSvgToObject(svgString, {
-                          fill: brushColor,
+                      setPendingTrace({
+                        imageData: rawImgData,
+                        dataUrl: imageDataToPngDataUrl(rawImgData),
                       });
-                      if (traced) {
-                          const maxDim = 800;
-                          const gw = traced.width || 1;
-                          const gh = traced.height || 1;
-                          const scale = Math.min(1, maxDim / gw, maxDim / gh);
-                          traced.set({ left: 600, top: 600, originX: 'center', originY: 'center', scaleX: scale, scaleY: scale });
-                          traced.setCoords();
-                          canvas.add(traced); canvas.setActiveObject(traced); canvas.requestRenderAll(); saveHistorySnapshot(canvas, true);
-                      }
               } catch (err) { console.error("Direct Trace Failed:", err); } 
               finally { isProcessingRef.current = false; setIsTracing(false); }
           } else {
@@ -174,25 +188,36 @@ export default function App() {
       img.src = base64;
   };
 
-  const handleTraceCanvasImage = async () => {
+  const handleTraceCanvasImage = () => {
       if (!canvas || !activeObj || activeObj.type !== 'image') return;
-      isProcessingRef.current = true;
-      setIsTracing(true);
-      setQuickMenu(null);
-      await yieldToPaint();
+      openImageTrace(activeObj as fabric.Image);
+  };
+
+  const handleAcceptTrace = async (svgString: string) => {
+      if (!canvas || !pendingTrace) return;
+      const source = pendingTrace.source;
+      setPendingTrace(null);
       try {
-          const img = activeObj as fabric.Image;
-          const rawImgData = rasterToImageData(img.getElement());
-          const svgString = await traceImage(rawImgData, 5);
-          const traced = await tracedSvgToObject(svgString, {
-              source: img,
-              fill: brushColor,
-          });
-          if (traced) {
-              canvas.remove(img); canvas.add(traced); canvas.setActiveObject(traced); canvas.requestRenderAll(); saveHistorySnapshot(canvas, true);
+          const traced = await tracedSvgToObject(svgString, source ? { source } : undefined);
+          if (!traced) throw new Error('No solid shapes found to trace after background removal.');
+          if (source) {
+              canvas.remove(source);
+          } else {
+              const maxDim = 800;
+              const gw = traced.width || 1;
+              const gh = traced.height || 1;
+              const scale = Math.min(1, maxDim / gw, maxDim / gh);
+              traced.set({ left: 600, top: 600, originX: 'center', originY: 'center', scaleX: scale, scaleY: scale });
+              traced.setCoords();
           }
-      } catch (err) { console.error("In-Canvas Trace Failed:", err); }
-      finally { isProcessingRef.current = false; setIsTracing(false); }
+          canvas.add(traced);
+          canvas.setActiveObject(traced);
+          canvas.requestRenderAll();
+          saveHistorySnapshot(canvas, true);
+      } catch (err) {
+          console.error('Place trace failed:', err);
+          alert('Failed to place the traced SVG.');
+      }
   };
 
   const handleApplyContour = (newPathString: string | null) => {
@@ -538,6 +563,16 @@ export default function App() {
         
         {pendingCropImage && (
             <CropModal imageUrl={pendingCropImage} onCrop={handleConfirmCrop} onCancel={() => setPendingCropImage(null)} />
+        )}
+
+        {pendingTrace && (
+          <TracePreviewModal
+            rasterDataUrl={pendingTrace.dataUrl}
+            imageData={pendingTrace.imageData}
+            traceImage={traceImage}
+            onAccept={handleAcceptTrace}
+            onCancel={() => setPendingTrace(null)}
+          />
         )}
 
         {contourTarget && (

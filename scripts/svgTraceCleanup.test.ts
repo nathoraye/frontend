@@ -1,56 +1,46 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { cleanupTracedSvg } from '../src/utils/svgTraceCleanup.ts';
-import { vinylTraceOptions } from '../src/utils/traceOptions.ts';
 
-test('cleanup converts quadratics to cubics, rounds coords, and sets evenodd', () => {
-  const svg = `<svg width="20" height="20"><path fill="rgb(0,0,0)" stroke="rgb(0,0,0)" stroke-width="1" d="M 0.333 0.333 Q 10.12 0.04 19.77 10.666 Z"/></svg>`;
-  const out = cleanupTracedSvg(svg, 20, 20);
-  assert.match(out, /viewBox="0 0 20 20"/);
+test('cleanup keeps distinct fills and sets evenodd + viewBox', () => {
+  const svg = `<svg width="40" height="40"><path fill="#DC1E28" d="M 2.22 2.22 L 12.66 2.22 L 12.66 12.88 Z"/><path fill="#1E5AD2" d="M 20 20 L 30 20 L 30 30 L 20 30 Z"/></svg>`;
+  const out = cleanupTracedSvg(svg, 40, 40);
+  assert.match(out, /viewBox="0 0 40 40"/);
+  assert.match(out, /fill="#DC1E28"/);
+  assert.match(out, /fill="#1E5AD2"/);
   assert.match(out, /fill-rule="evenodd"/);
-  assert.match(out, /\bC\b/);
-  assert.doesNotMatch(out, /\bQ\b/);
-  assert.doesNotMatch(out, /stroke-width="1"/);
-  assert.doesNotMatch(out, /\d+\.\d{2,}/);
+  assert.equal((out.match(/<path /g) || []).length, 2);
 });
 
-test('cleanup drops white paper paths, duplicates, and empty d', () => {
-  const d = 'M 2 2 L 18 2 L 18 18 L 2 18 Z';
-  const svg = `<svg>
-    <path fill="rgb(255,255,255)" d="${d}"/>
-    <path fill="rgb(0,0,0)" d="${d}"/>
-    <path fill="rgb(0,0,0)" d="${d}"/>
-    <path fill="rgb(0,0,0)" d="M 1 1 Z"/>
+test('cleanup drops full-frame paper but keeps coloured art', () => {
+  const paper = 'M 0 0 L 40 0 L 40 40 L 0 40 Z';
+  const art = 'M 10 10 L 20 10 L 20 20 L 10 20 Z';
+  const svg = `<svg width="40" height="40">
+    <path fill="#F5F5F0" d="${paper}"/>
+    <path fill="#141414" d="${art}"/>
   </svg>`;
-  const out = cleanupTracedSvg(svg, 20, 20);
-  const count = (out.match(/<path /g) || []).length;
-  assert.equal(count, 1);
-});
-
-test('vinyl options prefer smooth fits and no stroke halo', () => {
-  const opts = vinylTraceOptions(5);
-  assert.ok(Number(opts.ltres) >= 1);
-  assert.ok(Number(opts.qtres) >= 1);
-  assert.ok(Number(opts.pathomit) >= 12);
-  assert.equal(opts.strokewidth, 0);
-  assert.equal(opts.linefilter, true);
-  assert.equal(opts.roundcoords, 1);
-  assert.equal(opts.viewbox, true);
-});
-
-test('higher smoothness increases curve-fit tolerance', () => {
-  const tight = vinylTraceOptions(1);
-  const loose = vinylTraceOptions(10);
-  assert.ok(Number(loose.ltres) > Number(tight.ltres));
-  assert.ok(Number(loose.qtres) > Number(tight.qtres));
-});
-
-test('cleanup drops speckles that are tiny relative to the canvas', () => {
-  const svg = `<svg>
-    <path fill="rgb(0,0,0)" d="M 1 1 L 4 1 L 4 4 L 1 4 Z"/>
-    <path fill="rgb(0,0,0)" d="M 40 40 L 200 40 L 200 200 L 40 200 Z"/>
-  </svg>`;
-  const out = cleanupTracedSvg(svg, 480, 480);
+  const out = cleanupTracedSvg(svg, 40, 40);
   assert.equal((out.match(/<path /g) || []).length, 1);
-  assert.match(out, /M 40 40/);
+  assert.match(out, /fill="#141414"/);
+  assert.doesNotMatch(out, /fill="#F5F5F0"/);
+});
+
+test('cleanup keeps small drips instead of treating them as speckle', () => {
+  const svg = `<svg width="80" height="80">
+    <path fill="#141414" d="M 38 68 L 42 68 L 42 76 L 38 76 Z"/>
+    <path fill="#DC1E28" d="M 10 10 L 30 10 L 30 24 L 10 24 Z"/>
+  </svg>`;
+  const out = cleanupTracedSvg(svg, 80, 80);
+  assert.equal((out.match(/<path /g) || []).length, 2);
+  assert.match(out, /M 38 68/);
+});
+
+test('cleanup groups the same colour into one path', () => {
+  const svg = `<svg width="40" height="40">
+    <path fill="#00AA00" d="M 1 1 L 8 1 L 8 8 L 1 8 Z"/>
+    <path fill="#00AA00" d="M 20 20 L 28 20 L 28 28 L 20 28 Z"/>
+  </svg>`;
+  const out = cleanupTracedSvg(svg, 40, 40);
+  assert.equal((out.match(/<path /g) || []).length, 1);
+  assert.match(out, /fill="#00AA00"/);
 });

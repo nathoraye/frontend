@@ -2,6 +2,7 @@ import http from 'node:http';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { handleTraceRequest } from './api/trace.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -51,6 +52,10 @@ const server = http.createServer(async (req, res) => {
     const order = orders.find((entry) => entry.id === orderId);
     if (!order) return sendJson(res, 404, { error: 'Order not found' });
     return sendJson(res, 200, { order });
+  }
+
+  if (url.pathname === '/api/trace') {
+    return handleTraceRequest(req, res);
   }
 
   if (req.method === 'POST' && url.pathname === '/api/orders') {

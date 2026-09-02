@@ -37,7 +37,6 @@ export function useVectorMath({
       const svgString = await traceImage(imgData);
       const traced = await tracedSvgToObject(svgString, {
         source: img,
-        fill: '#FF1493',
       });
       if (!traced) throw new Error('No solid shapes found to trace after background removal.');
 

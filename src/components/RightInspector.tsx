@@ -280,7 +280,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
                   {isTracing ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>}
                   {isTracing ? 'Calculating Paths...' : 'Trace to Razor SVG'}
                 </button>
-                <p className={`text-[10px] mt-3 leading-relaxed ${textMuted}`}>Select any image, text, or group and hit trace.</p>
+                <p className={`text-[10px] mt-3 leading-relaxed ${textMuted}`}>Select a raster image to preview a colour vector trace before it replaces the photo.</p>
               </div>
             )}
           </>

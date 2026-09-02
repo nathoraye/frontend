@@ -10,12 +10,13 @@
     "preview": "vite preview",
     "validate-export": "node scripts/validateExport.js",
     "compare-trace": "node --experimental-strip-types scripts/compareTrace.ts",
-    "test:trace": "node --experimental-strip-types --test scripts/placeTracedSvg.test.ts scripts/tracePrep.test.ts scripts/svgTraceCleanup.test.ts"
+    "test:trace": "node --experimental-strip-types --test scripts/placeTracedSvg.test.ts scripts/tracePrep.test.ts scripts/svgTraceCleanup.test.ts scripts/colorTrace.test.ts"
   },
   "dependencies": {
     "@paypal/react-paypal-js": "^10.2.0",
     "@tailwindcss/vite": "^4.3.2",
     "@types/fabric": "^5.3.0",
+    "@visioncortex/vtracer": "^1.0.0-alpha.4",
     "clipper-lib": "^6.4.2",
     "dompurify": "^3.4.12",
     "fabric": "^7.4.0",
