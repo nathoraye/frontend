@@ -62,9 +62,7 @@ test('VTracer emits one fill per distinct colour and keeps the ring hole', () =>
   assert.ok(black, 'missing dark graffiti path');
   const subpaths = black![2].split(/M/i).filter(Boolean).length;
   assert.ok(subpaths >= 2, 'ring must keep a hole subpath so O/0 counters stay open');
-  const paperPaths = [...svg.matchAll(/<path fill="#F5F5F0"[^>]*d="([^"]+)"/g)];
-  assert.ok(paperPaths.length >= 1, 'counter should keep the background-coloured hole fill');
-  assert.ok(paperPaths.every((m) => !/M0,0/.test(m[1])), 'full-frame paper mat must be dropped');
+  assert.doesNotMatch(svg, /fill="#F5F5F0"/);
 });
 
 test('normalize clamps colour count', () => {

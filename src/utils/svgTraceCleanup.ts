@@ -96,8 +96,8 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
     const area = pathBBoxArea(rounded);
     if (area < 1) continue;
     const paper = isPaperColor(fill);
-    if (paper && area / canvasArea > 0.45) continue;
-    if (!paper && area / canvasArea > 0.98) continue;
+    if (paper) continue;
+    if (area / canvasArea > 0.98) continue;
     const list = byFill.get(fill) ?? [];
     list.push(rounded);
     byFill.set(fill, list);
