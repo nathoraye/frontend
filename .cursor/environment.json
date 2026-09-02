@@ -9,8 +9,8 @@
     },
     {
       "name": "vite-dev",
-      "command": "npm run dev",
-      "description": "Vite frontend on port 5173"
+      "command": "npm run dev -- --host 0.0.0.0 --port 5173",
+      "description": "Vite frontend on port 5173 (IPv4 bind)"
     }
   ]
 }
