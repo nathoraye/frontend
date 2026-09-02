@@ -1,5 +1,5 @@
 /**
- * Before/after harness for the vinyl SVG tracer.
+ * Before/after harness: bilevel ImageTracer vs colour VTracer.
  * Usage: node --experimental-strip-types scripts/compareTrace.ts
  */
 import fs from 'node:fs';
@@ -9,13 +9,13 @@ import {
   downsampleNearest,
   keyOutBackground,
   stampWhiteBorder,
-  prepareTraceRaster,
   TRACE_MAX_EDGE,
 } from '../src/utils/tracePrep.ts';
-import { LEGACY_TRACE_OPTIONS, vinylTraceOptions } from '../src/utils/traceOptions.ts';
+import { LEGACY_TRACE_OPTIONS } from '../src/utils/traceOptions.ts';
 import { cleanupTracedSvg } from '../src/utils/svgTraceCleanup.ts';
+import { DEFAULT_COLOR_TRACE } from '../src/utils/traceParams.ts';
+import { traceRgba } from '../traceColor.mjs';
 
-/** Node has no canvas ImageData; ImageTracer only reads data/width/height. */
 class ImageData {
   data: Uint8ClampedArray;
   width: number;
@@ -28,35 +28,33 @@ class ImageData {
   }
 }
 
-function noisyLogo(size = 180): ImageData {
+function graffitiSample(size = 180): ImageData {
   const data = new Uint8ClampedArray(size * size * 4);
   const cx = size / 2;
-  const cy = size / 2;
+  const cy = size * 0.42;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const i = (y * size + x) * 4;
-      const dx = x - cx;
-      const dy = y - cy;
-      const r = Math.hypot(dx, dy);
-      const inRing = r < size * 0.38 && r > size * 0.16;
-      const inStem = x > cx - 8 && x < cx + 8 && y > cy && y < size * 0.82;
-      let ink = inRing || inStem;
-      // JPEG-like luma noise
-      const n = ((x * 73 + y * 19) % 17) - 8;
-      // Salt-and-pepper speckles
-      const speckle = ((x * 13 + y * 31) % 97) === 0;
-      if (speckle) ink = !ink;
-      const v = ink ? Math.max(0, 18 + n) : Math.min(255, 235 + n);
-      data[i] = v;
-      data[i + 1] = v;
-      data[i + 2] = v;
+      const r = Math.hypot(x - cx, y - cy);
+      const ring = r < size * 0.28 && r > size * 0.14;
+      const stem = x > cx - 7 && x < cx + 7 && y > cy && y < size * 0.78;
+      const drip = x > cx - 3 && x < cx + 3 && y > size * 0.76 && y < size * 0.88;
+      const redTag = x > size * 0.08 && x < size * 0.28 && y > size * 0.08 && y < size * 0.22;
+      const blueTag = x > size * 0.72 && x < size * 0.92 && y > size * 0.08 && y < size * 0.22;
+      let col: [number, number, number] = [245, 245, 240];
+      if (ring || stem || drip) col = [22, 22, 22];
+      else if (redTag) col = [220, 30, 40];
+      else if (blueTag) col = [30, 90, 210];
+      data[i] = col[0];
+      data[i + 1] = col[1];
+      data[i + 2] = col[2];
       data[i + 3] = 255;
     }
   }
   return new ImageData(data, size, size);
 }
 
-function legacyTrace(imageData: ImageData): string {
+function bilevelTrace(imageData: ImageData): string {
   const copied = new Uint8ClampedArray(imageData.data);
   const down = downsampleNearest(copied, imageData.width, imageData.height, TRACE_MAX_EDGE);
   const { ink, paper } = keyOutBackground(down.data, down.width, down.height);
@@ -67,99 +65,71 @@ function legacyTrace(imageData: ImageData): string {
   return ImageTracer.imagedataToSVG(new ImageData(pixels, down.width, down.height), LEGACY_TRACE_OPTIONS);
 }
 
-function improvedTrace(imageData: ImageData): string {
-  const prepared = prepareTraceRaster(
-    new Uint8ClampedArray(imageData.data),
-    imageData.width,
-    imageData.height,
-  );
-  if (prepared.ink === 0) throw new Error('improved: no ink');
-  const pixels = new Uint8ClampedArray(prepared.data.length);
-  pixels.set(prepared.data);
-  const raw = ImageTracer.imagedataToSVG(
-    new ImageData(pixels, prepared.width, prepared.height),
-    vinylTraceOptions(5),
-  );
-  return cleanupTracedSvg(raw, prepared.width, prepared.height);
+function colorTrace(imageData: ImageData): string {
+  const raw = traceRgba(imageData.data, imageData.width, imageData.height, DEFAULT_COLOR_TRACE);
+  return cleanupTracedSvg(raw, imageData.width, imageData.height);
 }
 
 function stats(svg: string) {
   const paths = svg.match(/<path\b/g)?.length ?? 0;
-  const q = (svg.match(/\bQ\b/g) || []).length;
-  const c = (svg.match(/\bC\b/g) || []).length;
-  const l = (svg.match(/\bL\b/g) || []).length;
-  const longDecimals = (svg.match(/\d+\.\d{3,}/g) || []).length;
-  return { bytes: Buffer.byteLength(svg), paths, q, c, l, longDecimals };
+  const fills = [...new Set([...(svg.matchAll(/fill="([^"]+)"/g) ?? [])].map((m) => m[1]))];
+  return { bytes: Buffer.byteLength(svg), paths, fills };
 }
 
-const sample = noisyLogo(180);
-const before = legacyTrace(sample);
-const after = improvedTrace(sample);
+const sample = graffitiSample(180);
+const before = bilevelTrace(sample);
+const after = colorTrace(sample);
 const beforeStats = stats(before);
 const afterStats = stats(after);
 
 const outDir = fs.existsSync('/opt/cursor/artifacts') ? '/opt/cursor/artifacts' : path.join(process.cwd(), 'tmp-trace-compare');
 fs.mkdirSync(outDir, { recursive: true });
-fs.writeFileSync(path.join(outDir, 'noisy_logo_trace_before.svg'), before);
-fs.writeFileSync(path.join(outDir, 'noisy_logo_trace_after.svg'), after);
+fs.writeFileSync(path.join(outDir, 'color_trace_before.svg'), before);
+fs.writeFileSync(path.join(outDir, 'color_trace_after.svg'), after);
 
 const html = `<!doctype html>
 <html lang="en">
 <meta charset="utf-8"/>
-<title>SVG trace quality — before / after</title>
+<title>Colour SVG trace — before / after</title>
 <style>
   body { font-family: ui-sans-serif, system-ui, sans-serif; background:#111; color:#eee; margin:24px; }
   h1 { font-size:18px; }
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
   figure { margin:0; background:#1c1c22; padding:16px; border-radius:12px; }
-  img { width:100%; height:auto; border-radius:8px; display:block; }
-  .before img { background:#9aa0a6; }
-  .after img { background:#fff; }
+  img { width:100%; height:auto; border-radius:8px; display:block; background:
+    linear-gradient(45deg,#bbb 25%,transparent 25%),linear-gradient(-45deg,#bbb 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#bbb 75%),linear-gradient(-45deg,transparent 75%,#bbb 75%);
+    background-size:16px 16px; background-position:0 0,0 8px,8px -8px,-8px 0; background-color:#eee; }
   table { border-collapse:collapse; margin-top:16px; }
   td, th { border:1px solid #333; padding:6px 10px; text-align:left; }
 </style>
-<h1>West Vinyl Studio — noisy logo trace</h1>
-<p>Left: previous ImageTracer settings (pathomit 1, ltres 0.2, 1px stroke). White paper fills are shown on a gray mat so holes/specks are visible. Right: preprocess + smooth Béziers + SVG cleanup.</p>
+<h1>West Vinyl Studio — colour-aware trace</h1>
+<p>Left: previous 2-colour ImageTracer flatten (everything becomes black ink). Right: VTracer colour-cluster + cutout, one path per colour, holes kept.</p>
 <div class="grid">
-  <figure class="before">
-    <figcaption>Before (${beforeStats.bytes} bytes, ${beforeStats.paths} paths, ${beforeStats.l} L / ${beforeStats.q} Q)</figcaption>
-    <img src="noisy_logo_trace_before.svg" alt="Legacy trace"/>
+  <figure>
+    <figcaption>Before (${beforeStats.bytes} bytes, ${beforeStats.paths} paths, fills ${beforeStats.fills.join(', ') || '—'})</figcaption>
+    <img src="color_trace_before.svg" alt="Bilevel flatten"/>
   </figure>
-  <figure class="after">
-    <figcaption>After (${afterStats.bytes} bytes, ${afterStats.paths} paths, ${afterStats.l} L / ${afterStats.c} C)</figcaption>
-    <img src="noisy_logo_trace_after.svg" alt="Improved trace"/>
+  <figure>
+    <figcaption>After (${afterStats.bytes} bytes, ${afterStats.paths} paths, fills ${afterStats.fills.join(', ')})</figcaption>
+    <img src="color_trace_after.svg" alt="Colour VTracer"/>
   </figure>
 </div>
 <table>
-  <tr><th></th><th>Before</th><th>After</th></tr>
+  <tr><th></th><th>Before (bilevel)</th><th>After (VTracer colour)</th></tr>
   <tr><td>Bytes</td><td>${beforeStats.bytes}</td><td>${afterStats.bytes}</td></tr>
   <tr><td>Paths</td><td>${beforeStats.paths}</td><td>${afterStats.paths}</td></tr>
-  <tr><td>Line commands (L)</td><td>${beforeStats.l}</td><td>${afterStats.l}</td></tr>
-  <tr><td>Quadratic (Q)</td><td>${beforeStats.q}</td><td>${afterStats.q}</td></tr>
-  <tr><td>Cubic (C)</td><td>${beforeStats.c}</td><td>${afterStats.c}</td></tr>
-  <tr><td>Coords with ≥3 decimals</td><td>${beforeStats.longDecimals}</td><td>${afterStats.longDecimals}</td></tr>
+  <tr><td>Fills</td><td>${beforeStats.fills.join(', ') || '—'}</td><td>${afterStats.fills.join(', ')}</td></tr>
 </table>
 </html>`;
-fs.writeFileSync(path.join(outDir, 'noisy_logo_trace_compare.html'), html);
+fs.writeFileSync(path.join(outDir, 'color_trace_compare.html'), html);
 
-console.log(JSON.stringify({ outDir, before: beforeStats, after: afterStats }, null, 2));
-if (afterStats.longDecimals > 0) {
-  console.error('after still has over-precise coordinates');
-  process.exit(1);
-}
-if (afterStats.q > 0) {
-  console.error('after still emits quadratic commands');
+console.log(JSON.stringify({ outDir, before: beforeStats, after: afterStats, defaults: DEFAULT_COLOR_TRACE }, null, 2));
+if (afterStats.fills.length < 2) {
+  console.error('after collapsed to a single colour');
   process.exit(1);
 }
 if (afterStats.paths < 1) {
   console.error('after dropped the shape');
-  process.exit(1);
-}
-if (afterStats.paths > 3) {
-  console.error('after still has speckle paths');
-  process.exit(1);
-}
-if (afterStats.bytes >= beforeStats.bytes) {
-  console.error('after is not smaller than before');
   process.exit(1);
 }
