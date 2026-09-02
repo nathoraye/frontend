@@ -94,7 +94,7 @@ test('Otsu finds a mid threshold on a bimodal black/white image', () => {
   const h = 32;
   const data = fillRgba(w, h, 255, 255, 255, 255);
   setRect(data, w, 0, 0, 16, 32, 0, 0, 0, 255);
-  const t = otsuThreshold(data, w, h);
+  const t = otsuThreshold(data);
   assert.ok(t >= 64 && t <= 192, `expected mid-gray Otsu, got ${t}`);
 });
 

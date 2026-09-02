@@ -15,6 +15,19 @@ import {
 import { LEGACY_TRACE_OPTIONS, vinylTraceOptions } from '../src/utils/traceOptions.ts';
 import { cleanupTracedSvg } from '../src/utils/svgTraceCleanup.ts';
 
+/** Node has no canvas ImageData; ImageTracer only reads data/width/height. */
+class ImageData {
+  data: Uint8ClampedArray;
+  width: number;
+  height: number;
+  colorSpace = 'srgb' as const;
+  constructor(data: Uint8ClampedArray, width: number, height: number) {
+    this.data = data;
+    this.width = width;
+    this.height = height;
+  }
+}
+
 function noisyLogo(size = 180): ImageData {
   const data = new Uint8ClampedArray(size * size * 4);
   const cx = size / 2;
@@ -138,5 +151,13 @@ if (afterStats.q > 0) {
 }
 if (afterStats.paths < 1) {
   console.error('after dropped the shape');
+  process.exit(1);
+}
+if (afterStats.paths > 3) {
+  console.error('after still has speckle paths');
+  process.exit(1);
+}
+if (afterStats.bytes >= beforeStats.bytes) {
+  console.error('after is not smaller than before');
   process.exit(1);
 }

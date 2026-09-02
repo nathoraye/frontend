@@ -11,11 +11,11 @@ export function vinylTraceOptions(smoothness = 5): Record<string, unknown> {
   const t = Math.max(1, Math.min(10, smoothness)) / 5;
   return {
     // Drop edge-node paths shorter than this (speckles / JPEG crumbs).
-    pathomit: 12,
-    // Straight-line error (px). Was 0.2 → micro-segments. ~1.2 prefers clean lines.
-    ltres: 0.4 + 0.8 * t,
-    // Quadratic error. Was 0.4 → bumpy curves. ~1.3 prefers smooth Q/C fits.
-    qtres: 0.5 + 0.9 * t,
+    pathomit: 16,
+    // Straight-line error (px). Was 0.2 → micro-segments. ~1.6 prefers clean lines.
+    ltres: 0.6 + 1.0 * t,
+    // Quadratic error. Was 0.4 → bumpy curves. ~2.2 prefers smooth Q/C fits.
+    qtres: 0.8 + 1.4 * t,
     scale: 1,
     // Keep 90° vinyl corners; natural curves still go through qtres.
     rightangleenhance: true,

@@ -116,7 +116,8 @@ export function cleanupTracedSvg(svg: string, width: number, height: number): st
     const d = convertPathData(match[2]);
     if (!/[CL]/.test(d)) continue;
     const area = pathBBoxArea(d);
-    if (area < 4) continue;
+    const minArea = Math.max(16, canvasArea * 0.0002);
+    if (area < minArea) continue;
     if (area / canvasArea > 0.82) continue;
     const key = d.replace(/\.0\b/g, '');
     if (seen.has(key)) continue;

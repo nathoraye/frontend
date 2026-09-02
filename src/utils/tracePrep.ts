@@ -280,7 +280,7 @@ export function gaussianBlur3(data: Uint8ClampedArray, width: number, height: nu
 }
 
 /** Otsu threshold on opaque-pixel luminance. Returns 0–255. */
-export function otsuThreshold(data: Uint8ClampedArray, width: number, height: number): number {
+export function otsuThreshold(data: Uint8ClampedArray): number {
   const hist = new Uint32Array(256);
   let total = 0;
   for (let i = 0; i < data.length; i += 4) {
@@ -294,7 +294,8 @@ export function otsuThreshold(data: Uint8ClampedArray, width: number, height: nu
   let sumB = 0;
   let wB = 0;
   let maxVar = -1;
-  let thresh = 128;
+  let bestStart = 128;
+  let bestEnd = 128;
   for (let t = 0; t < 256; t++) {
     wB += hist[t];
     if (wB === 0) continue;
@@ -306,14 +307,17 @@ export function otsuThreshold(data: Uint8ClampedArray, width: number, height: nu
     const between = wB * wF * (mB - mF) * (mB - mF);
     if (between > maxVar) {
       maxVar = between;
-      thresh = t;
+      bestStart = t;
+      bestEnd = t;
+    } else if (between === maxVar) {
+      bestEnd = t;
     }
   }
-  return thresh;
+  return Math.round((bestStart + bestEnd) / 2);
 }
 
-export function applyOtsuInk(data: Uint8ClampedArray, width: number, height: number): { ink: number; paper: number } {
-  const t = otsuThreshold(data, width, height);
+export function applyOtsuInk(data: Uint8ClampedArray): { ink: number; paper: number } {
+  const t = otsuThreshold(data);
   let ink = 0;
   let paper = 0;
   for (let i = 0; i < data.length; i += 4) {
@@ -377,9 +381,9 @@ export function prepareTraceRaster(
   srcH: number,
 ): { data: Uint8ClampedArray; width: number; height: number; ink: number; paper: number } {
   const size = fitTraceSize(srcW, srcH);
-  let data = src;
   let width = srcW;
   let height = srcH;
+  let data: Uint8ClampedArray;
   if (size.width !== srcW || size.height !== srcH) {
     data = resizeBilinear(src, srcW, srcH, size.width, size.height);
     width = size.width;
@@ -395,7 +399,7 @@ export function prepareTraceRaster(
   const inkRatio = ink / Math.max(1, ink + paper);
   if (ink === 0 || inkRatio < 0.004 || inkRatio > 0.96) {
     data.set(blurred);
-    ({ ink, paper } = applyOtsuInk(data, width, height));
+    applyOtsuInk(data);
   }
   morphCloseInk(data, width, height);
   ink = 0;
