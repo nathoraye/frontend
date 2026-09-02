@@ -436,6 +436,7 @@ export function rasterToImageData(source: CanvasImageSource, maxEdge = TRACE_MAX
   canvas.height = h;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('Could not read image data.');
+  ctx.imageSmoothingEnabled = false;
   ctx.drawImage(source, 0, 0, w, h);
   return ctx.getImageData(0, 0, w, h);
 }

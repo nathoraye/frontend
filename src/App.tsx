@@ -212,6 +212,7 @@ export default function App() {
           }
           canvas.add(traced);
           canvas.setActiveObject(traced);
+          eraserTargetRef.current = traced;
           canvas.requestRenderAll();
           saveHistorySnapshot(canvas, true);
       } catch (err) {

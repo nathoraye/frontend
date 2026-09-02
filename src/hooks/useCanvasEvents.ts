@@ -61,6 +61,7 @@ export function useCanvasEvents(props: CanvasEventProps) {
     if (!canvas) return;
     const canvasInstance = canvas;
     canvasInstance.isDrawingMode = props.tool === 'draw' || props.tool === 'eraser';
+    canvasInstance.skipTargetFind = canvasInstance.isDrawingMode;
     
     if (canvasInstance.isDrawingMode) {
         if (!(canvasInstance as any).freeDrawingBrush) {

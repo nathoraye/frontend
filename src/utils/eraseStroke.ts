@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as fabric from 'fabric';
 import * as clipperLib from 'clipper-lib';
+import { flattenPathD, orientContoursForNonZero } from './pathContours';
 
 type ClipperPoint = { X: number; Y: number };
 type ClipperPath = ClipperPoint[];
@@ -71,11 +72,20 @@ function offsetStrokeToPolygon(points: Array<{ x: number; y: number }>, radius: 
   return solution;
 }
 
-function objectToClipperPaths(obj: fabric.Object): ClipperPath[] {
-  if (obj.type === 'group' || obj.type === 'activeSelection') {
-    return (obj as fabric.Group).getObjects().flatMap((child) => objectToClipperPaths(child));
-  }
+function pathToWorldContours(path: fabric.Path): Array<Array<{ x: number; y: number }>> {
+  const d = pathToD(path);
+  if (!d) return [];
+  const matrix = path.calcTransformMatrix();
+  const offset = (path as any).pathOffset || new fabric.Point(0, 0);
+  return orientContoursForNonZero(flattenPathD(d)).map((pts) =>
+    pts.map((pt) => {
+      const world = fabric.util.transformPoint(new fabric.Point(pt.x - offset.x, pt.y - offset.y), matrix);
+      return { x: world.x, y: world.y };
+    }),
+  );
+}
 
+function objectToClipperPaths(obj: fabric.Object): ClipperPath[] {
   const matrix = obj.calcTransformMatrix();
   const transformLocal = (x: number, y: number) => {
     const pt = fabric.util.transformPoint(new fabric.Point(x, y), matrix);
@@ -83,9 +93,9 @@ function objectToClipperPaths(obj: fabric.Object): ClipperPath[] {
   };
 
   if (obj.type === 'path') {
-    const points = samplePathPoints(obj as fabric.Path, 1.5);
-    if (points.length < 3) return [];
-    return [toClipper(points)];
+    return pathToWorldContours(obj as fabric.Path)
+      .filter((pts) => pts.length >= 3)
+      .map(toClipper);
   }
 
   if (obj.type === 'polygon' || obj.type === 'polyline') {
@@ -165,18 +175,18 @@ function differencePaths(subjects: ClipperPath[], clips: ClipperPath[]): Clipper
 }
 
 async function replaceObject(canvas: fabric.Canvas, original: fabric.Object, next: fabric.Object) {
-  const center = original.getCenterPoint();
-  next.set({
-    originX: 'center',
-    originY: 'center',
-    left: center.x,
-    top: center.y,
-    angle: next.angle || 0,
-  });
+  // `next` path data is already in scene coordinates (Clipper world space).
+  // Re-centering on the original bbox would shift remaining geometry after a side erase.
   next.setCoords();
   canvas.remove(original);
   canvas.add(next);
   canvas.setActiveObject(next);
+}
+
+function childFill(obj: fabric.Object): unknown {
+  const fill = (obj as any).fill;
+  if (fill && fill !== 'transparent' && fill !== 'none') return fill;
+  return (obj as any).stroke || '#FF1493';
 }
 
 export async function eraseRasterImage(
@@ -256,11 +266,56 @@ export async function eraseRasterImage(
   return true;
 }
 
+function eraseVectorChildren(
+  children: fabric.Object[],
+  clips: ClipperPath[],
+): fabric.Object[] | null {
+  const nextChildren: fabric.Object[] = [];
+  for (const child of children) {
+    const subjects = objectToClipperPaths(child);
+    if (!subjects.length) return null;
+    const result = differencePaths(subjects, clips);
+    if (!result.length) continue;
+    const next = clipperPathsToFabricPath(result, childFill(child));
+    if (!next) return null;
+    nextChildren.push(next);
+  }
+  return nextChildren;
+}
+
 function eraseVectorObject(canvas: fabric.Canvas, target: fabric.Object, strokePath: fabric.Path): boolean {
-  const subjects = objectToClipperPaths(target);
   const strokePts = samplePathPoints(strokePath, 1.5);
   const clips = offsetStrokeToPolygon(strokePts, Math.max(1, (strokePath.strokeWidth || 8) / 2));
-  if (!subjects.length || !clips.length) return false;
+  if (!clips.length) return false;
+
+  const isGroup = target.type === 'group' || target.type === 'activeSelection';
+  if (isGroup) {
+    const children = (target as fabric.Group).getObjects();
+    const nextChildren = eraseVectorChildren(children, clips);
+    if (!nextChildren) return false;
+    if (!nextChildren.length) {
+      canvas.remove(target);
+      return true;
+    }
+    if (nextChildren.length === 1) {
+      void replaceObject(canvas, target, nextChildren[0]);
+      return true;
+    }
+    const nextGroup = new fabric.Group(nextChildren, {
+      originX: 'center',
+      originY: 'center',
+      cornerColor: '#FF1493',
+      transparentCorners: false,
+      cornerStyle: 'circle',
+      objectCaching: true,
+      subTargetCheck: false,
+    });
+    void replaceObject(canvas, target, nextGroup);
+    return true;
+  }
+
+  const subjects = objectToClipperPaths(target);
+  if (!subjects.length) return false;
 
   const result = differencePaths(subjects, clips);
   if (!result.length) {
@@ -268,10 +323,7 @@ function eraseVectorObject(canvas: fabric.Canvas, target: fabric.Object, strokeP
     return true;
   }
 
-  const fill = (target as any).fill && (target as any).fill !== 'transparent'
-    ? (target as any).fill
-    : (target as any).stroke || '#FF1493';
-  const next = clipperPathsToFabricPath(result, fill);
+  const next = clipperPathsToFabricPath(result, childFill(target));
   if (!next) return false;
   void replaceObject(canvas, target, next);
   return true;
@@ -335,8 +387,9 @@ export async function applyEraserStroke(
 ): Promise<boolean> {
   const targets: fabric.Object[] = [];
   if (mode === 'layer') {
-    if (!target) return false;
-    targets.push(target);
+    const live = target && canvas.getObjects().includes(target) ? target : canvas.getActiveObject();
+    if (!live) return false;
+    targets.push(live);
   } else {
     canvas.getObjects().forEach((obj) => {
       if (obj === strokePath) return;

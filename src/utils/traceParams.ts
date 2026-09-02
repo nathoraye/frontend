@@ -3,9 +3,9 @@
 export interface ColorTraceParams {
   /** Distinct colour clusters (2–32). */
   maxColors?: number;
-  /** Degrees. Higher keeps more spray/stencil corners (20–180). */
+  /** Degrees (VTracer). Lower detects more corners; higher rounds them off. */
   cornerThreshold?: number;
-  /** 0 = polygon/stencil, 10 = smoothest splines. */
+  /** 0 = polygon/stencil; 1–10 = spline (simplify/lengthThreshold). */
   curveFit?: number;
   /** VTracer speckle filter in px². Kept low so drips survive. */
   filterSpeckle?: number;

@@ -26,17 +26,27 @@ test('defaults keep colour count, sharp corners, and low speckle', () => {
   const opts = buildVtracerOptions(DEFAULT_COLOR_TRACE);
   assert.equal(opts.clustering, 'color-cluster');
   assert.equal(opts.hierarchical, 'cutout');
-  assert.equal(opts.mode, 'polygon');
+  assert.equal(opts.mode, 'spline');
   assert.equal(opts.maxColors, 8);
   assert.equal(opts.filterSpeckle, 2);
+  assert.equal(opts.cornerThreshold, 90);
+  assert.ok(Number(opts.lengthThreshold) >= 3.5);
 });
 
-test('higher curve-fit switches to spline', () => {
+test('curve-fit 0 stays polygon; any higher value uses spline so sliders apply', () => {
+  const stencil = buildVtracerOptions({ curveFit: 0 });
   const lo = buildVtracerOptions({ curveFit: 2 });
   const hi = buildVtracerOptions({ curveFit: 8 });
-  assert.equal(lo.mode, 'polygon');
+  assert.equal(stencil.mode, 'polygon');
+  assert.equal(lo.mode, 'spline');
   assert.equal(hi.mode, 'spline');
   assert.ok(Number(hi.simplify) > Number(lo.simplify));
+  assert.ok(Number(hi.lengthThreshold) > Number(lo.lengthThreshold));
+});
+
+test('cornerThreshold is forwarded unchanged (degrees)', () => {
+  assert.equal(buildVtracerOptions({ cornerThreshold: 20 }).cornerThreshold, 20);
+  assert.equal(buildVtracerOptions({ cornerThreshold: 160 }).cornerThreshold, 160);
 });
 
 test('VTracer emits one fill per distinct colour and keeps the ring hole', () => {
@@ -68,4 +78,41 @@ test('VTracer emits one fill per distinct colour and keeps the ring hole', () =>
 test('normalize clamps colour count', () => {
   assert.equal(normalizeColorTraceParams({ maxColors: 99 }).maxColors, 32);
   assert.equal(normalizeColorTraceParams({ maxColors: 1 }).maxColors, 2);
+});
+
+test('corner sharpness changes spline output (default curve-fit)', () => {
+  const w = 200;
+  const h = 200;
+  const rgba = paint(w, h, (x, y) => {
+    const dx = x - 100;
+    const dy = y - 100;
+    const ang = Math.atan2(dy, dx);
+    const R = 80;
+    const r = 32;
+    const a = ((ang % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    const seg = Math.PI / 5;
+    const t = (a % seg) / seg;
+    const rad = t < 0.5 ? R + (r - R) * (t / 0.5) : r + (R - r) * ((t - 0.5) / 0.5);
+    return Math.hypot(dx, dy) <= rad ? [20, 20, 20] : [255, 255, 255];
+  });
+  const sharp = traceRgba(rgba, w, h, { maxColors: 4, curveFit: 2, cornerThreshold: 20 });
+  const dull = traceRgba(rgba, w, h, { maxColors: 4, curveFit: 2, cornerThreshold: 160 });
+  assert.notEqual(sharp, dull, 'cornerThreshold must change VTracer output in spline mode');
+});
+
+test('cleanup of a real VTracer path starting with L does not keep a leading Lineto', () => {
+  const w = 64;
+  const h = 64;
+  const rgba = paint(w, h, (x, y) => {
+    const d = Math.hypot(x - 32, y - 32);
+    const e = 1.6;
+    const o = Math.max(0, Math.min(1, (24 + e - d) / (2 * e)));
+    const i = Math.max(0, Math.min(1, (d - (12 - e)) / (2 * e)));
+    const v = Math.round(255 + (10 - 255) * Math.min(o, i));
+    return [v, v, v];
+  });
+  const raw = traceRgba(rgba, w, h, DEFAULT_COLOR_TRACE);
+  const svg = cleanupTracedSvg(raw, w, h);
+  assert.doesNotMatch(svg, /d="L/);
+  assert.doesNotMatch(svg, /Z L/);
 });
