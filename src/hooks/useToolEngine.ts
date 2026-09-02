@@ -35,6 +35,13 @@ export function useToolEngine({ canvas, tool, brushColor, brushSize, brushType, 
     canvasInstance.defaultCursor = 'default';
     canvasInstance.skipTargetFind = false;
 
+    // Snapshot before toggling evented/selectable — Fabric may drop the
+    // active object when the target becomes non-evented.
+    const activeBefore = canvasInstance.getActiveObject();
+    if (tool === 'eraser' && activeBefore && eraserTargetRef) {
+      eraserTargetRef.current = activeBefore;
+    }
+
     const objects = canvas.getObjects();
     objects.forEach((obj) => {
       if (tool === 'select') {
@@ -54,8 +61,6 @@ export function useToolEngine({ canvas, tool, brushColor, brushSize, brushType, 
       canvasInstance.discardActiveObject();
       setQuickMenu(null);
     } else if (tool === 'eraser') {
-      const active = canvasInstance.getActiveObject();
-      if (active && eraserTargetRef) eraserTargetRef.current = active;
       canvasInstance.isDrawingMode = true;
       canvasInstance.skipTargetFind = true;
       setQuickMenu(null);

@@ -387,8 +387,9 @@ export async function applyEraserStroke(
 ): Promise<boolean> {
   const targets: fabric.Object[] = [];
   if (mode === 'layer') {
-    if (!target) return false;
-    targets.push(target);
+    const live = target && canvas.getObjects().includes(target) ? target : canvas.getActiveObject();
+    if (!live) return false;
+    targets.push(live);
   } else {
     canvas.getObjects().forEach((obj) => {
       if (obj === strokePath) return;
