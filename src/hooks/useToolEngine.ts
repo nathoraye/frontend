@@ -33,6 +33,7 @@ export function useToolEngine({ canvas, tool, brushColor, brushSize, brushType, 
     canvasInstance.isDrawingMode = false;
     canvasInstance.selection = false;
     canvasInstance.defaultCursor = 'default';
+    canvasInstance.skipTargetFind = false;
 
     const objects = canvas.getObjects();
     objects.forEach((obj) => {
@@ -49,12 +50,14 @@ export function useToolEngine({ canvas, tool, brushColor, brushSize, brushType, 
       canvas.selection = true;
     } else if (tool === 'draw') {
       canvasInstance.isDrawingMode = true;
+      canvasInstance.skipTargetFind = true;
       canvasInstance.discardActiveObject();
       setQuickMenu(null);
     } else if (tool === 'eraser') {
       const active = canvasInstance.getActiveObject();
       if (active && eraserTargetRef) eraserTargetRef.current = active;
       canvasInstance.isDrawingMode = true;
+      canvasInstance.skipTargetFind = true;
       setQuickMenu(null);
     } else if (tool === 'wand' || tool === 'bucket' || tool === 'track-line') {
       canvas.defaultCursor = 'crosshair';

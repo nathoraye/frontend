@@ -58,6 +58,7 @@ export function groupTracedObjects(
     obj.set({
       stroke: style?.stroke ?? '',
       strokeWidth: style?.strokeWidth ?? 0,
+      fillRule: 'evenodd',
       objectCaching: true,
       ...(style?.fill != null ? { fill: style.fill as string } : {}),
     });

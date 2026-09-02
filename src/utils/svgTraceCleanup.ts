@@ -1,3 +1,5 @@
+import { bboxOverlapArea, mergeSameColorDs, pathBBox, type BBox } from './pathContours.ts';
+
 function roundPathD(d: string): string {
   return d.replace(/-?\d+\.\d+/g, (token) => {
     const r = Math.round(Number(token) * 10) / 10;
@@ -36,13 +38,32 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 
+function lumaOf(rgb: { r: number; g: number; b: number }): number {
+  return rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114;
+}
+
+function chromaOf(rgb: { r: number; g: number; b: number }): number {
+  return Math.max(rgb.r, rgb.g, rgb.b) - Math.min(rgb.r, rgb.g, rgb.b);
+}
+
 function isPaperColor(fill: string): boolean {
   const rgb = hexToRgb(fill);
   if (!rgb) return /^(?:#fff(?:fff)?|white)$/i.test(fill);
-  const luma = rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114;
-  const chroma = Math.max(rgb.r, rgb.g, rgb.b) - Math.min(rgb.r, rgb.g, rgb.b);
   // Quantized paper / AA hole plugs land around #F0–#F3, not only #FFF.
-  return luma > 230 && chroma < 20;
+  return lumaOf(rgb) > 230 && chromaOf(rgb) < 20;
+}
+
+/** Mid-grey AA fringe (low chroma, neither paper nor ink). */
+function isGreyFringeFill(fill: string): boolean {
+  const rgb = hexToRgb(fill);
+  if (!rgb) return false;
+  const y = lumaOf(rgb);
+  return chromaOf(rgb) < 22 && y > 48 && y < 210;
+}
+
+function fillLuma(fill: string): number {
+  const rgb = hexToRgb(fill);
+  return rgb ? lumaOf(rgb) : 255;
 }
 
 /**
@@ -92,15 +113,17 @@ function readSvgSize(svg: string, fallbackW: number, fallbackH: number): { width
 }
 
 /**
- * Drop full-frame paper so counters (O/S/0) stay holes. Keep each VTracer
- * path as its own evenodd element — concatenating same-colour `d` strings
- * evenodd-punches overlapping AA rings and turns leading-`L` paths into
- * seams. Do not flatten fills to black, and do not strip small drips.
+ * Drop full-frame paper so counters (O/S/0) stay holes.
+ * Drop mid-grey AA fringe paths that overlap a darker fill — those stacked
+ * greys are the jagged "shards" of under-colour, not missing fill-rule.
+ * Union overlapping same-colour contours; concatenate disjoint ones so
+ * evenodd does not punch AA rings. Keep fill-rule=evenodd per path.
  */
 export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
   const size = readSvgSize(svg, width, height);
   const canvasArea = Math.max(1, size.width * size.height);
-  const paths: string[] = [];
+  type Kept = { fill: string; d: string; bbox: BBox };
+  const kept: Kept[] = [];
 
   const re = /<path\b([^>]*)\/?>/gi;
   let match: RegExpExecArray | null;
@@ -115,7 +138,30 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
     if (area < 1) continue;
     if (isPaperColor(fill)) continue;
     if (area / canvasArea > 0.98) continue;
-    paths.push(`<path fill="${fill}" fill-rule="evenodd" d="${normalized}"/>`);
+    const bbox = pathBBox(normalized);
+    if (!bbox) continue;
+    kept.push({ fill, d: normalized, bbox });
+  }
+
+  const darker = kept.filter((p) => !isGreyFringeFill(p.fill));
+  const afterGrey = kept.filter((p) => {
+    if (!isGreyFringeFill(p.fill)) return true;
+    const y = fillLuma(p.fill);
+    return !darker.some((ink) => fillLuma(ink.fill) < y - 8 && bboxOverlapArea(p.bbox, ink.bbox) > 4);
+  });
+
+  const byColor = new Map<string, string[]>();
+  for (const p of afterGrey) {
+    const list = byColor.get(p.fill) ?? [];
+    list.push(p.d);
+    byColor.set(p.fill, list);
+  }
+
+  const paths: string[] = [];
+  for (const [fill, ds] of byColor) {
+    const united = mergeSameColorDs(ds);
+    if (!united) continue;
+    paths.push(`<path fill="${fill}" fill-rule="evenodd" d="${united}"/>`);
   }
 
   const w = Math.round(size.width * 10) / 10;

@@ -35,15 +35,48 @@ test('cleanup keeps small drips instead of treating them as speckle', () => {
   assert.match(out, /M 38 68/);
 });
 
-test('cleanup does not evenodd-weld separate blobs of the same colour', () => {
+test('cleanup concatenates disjoint same-colour blobs instead of evenodd-punching them', () => {
   const svg = `<svg width="40" height="40">
     <path fill="#00AA00" d="M 1 1 L 8 1 L 8 8 L 1 8 Z"/>
     <path fill="#00AA00" d="M 20 20 L 28 20 L 28 28 L 20 28 Z"/>
   </svg>`;
   const out = cleanupTracedSvg(svg, 40, 40);
-  assert.equal((out.match(/<path /g) || []).length, 2);
+  assert.equal((out.match(/<path /g) || []).length, 1);
   assert.match(out, /fill="#00AA00"/);
-  assert.doesNotMatch(out, /Z M 20 20/);
+  assert.match(out, /M 1 1/);
+  assert.match(out, /M 20 20/);
+});
+
+test('cleanup unions overlapping same-colour paths so evenodd cannot punch the overlap', () => {
+  const svg = `<svg width="40" height="40">
+    <path fill="#141414" d="M 0 0 L 20 0 L 20 20 L 0 20 Z"/>
+    <path fill="#141414" d="M 10 10 L 30 10 L 30 30 L 10 30 Z"/>
+  </svg>`;
+  const out = cleanupTracedSvg(svg, 40, 40);
+  assert.equal((out.match(/<path /g) || []).length, 1);
+  const d = /d="([^"]+)"/.exec(out)?.[1] || '';
+  const subpaths = d.split(/M/i).filter(Boolean).length;
+  assert.equal(subpaths, 1, 'overlap must merge to one silhouette, not an evenodd hole');
+});
+
+test('cleanup drops mid-grey AA fringes that overlap darker ink', () => {
+  const svg = `<svg width="60" height="60">
+    <path fill="#787878" d="M 8 8 L 52 8 L 52 52 L 8 52 Z"/>
+    <path fill="#141414" d="M 10 10 L 50 10 L 50 50 L 10 50 Z"/>
+  </svg>`;
+  const out = cleanupTracedSvg(svg, 60, 60);
+  assert.doesNotMatch(out, /fill="#787878"/);
+  assert.match(out, /fill="#141414"/);
+});
+
+test('cleanup keeps isolated grey that does not sit on darker ink', () => {
+  const svg = `<svg width="60" height="60">
+    <path fill="#787878" d="M 1 1 L 8 1 L 8 8 L 1 8 Z"/>
+    <path fill="#141414" d="M 40 40 L 55 40 L 55 55 L 40 55 Z"/>
+  </svg>`;
+  const out = cleanupTracedSvg(svg, 60, 60);
+  assert.match(out, /fill="#787878"/);
+  assert.match(out, /fill="#141414"/);
 });
 
 test('cleanup rewrites a leading Lineto to Move so the path is not drawn from the origin', () => {
