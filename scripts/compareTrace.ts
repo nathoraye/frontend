@@ -92,16 +92,22 @@ function stats(svg: string) {
   return { bytes: Buffer.byteLength(svg), paths, q, c, l, longDecimals };
 }
 
+function dropPaperFills(svg: string): string {
+  return svg.replace(/<path\b[^>]*fill="rgb\(\s*255\s*,\s*255\s*,\s*255\s*\)"[^>]*\/?>/gi, '');
+}
+
 const sample = noisyLogo(180);
 const before = legacyTrace(sample);
 const after = improvedTrace(sample);
 const beforeStats = stats(before);
 const afterStats = stats(after);
+const beforeDisplay = dropPaperFills(before);
 
 const outDir = fs.existsSync('/opt/cursor/artifacts') ? '/opt/cursor/artifacts' : path.join(process.cwd(), 'tmp-trace-compare');
 fs.mkdirSync(outDir, { recursive: true });
-fs.writeFileSync(path.join(outDir, 'trace_quality_before.svg'), before);
-fs.writeFileSync(path.join(outDir, 'trace_quality_after.svg'), after);
+fs.writeFileSync(path.join(outDir, 'noisy_logo_trace_before.svg'), before);
+fs.writeFileSync(path.join(outDir, 'noisy_logo_trace_after.svg'), after);
+fs.writeFileSync(path.join(outDir, 'noisy_logo_trace_before_ink.svg'), beforeDisplay);
 
 const html = `<!doctype html>
 <html lang="en">
@@ -117,11 +123,11 @@ const html = `<!doctype html>
   td, th { border:1px solid #333; padding:6px 10px; text-align:left; }
 </style>
 <h1>West Vinyl Studio — noisy logo trace</h1>
-<p>Left: previous ImageTracer settings (pathomit 1, ltres 0.2, 1px stroke). Right: preprocess + smooth Béziers + SVG cleanup.</p>
+<p>Left: previous ImageTracer settings (pathomit 1, ltres 0.2, 1px stroke; white paper fills hidden so the speckle is visible). Right: preprocess + smooth Béziers + SVG cleanup.</p>
 <div class="grid">
   <figure>
     <figcaption>Before (${beforeStats.bytes} bytes, ${beforeStats.paths} paths, ${beforeStats.l} L / ${beforeStats.q} Q)</figcaption>
-    ${before}
+    ${beforeDisplay}
   </figure>
   <figure>
     <figcaption>After (${afterStats.bytes} bytes, ${afterStats.paths} paths, ${afterStats.l} L / ${afterStats.c} C)</figcaption>
@@ -138,7 +144,7 @@ const html = `<!doctype html>
   <tr><td>Coords with ≥3 decimals</td><td>${beforeStats.longDecimals}</td><td>${afterStats.longDecimals}</td></tr>
 </table>
 </html>`;
-fs.writeFileSync(path.join(outDir, 'trace_quality_compare.html'), html);
+fs.writeFileSync(path.join(outDir, 'noisy_logo_trace_compare.html'), html);
 
 console.log(JSON.stringify({ outDir, before: beforeStats, after: afterStats }, null, 2));
 if (afterStats.longDecimals > 0) {
