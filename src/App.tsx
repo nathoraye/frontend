@@ -24,6 +24,9 @@ import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
 type AppTool = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
 type ViewMode = 'sticker' | 'product';
 
+const LIGHT_CANVAS_BG = '#ffffff';
+const DARK_CANVAS_BG = '#0f111a';
+
 export default function App() {
   const { canvasRef, containerRef, canvas } = useCanvasEngine();
   useAlignmentEngine(canvas);
@@ -69,6 +72,7 @@ export default function App() {
   
   const [activeOrderTab, setActiveOrderTab] = useState<'vinyl' | 'apparel' | null>(null);
 
+  const [isDarkCanvas, setIsDarkCanvas] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('sticker');
   const [selectedProduct, setSelectedProduct] = useState<ProductId>('hoodie');
   const [productColor, setProductColor] = useState<string>(PRODUCT_CATALOG.hoodie.colorOptions[0]);
@@ -319,6 +323,25 @@ export default function App() {
                 <button onClick={() => handleRedo(canvas)} className="p-1.5 rounded-md transition-colors hover:bg-slate-700/50 text-slate-300" title="Redo (Ctrl+Y)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
                 <div className="h-4 w-px bg-slate-800 mx-1"></div>
                 <button onClick={() => {if(canvas){ canvas.clear(); saveHistorySnapshot(canvas, true);}}} className="p-1.5 rounded-md transition-colors hover:bg-red-500/10 hover:text-red-500 text-slate-400" title="Clear Mat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+                <div className="h-4 w-px bg-slate-800 mx-1"></div>
+                <button
+                  type="button"
+                  onClick={() => setIsDarkCanvas((v) => !v)}
+                  title={isDarkCanvas ? 'Switch to light canvas' : 'Switch to dark canvas'}
+                  aria-label="Toggle light or dark canvas"
+                  aria-pressed={isDarkCanvas}
+                  className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full transition-colors ${isDarkCanvas ? 'bg-slate-700' : 'bg-slate-300'}`}
+                >
+                  <span
+                    className={`absolute inset-y-0.5 left-0.5 flex h-6 w-6 items-center justify-center rounded-full shadow transition-transform ${isDarkCanvas ? 'translate-x-7 bg-[#0f111a] text-slate-200' : 'translate-x-0 bg-white text-slate-800'}`}
+                  >
+                    {isDarkCanvas ? (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                    ) : (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    )}
+                  </span>
+                </button>
               </div>
             </div>
 
@@ -354,7 +377,11 @@ export default function App() {
             {showLeftPanel && (
               <LeftDock tool={tool} setTool={setTool as any} addText={addText} addShape={addShape} fileInputRef={fileInputRef} handleImageUpload={handleInterceptUpload} borderCol="border-slate-800" bgPanel="bg-[#181a25]" setShowLeftPanel={setShowLeftPanel} />
             )}
-            <main className="flex-1 relative min-w-0 touch-manipulation" ref={containerRef}>
+            <main
+              className="flex-1 relative min-w-0 touch-manipulation"
+              ref={containerRef}
+              style={{ backgroundColor: viewMode === 'sticker' ? (isDarkCanvas ? DARK_CANVAS_BG : LIGHT_CANVAS_BG) : undefined }}
+            >
                 <canvas ref={canvasRef} style={viewMode === 'product' ? { visibility: 'hidden', position: 'absolute' } : undefined} />
 
                 {viewMode === 'sticker' && tool === 'wand' && (
