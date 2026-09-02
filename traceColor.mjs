@@ -31,7 +31,7 @@ export function normalizeColorTraceParams(params = {}) {
 
 /**
  * Graffiti/stencil defaults: colour clustering, cutout mosaic (holes are
- * extra subpaths, not a stacked white disc), polygon unless curve-fit is high.
+ * extra subpaths, not a stacked white disc). Curve Fit 0 = polygon; 1–10 = spline.
  */
 export function buildVtracerOptions(params = {}) {
   const p = normalizeColorTraceParams(params);
@@ -39,13 +39,16 @@ export function buildVtracerOptions(params = {}) {
   return {
     clustering: 'color-cluster',
     hierarchical: 'cutout',
-    mode: p.curveFit >= 4 ? 'spline' : 'polygon',
+    // Polygon ignores cornerThreshold / simplify / lengthThreshold. Any
+    // Curve Fit above 0 must use spline so those sliders actually change
+    // the trace. 0 stays polygon for hard stencil edges.
+    mode: p.curveFit <= 0 ? 'polygon' : 'spline',
     maxColors: p.maxColors,
     cornerThreshold: p.cornerThreshold,
     filterSpeckle: p.filterSpeckle,
-    colorPrecision: 8,
+    colorPrecision: 6,
     layerDifference: 16,
-    lengthThreshold: 3.2 + t * 5,
+    lengthThreshold: Math.max(3.5, 3.2 + t * 5),
     spliceThreshold: 45,
     simplify: 0.35 + t * 2.2,
     pathPrecision: 1,

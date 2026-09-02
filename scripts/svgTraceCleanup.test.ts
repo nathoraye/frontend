@@ -35,12 +35,37 @@ test('cleanup keeps small drips instead of treating them as speckle', () => {
   assert.match(out, /M 38 68/);
 });
 
-test('cleanup groups the same colour into one path', () => {
+test('cleanup does not evenodd-weld separate blobs of the same colour', () => {
   const svg = `<svg width="40" height="40">
     <path fill="#00AA00" d="M 1 1 L 8 1 L 8 8 L 1 8 Z"/>
     <path fill="#00AA00" d="M 20 20 L 28 20 L 28 28 L 20 28 Z"/>
   </svg>`;
   const out = cleanupTracedSvg(svg, 40, 40);
-  assert.equal((out.match(/<path /g) || []).length, 1);
+  assert.equal((out.match(/<path /g) || []).length, 2);
   assert.match(out, /fill="#00AA00"/);
+  assert.doesNotMatch(out, /Z M 20 20/);
+});
+
+test('cleanup rewrites a leading Lineto to Move so the path is not drawn from the origin', () => {
+  const svg = `<svg width="80" height="80">
+    <path fill="#141414" d="L25,9l-3,2l4-1l13,0Z"/>
+    <path fill="#141414" d="M46,12 L50,12 L50,20 L46,20 Z L10,45l2,1l-1-4Z"/>
+  </svg>`;
+  const out = cleanupTracedSvg(svg, 80, 80);
+  assert.match(out, /d="M25,9/);
+  assert.doesNotMatch(out, /d="L/);
+  assert.match(out, /Z M10,45/);
+  assert.doesNotMatch(out, /Z L10,45/);
+});
+
+test('cleanup drops near-white quantized paper that would plug counters', () => {
+  const holePlug = 'M 20 20 L 40 20 L 40 40 L 20 40 Z';
+  const ring = 'M 10 10 L 50 10 L 50 50 L 10 50 Z M 20 20 L 20 40 L 40 40 L 40 20 Z';
+  const svg = `<svg width="60" height="60">
+    <path fill="#F1F1F1" d="${holePlug}"/>
+    <path fill="#141414" d="${ring}"/>
+  </svg>`;
+  const out = cleanupTracedSvg(svg, 60, 60);
+  assert.doesNotMatch(out, /fill="#F1F1F1"/);
+  assert.match(out, /fill="#141414"/);
 });

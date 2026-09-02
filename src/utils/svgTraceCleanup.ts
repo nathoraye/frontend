@@ -41,7 +41,24 @@ function isPaperColor(fill: string): boolean {
   if (!rgb) return /^(?:#fff(?:fff)?|white)$/i.test(fill);
   const luma = rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114;
   const chroma = Math.max(rgb.r, rgb.g, rgb.b) - Math.min(rgb.r, rgb.g, rgb.b);
-  return luma > 242 && chroma < 18;
+  // Quantized paper / AA hole plugs land around #F0–#F3, not only #FFF.
+  return luma > 230 && chroma < 20;
+}
+
+/**
+ * VTracer often emits a path whose first command is `L` (absolute lineto)
+ * with no current point. SVG then strokes from (0,0). After `Z`, a following
+ * `L` is a new subpath and must move, not draw a seam to the previous close.
+ */
+export function normalizeTracedPathD(d: string): string {
+  let s = roundPathD(d).trim();
+  if (!s) return s;
+  if (!/^[Mm]/.test(s)) {
+    s = s.replace(/^[LlCcQqSsTt]/, (cmd) => (cmd === cmd.toUpperCase() ? 'M' : 'm'));
+  }
+  return s.replace(/([Zz])\s*([Ll])/g, (_full, close: string, cmd: string) =>
+    `${close} ${cmd === 'L' ? 'M' : 'm'}`,
+  );
 }
 
 function pathBBoxArea(d: string): number {
@@ -75,14 +92,15 @@ function readSvgSize(svg: string, fallbackW: number, fallbackH: number): { width
 }
 
 /**
- * Keep one even-odd path per colour. Drop full-frame paper so counters (O/S/0)
- * stay holes instead of getting filled by the letter colour. Do not flatten
- * fills to black, and do not strip small drips.
+ * Drop full-frame paper so counters (O/S/0) stay holes. Keep each VTracer
+ * path as its own evenodd element — concatenating same-colour `d` strings
+ * evenodd-punches overlapping AA rings and turns leading-`L` paths into
+ * seams. Do not flatten fills to black, and do not strip small drips.
  */
 export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
   const size = readSvgSize(svg, width, height);
   const canvasArea = Math.max(1, size.width * size.height);
-  const byFill = new Map<string, string[]>();
+  const paths: string[] = [];
 
   const re = /<path\b([^>]*)\/?>/gi;
   let match: RegExpExecArray | null;
@@ -91,25 +109,16 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
     const fill = parseFill(attrs);
     const d = parseAttr(attrs, 'd');
     if (!fill || !d) continue;
-    const rounded = roundPathD(d);
-    if (!/[MLCQ]/i.test(rounded)) continue;
-    const area = pathBBoxArea(rounded);
+    const normalized = normalizeTracedPathD(d);
+    if (!/[MLCQ]/i.test(normalized)) continue;
+    const area = pathBBoxArea(normalized);
     if (area < 1) continue;
-    const paper = isPaperColor(fill);
-    if (paper) continue;
+    if (isPaperColor(fill)) continue;
     if (area / canvasArea > 0.98) continue;
-    const list = byFill.get(fill) ?? [];
-    list.push(rounded);
-    byFill.set(fill, list);
+    paths.push(`<path fill="${fill}" fill-rule="evenodd" d="${normalized}"/>`);
   }
 
   const w = Math.round(size.width * 10) / 10;
   const h = Math.round(size.height * 10) / 10;
-  const paths: string[] = [];
-  for (const [fill, ds] of byFill) {
-    const d = ds.join(' ');
-    paths.push(`<path fill="${fill}" fill-rule="evenodd" d="${d}"/>`);
-  }
-
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${paths.join('')}</svg>`;
 }
