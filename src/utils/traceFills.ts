@@ -40,7 +40,7 @@ export function isFullFrameShape(obj: SizedShape, svgWidth: number, svgHeight: n
   if (!svgWidth || !svgHeight) return false;
   const width = Math.abs((obj.width || 0) * (obj.scaleX || 1));
   const height = Math.abs((obj.height || 0) * (obj.scaleY || 1));
-  const covers = width >= svgWidth * 0.9 && height >= svgHeight * 0.9;
+  const covers = width >= svgWidth * 0.82 && height >= svgHeight * 0.82;
   if (!covers) return false;
   return obj.type === 'rect' || obj.type === 'path' || obj.type === 'polygon';
 }

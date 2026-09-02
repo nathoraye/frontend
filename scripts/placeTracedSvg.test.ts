@@ -18,5 +18,6 @@ test('black fill variants are detected', () => {
 
 test('full-frame rects are treated as tracer background', () => {
   assert.equal(isFullFrameShape({ type: 'rect', width: 1024, height: 1024, scaleX: 1, scaleY: 1 }, 1024, 1024), true);
+  assert.equal(isFullFrameShape({ type: 'path', width: 860, height: 860, scaleX: 1, scaleY: 1 }, 1024, 1024), true);
   assert.equal(isFullFrameShape({ type: 'path', width: 80, height: 90, scaleX: 1, scaleY: 1 }, 1024, 1024), false);
 });

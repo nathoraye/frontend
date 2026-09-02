@@ -1,5 +1,4 @@
 import * as fabric from 'fabric';
-import { TRACE_UPSCALE_MULT } from './constants';
 import { isBackgroundFill, isBlackFill, isFullFrameShape } from './traceFills';
 
 export { isBackgroundFill, isBlackFill, isFullFrameShape, normalizeFill } from './traceFills';
@@ -80,19 +79,22 @@ export function groupTracedObjects(
   return group;
 }
 
+/** Match the traced group to the source image's on-canvas size and pose. */
 export function placeOverSource(
   placed: fabric.Object,
   source: fabric.Object,
-  scaleDivisor = TRACE_UPSCALE_MULT,
 ): void {
   const center = source.getCenterPoint();
-  const extra = 1 / (scaleDivisor || 1);
+  const sw = Math.max(1, source.getScaledWidth());
+  const sh = Math.max(1, source.getScaledHeight());
+  const pw = Math.max(1, (placed.width || 1) * (placed.scaleX || 1));
+  const ph = Math.max(1, (placed.height || 1) * (placed.scaleY || 1));
   placed.set({
     ...CONTROL_STYLE,
     left: center.x,
     top: center.y,
-    scaleX: (source.scaleX || 1) * extra,
-    scaleY: (source.scaleY || 1) * extra,
+    scaleX: sw / pw,
+    scaleY: sh / ph,
     angle: source.angle || 0,
   });
   placed.setCoords();
@@ -104,6 +106,7 @@ export async function tracedSvgToObject(
     keepOnlyBlack?: boolean;
     fill?: string;
     source?: fabric.Object;
+    /** @deprecated Traces are fitted to the source's on-canvas size. */
     scaleDivisor?: number;
   },
 ): Promise<fabric.Object | null> {
@@ -111,7 +114,7 @@ export async function tracedSvgToObject(
   const grouped = groupTracedObjects(objects, options?.fill != null ? { fill: options.fill } : undefined);
   if (!grouped) return null;
   if (options?.source) {
-    placeOverSource(grouped, options.source, options.scaleDivisor ?? TRACE_UPSCALE_MULT);
+    placeOverSource(grouped, options.source);
   }
   return grouped;
 }

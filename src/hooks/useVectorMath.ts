@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as fabric from 'fabric';
 import { useCallback } from 'react';
-import { TRACE_UPSCALE_MULT } from '../utils/constants';
 import { tracedSvgToObject } from '../utils/placeTracedSvg';
+import { rasterToImageData, yieldToPaint } from '../utils/tracePrep';
 
 interface VectorMathProps {
   canvas: fabric.Canvas | null;
@@ -29,18 +29,14 @@ export function useVectorMath({
 
     isProcessingRef.current = true;
     setIsTracing(true);
+    await yieldToPaint();
 
     try {
       const img = activeObj as fabric.Image;
-      const imgCanvas = (img as any).toCanvasElement();
-      const ctx = imgCanvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx) throw new Error('Could not read image data.');
-
-      const imgData = ctx.getImageData(0, 0, imgCanvas.width, imgCanvas.height);
+      const imgData = rasterToImageData(img.getElement());
       const svgString = await traceImage(imgData);
       const traced = await tracedSvgToObject(svgString, {
         source: img,
-        scaleDivisor: TRACE_UPSCALE_MULT,
         fill: '#FF1493',
       });
       if (!traced) throw new Error('No solid shapes found to trace after background removal.');

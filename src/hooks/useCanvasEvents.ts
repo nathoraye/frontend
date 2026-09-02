@@ -2,9 +2,9 @@
 /* eslint-disable react-hooks/immutability */
 import * as fabric from 'fabric';
 import { useEffect, useRef } from 'react';
-import { TRACE_UPSCALE_MULT } from '../utils/constants';
 import { tracedSvgToObject } from '../utils/placeTracedSvg';
 import { applyEraserStroke } from '../utils/eraseStroke';
+import { yieldToPaint } from '../utils/tracePrep';
 
 interface CanvasEventProps {
   canvas: fabric.Canvas | null;
@@ -26,33 +26,6 @@ interface CanvasEventProps {
   quickMenuRef?: React.RefObject<HTMLDivElement | null>;
   eraserTargetRef?: React.MutableRefObject<fabric.Object | null>;
 }
-
-// --- VECTOR SMOOTHING ENGINE (B&W FORCE) ---
-// Forces the image into strict Black (Foreground) and White (Background)
-// so the SVG Tracer doesn't get confused by alpha transparency.
-const applyVectorSmoothing = (sourceCanvas: HTMLCanvasElement): ImageData | null => {
-    const smoothCanvas = document.createElement('canvas');
-    smoothCanvas.width = sourceCanvas.width;
-    smoothCanvas.height = sourceCanvas.height;
-    const smoothCtx = smoothCanvas.getContext('2d', { willReadFrequently: true });
-    if (!smoothCtx) return null;
-
-    smoothCtx.filter = 'blur(1.5px)';
-    smoothCtx.drawImage(sourceCanvas, 0, 0);
-
-    const sImgData = smoothCtx.getImageData(0, 0, smoothCanvas.width, smoothCanvas.height);
-    const sData = sImgData.data;
-    for (let i = 0; i < sData.length; i += 4) {
-        if (sData[i+3] > 128) {
-            // Target becomes BLACK
-            sData[i] = 0; sData[i+1] = 0; sData[i+2] = 0; sData[i+3] = 255; 
-        } else {
-            // Background becomes WHITE
-            sData[i] = 255; sData[i+1] = 255; sData[i+2] = 255; sData[i+3] = 255; 
-        }
-    }
-    return sImgData;
-};
 
 export function useCanvasEvents(props: CanvasEventProps) {
   const p = useRef(props);
@@ -277,12 +250,12 @@ export function useCanvasEvents(props: CanvasEventProps) {
                         tempCtx.putImageData(imgData, 0, 0);
 
                         p.current.setIsTracing(true);
+                        await yieldToPaint();
                         const svgString = await p.current.traceImage(imgData);
                         const traced = await tracedSvgToObject(svgString, {
                             keepOnlyBlack: true,
                             source: target,
                             fill: clickedHex,
-                            scaleDivisor: TRACE_UPSCALE_MULT,
                         });
                         if (traced) {
                             const paint = (obj: any) => {
@@ -466,9 +439,7 @@ export function useCanvasEvents(props: CanvasEventProps) {
                    if (!hasFill) throw new Error("No fill area detected");
                    tempCtx.putImageData(imgData, 0, 0);
 
-                   const smoothedImgData = applyVectorSmoothing(tempCanvas) || tempCtx.getImageData(0, 0, 1200, 1200);
-
-                   const svgString = await p.current.traceImage(smoothedImgData);
+                   const svgString = await p.current.traceImage(imgData);
                    const traced = await tracedSvgToObject(svgString, {
                        keepOnlyBlack: true,
                        fill: p.current.brushColor,
@@ -479,8 +450,8 @@ export function useCanvasEvents(props: CanvasEventProps) {
                           originY: 'top',
                           left: 0,
                           top: 0,
-                          scaleX: 1 / TRACE_UPSCALE_MULT,
-                          scaleY: 1 / TRACE_UPSCALE_MULT,
+                          scaleX: 1,
+                          scaleY: 1,
                       });
                       traced.setCoords();
                       canvas.add(traced);
