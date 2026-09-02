@@ -46,7 +46,7 @@ export function buildVtracerOptions(params = {}) {
     maxColors: p.maxColors,
     cornerThreshold: p.cornerThreshold,
     filterSpeckle: p.filterSpeckle,
-    colorPrecision: 6,
+    colorPrecision: 8,
     layerDifference: 16,
     lengthThreshold: Math.max(3.5, 3.2 + t * 5),
     spliceThreshold: 45,
