@@ -58,7 +58,11 @@ export function groupTracedObjects(
     obj.set({
       stroke: style?.stroke ?? '',
       strokeWidth: style?.strokeWidth ?? 0,
-      fillRule: 'evenodd',
+      // 'nonzero' fill rule: every sub-path interior is treated as filled,
+      // giving mathematically correct solid silhouettes for knife-plotter
+      // output.  'evenodd' would punch holes through nested paths and create
+      // stacked transparency artefacts that confuse vinyl-cutting software.
+      fillRule: 'nonzero',
       objectCaching: true,
       ...(style?.fill != null ? { fill: style.fill as string } : {}),
     });
