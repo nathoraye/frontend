@@ -31,7 +31,7 @@ const CANVAS_BG = '#2a2e3c';
 export default function App() {
   const { canvasRef, containerRef, canvas } = useCanvasEngine();
   useAlignmentEngine(canvas);
-  const { traceImage } = useVectorEngine();
+  const { traceImage } = useVectorEngine(canvas);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const matOverlayRef = useRef<HTMLDivElement>(null); 
