@@ -5,7 +5,7 @@ export interface ColorTraceParams {
   maxColors?: number;
   /** Degrees (VTracer). Lower detects more corners; higher rounds them off. */
   cornerThreshold?: number;
-  /** 0–10 spline tightness. 0 hugs pixels; higher smooths. Always spline. */
+  /** 0–10 spline tightness. Low stays tight; high smooths pixel stairs. Always spline. */
   curveFit?: number;
   /** VTracer speckle filter in px². Kept low so drips survive. */
   filterSpeckle?: number;
@@ -16,7 +16,7 @@ export interface ColorTraceParams {
 export const DEFAULT_COLOR_TRACE: Required<Omit<ColorTraceParams, 'palette'>> = {
   maxColors: 4,
   cornerThreshold: 90,
-  curveFit: 2,
+  curveFit: 4,
   filterSpeckle: 0,
 };
 

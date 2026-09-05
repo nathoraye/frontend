@@ -149,11 +149,16 @@ async function traceImageDataColor(
       palette,
     }),
   });
-  const json = await res.json().catch(() => ({})) as { svg?: string; error?: string };
+  const json = await res.json().catch(() => ({})) as {
+    svg?: string;
+    error?: string;
+    width?: number;
+    height?: number;
+  };
   if (!res.ok || !json.svg) {
     throw new Error(json.error ?? `VTracer WASM trace failed (HTTP ${res.status})`);
   }
-  return cleanupTracedSvg(json.svg, pixelData.width, pixelData.height);
+  return cleanupTracedSvg(json.svg, json.width ?? pixelData.width, json.height ?? pixelData.height);
 }
 
 /**

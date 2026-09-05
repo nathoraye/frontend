@@ -98,7 +98,7 @@ export function TracePreviewModal({
           <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Curve fit <span className="font-mono text-[#FF1493]">{curveFit}</span>
             <input type="range" min={0} max={10} value={curveFit} onChange={(e) => setCurveFit(Number(e.target.value))} className="w-full accent-[#FF1493] mt-2" />
-            <span className="block normal-case font-medium tracking-normal mt-1 text-slate-500">0 hugs the pixels; higher smooths splines.</span>
+            <span className="block normal-case font-medium tracking-normal mt-1 text-slate-500">Low stays tight; high smooths the cut so outlines are not pixel stairs.</span>
           </label>
           <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Drop specks <span className="font-mono text-[#FF1493]">{filterSpeckle}</span>

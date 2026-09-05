@@ -3,7 +3,7 @@
  * Used by `server.mjs` and `api/trace.js`.
  */
 import { createRequire } from 'node:module';
-import { extractInkPalette, normalizePalette } from './tracePalette.mjs';
+import { extractInkPalette, normalizePalette, prepareColorTraceRgba } from './tracePalette.mjs';
 
 const require = createRequire(import.meta.url);
 const vtracer = require('@visioncortex/vtracer');
@@ -11,7 +11,7 @@ const vtracer = require('@visioncortex/vtracer');
 export const DEFAULT_COLOR_TRACE = {
   maxColors: 4,
   cornerThreshold: 90,
-  curveFit: 2,
+  curveFit: 4,
   filterSpeckle: 0,
 };
 
@@ -35,7 +35,8 @@ export function normalizeColorTraceParams(params = {}) {
 /**
  * Colour-preview defaults: always spline. Polygon mode at Curve Fit 0
  * stair-steps lettering into blobs and ignores the sharpness sliders.
- * Low curveFit keeps a tight simplify/length so stencil edges stay hard.
+ * The simplify floor stays high enough that outlines follow the letter,
+ * not the source pixel grid.
  */
 export function buildVtracerOptions(params = {}) {
   const p = normalizeColorTraceParams(params);
@@ -49,10 +50,10 @@ export function buildVtracerOptions(params = {}) {
     cornerThreshold: p.cornerThreshold,
     filterSpeckle: p.filterSpeckle,
     colorPrecision: 8,
-    layerDifference: 8,
-    lengthThreshold: 1.2 + t * 6.3,
+    layerDifference: 16,
+    lengthThreshold: 3.2 + t * 8,
     spliceThreshold: 45,
-    simplify: 0.15 + t * 2.4,
+    simplify: 1.8 + t * 3.2,
     pathPrecision: 2,
     optimize: 1,
   };
@@ -76,7 +77,17 @@ export function traceRgba(rgba, width, height, params = {}) {
   if (pixels.length < w * h * 4) {
     throw new Error('RGBA buffer is shorter than width × height × 4.');
   }
-  return vtracer.convertPixels(pixels, w, h, buildVtracerOptions(resolveTraceParams(pixels, w, h, params)));
+  const prepared = prepareColorTraceRgba(pixels, w, h, resolveTraceParams(pixels, w, h, params));
+  return vtracer.convertPixels(
+    prepared.rgba,
+    prepared.width,
+    prepared.height,
+    buildVtracerOptions({
+      ...normalizeColorTraceParams(params),
+      palette: prepared.palette,
+      maxColors: prepared.palette.length,
+    }),
+  );
 }
 
 export function traceImageBuffer(buffer, params = {}) {

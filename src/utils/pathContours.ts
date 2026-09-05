@@ -181,16 +181,85 @@ export function flattenPathD(d: string): Pt[][] {
   return contours;
 }
 
+function pointSegDist(p: Pt, a: Pt, b: Pt): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+function rdpOpen(pts: Pt[], eps: number): Pt[] {
+  if (pts.length <= 2) return pts;
+  let maxD = 0;
+  let idx = 0;
+  const a = pts[0];
+  const b = pts[pts.length - 1];
+  for (let i = 1; i < pts.length - 1; i++) {
+    const d = pointSegDist(pts[i], a, b);
+    if (d > maxD) {
+      maxD = d;
+      idx = i;
+    }
+  }
+  if (maxD > eps) {
+    const left = rdpOpen(pts.slice(0, idx + 1), eps);
+    const right = rdpOpen(pts.slice(idx), eps);
+    return left.slice(0, -1).concat(right);
+  }
+  return [a, b];
+}
+
+/** Drop pixel-stair vertices; keep real corners (large deviation from the chord). */
+export function simplifyClosedContour(pts: Pt[], epsilon = 1.6): Pt[] {
+  let ring = pts;
+  if (
+    ring.length >= 2
+    && ring[0].x === ring[ring.length - 1].x
+    && ring[0].y === ring[ring.length - 1].y
+  ) {
+    ring = ring.slice(0, -1);
+  }
+  if (ring.length <= 3) return ring;
+  const opened = rdpOpen(ring.concat([ring[0]]), epsilon);
+  if (
+    opened.length >= 2
+    && opened[0].x === opened[opened.length - 1].x
+    && opened[0].y === opened[opened.length - 1].y
+  ) {
+    return opened.slice(0, -1);
+  }
+  return opened;
+}
+
+function contourToD(pts: Pt[]): string {
+  const ring = simplifyClosedContour(pts);
+  if (ring.length < 3) return '';
+  if (ring.length >= 8) {
+    let d = `M${round(ring[0].x)},${round(ring[0].y)}`;
+    const n = ring.length;
+    for (let i = 0; i < n; i++) {
+      const p0 = ring[(i - 1 + n) % n];
+      const p1 = ring[i];
+      const p2 = ring[(i + 1) % n];
+      const p3 = ring[(i + 2) % n];
+      const c1x = p1.x + (p2.x - p0.x) / 6;
+      const c1y = p1.y + (p2.y - p0.y) / 6;
+      const c2x = p2.x - (p3.x - p1.x) / 6;
+      const c2y = p2.y - (p3.y - p1.y) / 6;
+      d += `C${round(c1x)},${round(c1y)} ${round(c2x)},${round(c2y)} ${round(p2.x)},${round(p2.y)}`;
+    }
+    return `${d}Z`;
+  }
+  let d = `M${round(ring[0].x)},${round(ring[0].y)}`;
+  for (let i = 1; i < ring.length; i++) d += `L${round(ring[i].x)},${round(ring[i].y)}`;
+  return `${d}Z`;
+}
+
 function contoursToD(contours: Pt[][]): string {
-  return contours
-    .map((pts) => {
-      if (pts.length < 3) return '';
-      let d = `M${round(pts[0].x)},${round(pts[0].y)}`;
-      for (let i = 1; i < pts.length; i++) d += `L${round(pts[i].x)},${round(pts[i].y)}`;
-      return `${d}Z`;
-    })
-    .filter(Boolean)
-    .join('');
+  return contours.map(contourToD).filter(Boolean).join('');
 }
 
 function round(n: number): string {
@@ -315,7 +384,7 @@ export function mergeSameColorDs(ds: string[]): string {
       }
     }
   }
-  if (!overlap) return cleaned.join(' ');
+  if (!overlap) return contoursToD(cleaned.flatMap((d) => flattenPathD(d)));
   return unionPathDs(cleaned);
 }
 

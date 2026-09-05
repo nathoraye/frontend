@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { cleanupTracedSvg } from '../src/utils/svgTraceCleanup.ts';
-import { extractInkPalette } from '../src/utils/tracePalette.ts';
+import {
+  extractInkPalette,
+  fitColorTraceSize,
+  mergeInkPalette,
+  prepareColorTraceRgba,
+} from '../src/utils/tracePalette.ts';
 import { DEFAULT_COLOR_TRACE, normalizeColorTraceParams } from '../src/utils/traceParams.ts';
 import { buildVtracerOptions, resolveTraceParams, traceRgba } from '../traceColor.mjs';
 
@@ -23,6 +28,7 @@ function paint(w: number, h: number, fn: (x: number, y: number) => [number, numb
 test('defaults keep colour count, sharp corners, and low speckle', () => {
   assert.equal(DEFAULT_COLOR_TRACE.maxColors, 4);
   assert.equal(DEFAULT_COLOR_TRACE.cornerThreshold, 90);
+  assert.equal(DEFAULT_COLOR_TRACE.curveFit, 4);
   assert.equal(DEFAULT_COLOR_TRACE.filterSpeckle, 0);
   const opts = buildVtracerOptions(DEFAULT_COLOR_TRACE);
   assert.equal(opts.clustering, 'color-cluster');
@@ -31,7 +37,8 @@ test('defaults keep colour count, sharp corners, and low speckle', () => {
   assert.equal(opts.maxColors, 4);
   assert.equal(opts.filterSpeckle, 0);
   assert.equal(opts.cornerThreshold, 90);
-  assert.ok(Number(opts.lengthThreshold) >= 1.2);
+  assert.ok(Number(opts.lengthThreshold) >= 3.2);
+  assert.ok(Number(opts.simplify) >= 1.8);
   assert.equal(opts.mode, 'spline');
 });
 
@@ -42,9 +49,44 @@ test('curve-fit 0 stays spline with a tight fit; higher values loosen simplify',
   assert.equal(tight.mode, 'spline');
   assert.equal(lo.mode, 'spline');
   assert.equal(hi.mode, 'spline');
+  assert.ok(Number(tight.simplify) >= 1.8, 'floor must not hug the pixel grid');
   assert.ok(Number(tight.simplify) < Number(lo.simplify));
   assert.ok(Number(hi.simplify) > Number(lo.simplify));
   assert.ok(Number(hi.lengthThreshold) > Number(lo.lengthThreshold));
+});
+
+test('mergeInkPalette collapses AA reds into one fill', () => {
+  const merged = mergeInkPalette(['#000000', '#fe0000', '#ffffff', '#dc0203', '#d40204', '#cb0305']);
+  assert.ok(merged.some((hex) => hex === '#000000'));
+  assert.equal(merged.filter((hex) => {
+    const n = Number.parseInt(hex.slice(1), 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return r > 160 && g < 40 && b < 40;
+  }).length, 1);
+  const withBlue = mergeInkPalette(['#fe0000', '#1e5ad2', '#000000']);
+  assert.ok(withBlue.some((hex) => hex === '#fe0000' || hex.startsWith('#fe')));
+  assert.ok(withBlue.some((hex) => hex === '#1e5ad2'));
+});
+
+test('prepareColorTrace bilinear-upscales small art instead of nearest-neighbour', () => {
+  const w = 80;
+  const h = 40;
+  const rgba = paint(w, h, (x) => (x < 10 ? [8, 8, 8] : x < 50 ? [220, 10, 12] : [250, 250, 248]));
+  const size = fitColorTraceSize(w, h);
+  assert.ok(size.scale > 1 && size.scale <= 2);
+  const prepared = prepareColorTraceRgba(rgba, w, h, { maxColors: 4 });
+  assert.equal(prepared.width, size.width);
+  assert.equal(prepared.height, size.height);
+  assert.ok(prepared.palette.some((hex) => hex === '#000000'));
+  assert.ok(prepared.palette.some((hex) => {
+    const n = Number.parseInt(hex.slice(1), 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return r > 180 && g < 60 && b < 60;
+  }));
 });
 
 test('forced palette is forwarded and extractInkPalette keeps darkest + chroma inks', () => {
