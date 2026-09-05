@@ -26,6 +26,8 @@ interface CanvasEventProps {
   setTool?: (tool: 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser') => void;
   quickMenuRef?: React.RefObject<HTMLDivElement | null>;
   eraserTargetRef?: React.MutableRefObject<fabric.Object | null>;
+  isNodeEditing?: boolean;
+  onNodeEditToggle?: (obj: fabric.Object) => void;
 }
 
 export function useCanvasEvents(props: CanvasEventProps) {
@@ -499,11 +501,26 @@ export function useCanvasEvents(props: CanvasEventProps) {
       }
     };
 
-    const onMouseDblClick = () => { if (p.current.tool === 'track-line' && isDrawingPolyline.current) finishPolyline(false); };
+    const onMouseDblClick = (opt: any) => {
+      if (p.current.tool === 'track-line' && isDrawingPolyline.current) {
+        finishPolyline(false);
+        return;
+      }
+      const target = opt?.target as fabric.Object | undefined;
+      if (p.current.tool === 'select' && target && p.current.onNodeEditToggle) {
+        const kind = (target.type || '').toLowerCase();
+        if (kind === 'path' || kind === 'polygon' || kind === 'polyline' || kind === 'group') {
+          p.current.onNodeEditToggle(target);
+        }
+      }
+    };
     
     const onMouseUp = () => {
       if (isPanning.current && canvas.viewportTransform) { canvas.setViewportTransform(canvas.viewportTransform); isPanning.current = false; if (p.current.tool === 'select') canvas.selection = true; }
-      if (p.current.tool === 'select') { const obj = canvas.getActiveObject(); if (obj) showMenu(obj); }
+      if (p.current.tool === 'select' && !p.current.isNodeEditing) {
+        const obj = canvas.getActiveObject();
+        if (obj) showMenu(obj);
+      }
     };
 
     const onPathCreated = async (e: any) => { 
