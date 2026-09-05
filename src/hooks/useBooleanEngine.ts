@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback } from 'react';
 import * as fabric from 'fabric';
+import { filterWeldImportedObjects } from '../utils/weldImport';
 
 export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapshot: (c: fabric.Canvas, i?: boolean) => void) {
 
@@ -54,17 +55,27 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
 
         // Strip the background so we don't accidentally weld a giant background square
         const currentBg = canvas.backgroundColor;
+        const currentOverlay = 'overlayColor' in canvas ? (canvas as any).overlayColor : undefined;
         // eslint-disable-next-line no-useless-assignment -- read below only if canvas.toSVG() throws before reassigning
         let fullSvg = '';
 
         try {
-            canvas.backgroundColor = 'transparent';
+            // Empty string is falsy — Fabric then skips the SVG background
+            // <rect width="100%" height="100%">. The string "transparent" is
+            // truthy and re-imports as leftover 100×100 squares at the origin.
+            canvas.backgroundColor = '';
+            if ('overlayColor' in canvas) {
+                (canvas as any).overlayColor = '';
+            }
 
             // 3. Export the absolute baked SVG
             fullSvg = canvas.toSVG();
         } finally {
             // 4. Always restore the canvas visibility and background state
             canvas.backgroundColor = currentBg;
+            if ('overlayColor' in canvas && currentOverlay !== undefined) {
+                (canvas as any).overlayColor = currentOverlay;
+            }
             allObjs.forEach(obj => {
                 obj.set('visible', visibilityMap.get(obj));
             });
@@ -74,13 +85,14 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
         try {
             // 5. Parse the newly baked, 1:1 scale paths
             const { objects, options } = await (fabric as any).loadSVGFromString(fullSvg);
-            
-            // Filter out any stray canvas workspace rects if Fabric injected one
-            const validObjects = objects.filter((o: any) => {
-                const isWorkspaceRect = o.id === 'workspace';
-                const isBgRect = o.type === 'rect' && o.fill === currentBg;
-                return !isWorkspaceRect && !isBgRect;
-            });
+            const frame = {
+                width: Number(options?.width || 0),
+                height: Number(options?.height || 0),
+            };
+            const validObjects = filterWeldImportedObjects(
+                ((objects || []).filter(Boolean) as fabric.Object[]),
+                frame,
+            );
 
             if (!validObjects.length) {
                 throw new Error('Weld produced no vector output.');
@@ -89,8 +101,16 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
             // 6. Force overlapping lines to visually merge
             validObjects.forEach((obj: any) => { if (obj.set) obj.set({ fillRule: 'nonzero' }); });
             
-            // 7. Wrap into a final, clean tight-bound object
-            const result = (fabric as any).util.groupSVGElements(validObjects, options);
+            // 7. Tight-group from the artwork only. Passing the SVG document
+            // size into groupSVGElements stretched the result to the canvas
+            // and made designs look like they jumped.
+            const result = validObjects.length === 1
+                ? validObjects[0]
+                : new fabric.Group(validObjects, {
+                    originX: 'center',
+                    originY: 'center',
+                    subTargetCheck: false,
+                });
 
             // 8. Replace originals only after we have a valid weld result
             actives.forEach(obj => canvas.remove(obj));
