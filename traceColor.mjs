@@ -3,6 +3,7 @@
  * Used by `server.mjs` and `api/trace.js`.
  */
 import { createRequire } from 'node:module';
+import { extractInkPalette, normalizePalette } from './tracePalette.mjs';
 
 const require = createRequire(import.meta.url);
 const vtracer = require('@visioncortex/vtracer');
@@ -11,7 +12,7 @@ export const DEFAULT_COLOR_TRACE = {
   maxColors: 8,
   cornerThreshold: 90,
   curveFit: 2,
-  filterSpeckle: 2,
+  filterSpeckle: 1,
 };
 
 function clampInt(value, min, max, fallback) {
@@ -21,38 +22,50 @@ function clampInt(value, min, max, fallback) {
 }
 
 export function normalizeColorTraceParams(params = {}) {
+  const palette = normalizePalette(params.palette);
   return {
     maxColors: clampInt(params.maxColors, 2, 32, DEFAULT_COLOR_TRACE.maxColors),
     cornerThreshold: clampInt(params.cornerThreshold, 20, 180, DEFAULT_COLOR_TRACE.cornerThreshold),
     curveFit: clampInt(params.curveFit, 0, 10, DEFAULT_COLOR_TRACE.curveFit),
     filterSpeckle: clampInt(params.filterSpeckle, 0, 16, DEFAULT_COLOR_TRACE.filterSpeckle),
+    palette,
   };
 }
 
 /**
- * Graffiti/stencil defaults: colour clustering, cutout mosaic (holes are
- * extra subpaths, not a stacked white disc). Curve Fit 0 = polygon; 1–10 = spline.
+ * Colour-preview defaults: always spline. Polygon mode at Curve Fit 0
+ * stair-steps lettering into blobs and ignores the sharpness sliders.
+ * Low curveFit keeps a tight simplify/length so stencil edges stay hard.
  */
 export function buildVtracerOptions(params = {}) {
   const p = normalizeColorTraceParams(params);
   const t = p.curveFit / 10;
-  return {
+  const palette = p.palette;
+  const opts = {
     clustering: 'color-cluster',
     hierarchical: 'cutout',
-    // Polygon ignores cornerThreshold / simplify / lengthThreshold. Any
-    // Curve Fit above 0 must use spline so those sliders actually change
-    // the trace. 0 stays polygon for hard stencil edges.
-    mode: p.curveFit <= 0 ? 'polygon' : 'spline',
-    maxColors: p.maxColors,
+    mode: 'spline',
+    maxColors: palette?.length ?? p.maxColors,
     cornerThreshold: p.cornerThreshold,
     filterSpeckle: p.filterSpeckle,
     colorPrecision: 8,
-    layerDifference: 16,
-    lengthThreshold: Math.max(3.5, 3.2 + t * 5),
+    layerDifference: 8,
+    lengthThreshold: 1.2 + t * 6.3,
     spliceThreshold: 45,
-    simplify: 0.35 + t * 2.2,
-    pathPrecision: 1,
+    simplify: 0.15 + t * 2.4,
+    pathPrecision: 2,
     optimize: 1,
+  };
+  if (palette) opts.palette = palette;
+  return opts;
+}
+
+export function resolveTraceParams(rgba, width, height, params = {}) {
+  const p = normalizeColorTraceParams(params);
+  if (p.palette) return p;
+  return {
+    ...p,
+    palette: extractInkPalette(rgba, width, height, p.maxColors),
   };
 }
 
@@ -63,7 +76,7 @@ export function traceRgba(rgba, width, height, params = {}) {
   if (pixels.length < w * h * 4) {
     throw new Error('RGBA buffer is shorter than width × height × 4.');
   }
-  return vtracer.convertPixels(pixels, w, h, buildVtracerOptions(params));
+  return vtracer.convertPixels(pixels, w, h, buildVtracerOptions(resolveTraceParams(pixels, w, h, params)));
 }
 
 export function traceImageBuffer(buffer, params = {}) {

@@ -53,6 +53,7 @@ export async function handleTraceRequest(req, res) {
       cornerThreshold: payload.cornerThreshold,
       curveFit: payload.curveFit,
       filterSpeckle: payload.filterSpeckle,
+      palette: payload.palette,
     };
 
     let raw;

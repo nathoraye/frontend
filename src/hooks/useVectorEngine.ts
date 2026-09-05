@@ -3,6 +3,7 @@ import * as fabric from 'fabric';
 import { imageDataToPngDataUrl } from '../utils/imageDataPng';
 import { cleanupTracedSvg } from '../utils/svgTraceCleanup';
 import { DEFAULT_COLOR_TRACE, normalizeColorTraceParams, type ColorTraceParams } from '../utils/traceParams';
+import { extractInkPalette } from '../utils/tracePalette';
 import {
   traceImageToVector,
   type TracingUiConfig,
@@ -22,11 +23,18 @@ export function useVectorEngine(canvas: fabric.Canvas | null = null) {
    */
   const traceImage = useCallback(async (imageData: ImageData, params?: ColorTraceParams): Promise<string> => {
     const options = normalizeColorTraceParams(params);
+    const palette = options.palette ?? extractInkPalette(
+      imageData.data,
+      imageData.width,
+      imageData.height,
+      options.maxColors,
+    );
     const body = {
       image: imageDataToPngDataUrl(imageData),
       width: imageData.width,
       height: imageData.height,
       ...options,
+      palette,
     };
     const res = await fetch('/api/trace', {
       method: 'POST',

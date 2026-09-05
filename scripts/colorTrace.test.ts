@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { cleanupTracedSvg } from '../src/utils/svgTraceCleanup.ts';
+import { extractInkPalette } from '../src/utils/tracePalette.ts';
 import { DEFAULT_COLOR_TRACE, normalizeColorTraceParams } from '../src/utils/traceParams.ts';
-import { buildVtracerOptions, traceRgba } from '../traceColor.mjs';
+import { buildVtracerOptions, resolveTraceParams, traceRgba } from '../traceColor.mjs';
 
 function paint(w: number, h: number, fn: (x: number, y: number) => [number, number, number, number?]): Uint8ClampedArray {
   const data = new Uint8ClampedArray(w * h * 4);
@@ -22,26 +23,53 @@ function paint(w: number, h: number, fn: (x: number, y: number) => [number, numb
 test('defaults keep colour count, sharp corners, and low speckle', () => {
   assert.equal(DEFAULT_COLOR_TRACE.maxColors, 8);
   assert.equal(DEFAULT_COLOR_TRACE.cornerThreshold, 90);
-  assert.equal(DEFAULT_COLOR_TRACE.filterSpeckle, 2);
+  assert.equal(DEFAULT_COLOR_TRACE.filterSpeckle, 1);
   const opts = buildVtracerOptions(DEFAULT_COLOR_TRACE);
   assert.equal(opts.clustering, 'color-cluster');
   assert.equal(opts.hierarchical, 'cutout');
   assert.equal(opts.mode, 'spline');
   assert.equal(opts.maxColors, 8);
-  assert.equal(opts.filterSpeckle, 2);
+  assert.equal(opts.filterSpeckle, 1);
   assert.equal(opts.cornerThreshold, 90);
-  assert.ok(Number(opts.lengthThreshold) >= 3.5);
+  assert.ok(Number(opts.lengthThreshold) >= 1.2);
+  assert.equal(opts.mode, 'spline');
 });
 
-test('curve-fit 0 stays polygon; any higher value uses spline so sliders apply', () => {
-  const stencil = buildVtracerOptions({ curveFit: 0 });
+test('curve-fit 0 stays spline with a tight fit; higher values loosen simplify', () => {
+  const tight = buildVtracerOptions({ curveFit: 0 });
   const lo = buildVtracerOptions({ curveFit: 2 });
   const hi = buildVtracerOptions({ curveFit: 8 });
-  assert.equal(stencil.mode, 'polygon');
+  assert.equal(tight.mode, 'spline');
   assert.equal(lo.mode, 'spline');
   assert.equal(hi.mode, 'spline');
+  assert.ok(Number(tight.simplify) < Number(lo.simplify));
   assert.ok(Number(hi.simplify) > Number(lo.simplify));
   assert.ok(Number(hi.lengthThreshold) > Number(lo.lengthThreshold));
+});
+
+test('forced palette is forwarded and extractInkPalette keeps darkest + chroma inks', () => {
+  const w = 40;
+  const h = 40;
+  const rgba = paint(w, h, (x, y) => {
+    if (x < 6 || y < 4) return [12, 8, 8];
+    if (x > 10 && x < 30 && y > 8 && y < 28) return [220, 10, 12];
+    return [250, 250, 248];
+  });
+  const palette = extractInkPalette(rgba, w, h, 4);
+  assert.ok(palette.length >= 2 && palette.length <= 4);
+  assert.ok(palette.some((hex) => {
+    const n = Number.parseInt(hex.slice(1), 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return 0.299 * r + 0.587 * g + 0.114 * b < 40;
+  }), `expected a dark outline ink, got ${palette}`);
+  assert.ok(palette.some((hex) => hex.toLowerCase().startsWith('#d') || hex.toLowerCase().startsWith('#e') || hex.toLowerCase().startsWith('#c')), `expected a red fill, got ${palette}`);
+  const resolved = resolveTraceParams(rgba, w, h, { maxColors: 4 });
+  assert.ok(resolved.palette && resolved.palette.length >= 2);
+  const opts = buildVtracerOptions({ maxColors: 4, palette });
+  assert.deepEqual(opts.palette, palette);
+  assert.equal(opts.maxColors, palette.length);
 });
 
 test('cornerThreshold is forwarded unchanged (degrees)', () => {

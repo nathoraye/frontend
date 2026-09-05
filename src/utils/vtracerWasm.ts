@@ -22,6 +22,7 @@ import type { VTracerConfig } from '@visioncortex/vtracer';
 import { cleanupTracedSvg } from './svgTraceCleanup';
 import type { ColorTraceParams } from './traceParams';
 import { normalizeColorTraceParams } from './traceParams';
+import { extractInkPalette } from './tracePalette';
 import {
   binarizeRgba,
   mapUiConfigToVtracer,
@@ -128,6 +129,12 @@ async function traceImageDataColor(
   uiConfig: ColorTraceParams,
 ): Promise<string> {
   const p = normalizeColorTraceParams(uiConfig);
+  const palette = p.palette ?? extractInkPalette(
+    pixelData.data,
+    pixelData.width,
+    pixelData.height,
+    p.maxColors,
+  );
   const res = await fetch('/api/trace', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -138,7 +145,8 @@ async function traceImageDataColor(
       maxColors: p.maxColors,
       cornerThreshold: p.cornerThreshold,
       curveFit: p.curveFit,
-      filterSpeckle: 8,
+      filterSpeckle: p.filterSpeckle,
+      palette,
     }),
   });
   const json = await res.json().catch(() => ({})) as { svg?: string; error?: string };

@@ -6,10 +6,19 @@ test('cleanup keeps distinct fills and sets evenodd + viewBox', () => {
   const svg = `<svg width="40" height="40"><path fill="#DC1E28" d="M 2.22 2.22 L 12.66 2.22 L 12.66 12.88 Z"/><path fill="#1E5AD2" d="M 20 20 L 30 20 L 30 30 L 20 30 Z"/></svg>`;
   const out = cleanupTracedSvg(svg, 40, 40);
   assert.match(out, /viewBox="0 0 40 40"/);
+  assert.match(out, /preserveAspectRatio="xMidYMid meet"/);
   assert.match(out, /fill="#DC1E28"/);
   assert.match(out, /fill="#1E5AD2"/);
   assert.match(out, /fill-rule="evenodd"/);
   assert.equal((out.match(/<path /g) || []).length, 2);
+});
+
+test('cleanup keeps a full-frame dark cutout layer', () => {
+  const cutout = 'M 0 0 L 40 0 L 40 40 L 0 40 Z M 12 12 L 12 28 L 28 28 L 28 12 Z';
+  const svg = `<svg width="40" height="40"><path fill="#141414" d="${cutout}"/></svg>`;
+  const out = cleanupTracedSvg(svg, 40, 40);
+  assert.match(out, /fill="#141414"/);
+  assert.match(out, /M 0 0/);
 });
 
 test('cleanup drops full-frame paper but keeps coloured art', () => {

@@ -137,7 +137,9 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
     const area = pathBBoxArea(normalized);
     if (area < 1) continue;
     if (isPaperColor(fill)) continue;
-    if (area / canvasArea > 0.98) continue;
+    // Cutout layers often span the whole artboard. Drop only light
+    // full-frame fills (paper / hole plugs) — dark ink must stay.
+    if (area / canvasArea > 0.98 && fillLuma(fill) > 200) continue;
     const bbox = pathBBox(normalized);
     if (!bbox) continue;
     kept.push({ fill, d: normalized, bbox });
@@ -166,5 +168,5 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
 
   const w = Math.round(size.width * 10) / 10;
   const h = Math.round(size.height * 10) / 10;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${paths.join('')}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet">${paths.join('')}</svg>`;
 }
