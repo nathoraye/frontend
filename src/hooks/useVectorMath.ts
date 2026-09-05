@@ -3,6 +3,7 @@ import * as fabric from 'fabric';
 import { useCallback } from 'react';
 import { tracedSvgToObject } from '../utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from '../utils/tracePrep';
+import { stripPhantomWeldChildren } from '../utils/weldImport';
 
 interface VectorMathProps {
   canvas: fabric.Canvas | null;
@@ -65,8 +66,13 @@ export function useVectorMath({
     isProcessingRef.current = true;
 
     try {
+      // Drop leftover weld-export paper before cloning so Add Outline does
+      // not paint invisible origin squares as extra pink boxes.
+      stripPhantomWeldChildren(activeObj);
+
       const clonedObj = await (activeObj as any).clone();
       const offsetColor = '#FF1493';
+      stripPhantomWeldChildren(clonedObj);
 
       clonedObj.set({
         fill: offsetColor,
