@@ -123,3 +123,36 @@ export async function tracedSvgToObject(
   }
   return grouped;
 }
+
+/**
+ * Parse a VTracer SVG string and inject it onto the canvas as an editable
+ * vector group.  Fabric v7's `loadSVGFromString` is Promise-based (the v5
+ * callback + `groupSVGElements` API is gone), so this uses that Promise and
+ * the existing `loadTracedObjects` / `groupTracedObjects` helpers which:
+ *  - drop paper / full-frame background paths
+ *  - set `fillRule: 'nonzero'` on every sub-path
+ */
+export async function placeTracedSvg(
+  svgString: string,
+  canvas: fabric.Canvas,
+): Promise<fabric.Object | null> {
+  const objects = await loadTracedObjects(svgString);
+  const importedGroup = groupTracedObjects(objects);
+  if (!importedGroup) return null;
+
+  importedGroup.set({
+    left: canvas.getWidth() / 2,
+    top: canvas.getHeight() / 2,
+    originX: 'center',
+    originY: 'center',
+    hasControls: true,
+    hasBorders: true,
+    selectable: true,
+  });
+  importedGroup.setCoords();
+
+  canvas.add(importedGroup);
+  canvas.setActiveObject(importedGroup);
+  canvas.requestRenderAll();
+  return importedGroup;
+}

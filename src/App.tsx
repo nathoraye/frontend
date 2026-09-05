@@ -10,6 +10,7 @@ import { useVectorMath } from './hooks/useVectorMath';
 import { useStudioActions } from './hooks/useStudioActions'; 
 import { useToolEngine } from './hooks/useToolEngine'; 
 import { useBooleanEngine } from './hooks/useBooleanEngine';
+import { useNodeEditEngine } from './hooks/useNodeEditEngine';
 import { LeftDock } from './components/LeftDock';
 import { RightInspector } from './components/RightInspector';
 import { CropModal } from './components/CropModal';
@@ -32,7 +33,7 @@ const CANVAS_BG = '#2a2e3c';
 export default function App() {
   const { canvasRef, containerRef, canvas } = useCanvasEngine();
   useAlignmentEngine(canvas);
-  const { traceImage } = useVectorEngine();
+  const { traceImage } = useVectorEngine(canvas);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const matOverlayRef = useRef<HTMLDivElement>(null); 
@@ -120,6 +121,15 @@ export default function App() {
     openImageTrace(activeObj as fabric.Image);
   };
   const handleCreateOffset = () => offsetCore(activeObj, offsetSize);
+
+  const { isNodeEditing, canEditActive, toggleNodeEdit, exitNodeEdit } = useNodeEditEngine({
+    canvas,
+    tool,
+    activeObj,
+    saveHistorySnapshot,
+    setQuickMenu,
+    setTool: (next) => setTool(next),
+  });
 
   const { alignObject, applyTextCurve, explodeText, addText, addShape, handleAIGeneration, addWeedingBox } = useStudioActions({
     canvas, activeObj, brushColor, setTool, setIsGenerating, setTextCurve, saveHistorySnapshot
@@ -280,7 +290,7 @@ export default function App() {
     canvas.requestRenderAll(); saveHistorySnapshot(canvas);
   };
 
-  useCanvasEvents({ canvas, matOverlayRef, isProcessingRef, tool, brushColor, brushSize, brushType, wandTolerance, wandMode, eraserMode, setIsTracing, setQuickMenu, updateUIFromSelection, saveHistorySnapshot, traceImage, setTool, quickMenuRef, eraserTargetRef });
+  useCanvasEvents({ canvas, matOverlayRef, isProcessingRef, tool, brushColor, brushSize, brushType, wandTolerance, wandMode, eraserMode, setIsTracing, setQuickMenu, updateUIFromSelection, saveHistorySnapshot, traceImage, setTool, quickMenuRef, eraserTargetRef, isNodeEditing, onNodeEditToggle: toggleNodeEdit });
   useToolEngine({ canvas, tool, brushColor, brushSize, brushType, setQuickMenu, eraserTargetRef });
 
   useEffect(() => {
@@ -333,9 +343,17 @@ export default function App() {
         }
       }
       if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+      if (e.key === 'Escape' && isNodeEditing) {
+        e.preventDefault();
+        exitNodeEdit(true);
+      }
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'n' && canEditActive) {
+        e.preventDefault();
+        toggleNodeEdit(activeObj);
+      }
     };
     window.addEventListener('keydown', handleKeyDown); return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, canvas, saveHistorySnapshot, deleteSelected]);
+  }, [handleUndo, handleRedo, canvas, saveHistorySnapshot, deleteSelected, isNodeEditing, exitNodeEdit, canEditActive, toggleNodeEdit, activeObj]);
 
   return (
     <div className="fixed inset-0 flex flex-col font-sans select-none overflow-hidden bg-[#0f111a] text-slate-200">
@@ -474,7 +492,23 @@ export default function App() {
                   </div>
                 )}
 
-                {quickMenu && quickMenu.show && !contourTarget && viewMode === 'sticker' && (
+                {isNodeEditing && viewMode === 'sticker' && (
+                  <div className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[#FF1493]/40 bg-[#181a25]/95 px-4 py-2 shadow-xl shadow-black/40">
+                    <span className="h-2 w-2 rounded-full bg-[#FF1493] animate-pulse" />
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-200">
+                      Editing nodes — drag the pink dots. Esc to finish.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => exitNodeEdit(true)}
+                      className="h-7 rounded-full bg-[#FF1493] px-3 text-[10px] font-black uppercase tracking-wider text-white hover:bg-[#ff4da6]"
+                    >
+                      Done
+                    </button>
+                  </div>
+                )}
+
+                {quickMenu && quickMenu.show && !contourTarget && !isNodeEditing && viewMode === 'sticker' && (
                   <div ref={quickMenuRef} className="absolute z-20 flex items-center gap-1 p-1.5 rounded-xl shadow-2xl bg-[#1e2230]/90 border border-slate-700 transform -translate-x-1/2" style={{ top: quickMenu.top, left: quickMenu.left }}>
                     
                     {showOffsetConfig ? (
@@ -492,6 +526,10 @@ export default function App() {
                             
                             {activeObj?.type === 'image' && (
                                 <button onClick={handleTraceCanvasImage} className="p-1.5 rounded-lg hover:bg-[#FF1493]/20 text-[#FF1493] transition-colors" title="Trace Image to Vector"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                            )}
+
+                            {canEditActive && (
+                                <button onClick={() => { toggleNodeEdit(activeObj); setQuickMenu(null); }} className="p-1.5 rounded-lg hover:bg-[#FF1493]/20 text-[#FF1493] transition-colors" title="Edit Nodes (N) — drag path anchors"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><path d="M7 12h10M12 7v10"/></svg></button>
                             )}
 
                             {activeObj?.type === 'path' && (
@@ -538,7 +576,8 @@ export default function App() {
                         eraserMode={eraserMode} setEraserMode={setEraserMode} 
                         textCurve={textCurve} charSpacing={charSpacing} setCharSpacing={setCharSpacing}
                         lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
-                        performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} 
+                        performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace}
+                        isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)}
                         saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
                       />
                     )}
@@ -558,7 +597,8 @@ export default function App() {
                 eraserMode={eraserMode} setEraserMode={setEraserMode} 
                 textCurve={textCurve} charSpacing={charSpacing} setCharSpacing={setCharSpacing}
                 lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
-                performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} 
+                performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace}
+                isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)}
                 saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
               />
             ) : null}

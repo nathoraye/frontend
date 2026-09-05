@@ -53,16 +53,17 @@ export async function handleTraceRequest(req, res) {
       cornerThreshold: payload.cornerThreshold,
       curveFit: payload.curveFit,
       filterSpeckle: payload.filterSpeckle,
+      palette: payload.palette,
     };
 
     let raw;
     const width = Number(payload.width) || 0;
     const height = Number(payload.height) || 0;
-    if (typeof payload.image === 'string') {
-      raw = traceImageBuffer(decodeDataUrl(payload.image), params);
-    } else if (payload.rgba && width && height) {
+    if (payload.rgba && width && height) {
       const rgba = Buffer.from(String(payload.rgba), 'base64');
       raw = traceRgba(rgba, width, height, params);
+    } else if (typeof payload.image === 'string') {
+      raw = traceImageBuffer(decodeDataUrl(payload.image), params);
     } else {
       sendJson(res, 400, { error: 'Missing image data URL or rgba pixels.' });
       return;

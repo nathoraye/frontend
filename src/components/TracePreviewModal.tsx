@@ -21,6 +21,7 @@ export function TracePreviewModal({
   const [maxColors, setMaxColors] = useState(DEFAULT_COLOR_TRACE.maxColors);
   const [cornerThreshold, setCornerThreshold] = useState(DEFAULT_COLOR_TRACE.cornerThreshold);
   const [curveFit, setCurveFit] = useState(DEFAULT_COLOR_TRACE.curveFit);
+  const [filterSpeckle, setFilterSpeckle] = useState(DEFAULT_COLOR_TRACE.filterSpeckle);
   const [svg, setSvg] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,7 +32,7 @@ export function TracePreviewModal({
       setLoading(true);
       setError(null);
       try {
-        const next = await traceImage(imageData, { maxColors, cornerThreshold, curveFit });
+        const next = await traceImage(imageData, { maxColors, cornerThreshold, curveFit, filterSpeckle });
         if (!cancelled) setSvg(next);
       } catch (err) {
         if (!cancelled) {
@@ -46,7 +47,7 @@ export function TracePreviewModal({
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [imageData, maxColors, cornerThreshold, curveFit, traceImage]);
+  }, [imageData, maxColors, cornerThreshold, curveFit, filterSpeckle, traceImage]);
 
   const safeSvg = svg
     ? DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } })
@@ -70,20 +71,25 @@ export function TracePreviewModal({
           <figcaption className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
             Vector trace {loading ? '(updating…)' : ''}
           </figcaption>
-          <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden rounded-lg" style={{ backgroundImage: 'linear-gradient(45deg,#2a2d38 25%,transparent 25%),linear-gradient(-45deg,#2a2d38 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2a2d38 75%),linear-gradient(-45deg,transparent 75%,#2a2d38 75%)', backgroundSize: '16px 16px', backgroundPosition: '0 0,0 8px,8px -8px,-8px 0', backgroundColor: '#1a1c24' }}>
+          <div className="flex-1 min-h-0 flex items-center justify-center rounded-lg" style={{ backgroundImage: 'linear-gradient(45deg,#2a2d38 25%,transparent 25%),linear-gradient(-45deg,#2a2d38 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2a2d38 75%),linear-gradient(-45deg,transparent 75%,#2a2d38 75%)', backgroundSize: '16px 16px', backgroundPosition: '0 0,0 8px,8px -8px,-8px 0', backgroundColor: '#1a1c24' }}>
             {error && <p className="text-red-400 text-sm px-4 text-center">{error}</p>}
             {!error && safeSvg && (
-              <div className="max-w-full max-h-full [&_svg]:max-w-full [&_svg]:max-h-full [&_svg]:h-auto" dangerouslySetInnerHTML={{ __html: safeSvg }} />
+              <img
+                src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(safeSvg)}`}
+                alt="Vector trace"
+                className="max-w-full max-h-full object-contain"
+              />
             )}
           </div>
         </figure>
       </div>
 
       <div className="flex-none w-full max-w-6xl mx-auto mt-4 rounded-xl border border-slate-700 bg-[#181a25] p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
           <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Colours <span className="font-mono text-[#FF1493]">{maxColors}</span>
             <input type="range" min={2} max={16} value={maxColors} onChange={(e) => setMaxColors(Number(e.target.value))} className="w-full accent-[#FF1493] mt-2" />
+            <span className="block normal-case font-medium tracking-normal mt-1 text-slate-500">4 locks outline + fill; raise only for extra paints.</span>
           </label>
           <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Corner sharpness <span className="font-mono text-[#FF1493]">{cornerThreshold}°</span>
@@ -92,7 +98,12 @@ export function TracePreviewModal({
           <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Curve fit <span className="font-mono text-[#FF1493]">{curveFit}</span>
             <input type="range" min={0} max={10} value={curveFit} onChange={(e) => setCurveFit(Number(e.target.value))} className="w-full accent-[#FF1493] mt-2" />
-            <span className="block normal-case font-medium tracking-normal mt-1 text-slate-500">Low keeps stencil edges; high fits smoother splines.</span>
+            <span className="block normal-case font-medium tracking-normal mt-1 text-slate-500">0 hugs the pixels; higher smooths splines.</span>
+          </label>
+          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Drop specks <span className="font-mono text-[#FF1493]">{filterSpeckle}</span>
+            <input type="range" min={0} max={8} value={filterSpeckle} onChange={(e) => setFilterSpeckle(Number(e.target.value))} className="w-full accent-[#FF1493] mt-2" />
+            <span className="block normal-case font-medium tracking-normal mt-1 text-slate-500">0 keeps thin outlines; raise to drop dust.</span>
           </label>
         </div>
         <div className="flex flex-wrap justify-center gap-2">
