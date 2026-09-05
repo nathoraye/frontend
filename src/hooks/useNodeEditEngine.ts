@@ -64,7 +64,7 @@ export function useNodeEditEngine({
     canvas.requestRenderAll();
     window.setTimeout(() => {
       enteringRef.current = false;
-    }, 0);
+    }, 200);
   }, [canvas, setQuickMenu, setTool]);
 
   const toggleNodeEdit = useCallback((obj: fabric.Object | null) => {
@@ -77,10 +77,20 @@ export function useNodeEditEngine({
   }, [enterNodeEdit, exitNodeEdit]);
 
   useEffect(() => {
-    if (enteringRef.current) return;
-    if (!targetRef.current) return;
-    if (!activeObj || activeObj !== targetRef.current) {
+    if (enteringRef.current || !targetRef.current) return;
+    if (activeObj && activeObj !== targetRef.current) {
       exitNodeEdit(true);
+      return;
+    }
+    // A control click can briefly clear selection. Wait before treating
+    // that as "click empty canvas" so the first node drag does not abort.
+    if (!activeObj) {
+      const handle = window.setTimeout(() => {
+        if (!enteringRef.current && targetRef.current) {
+          exitNodeEdit(true);
+        }
+      }, 120);
+      return () => window.clearTimeout(handle);
     }
   }, [activeObj, exitNodeEdit]);
 
