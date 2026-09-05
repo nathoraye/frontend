@@ -1,9 +1,7 @@
 import { useState, useCallback } from 'react';
 import * as fabric from 'fabric';
-import { imageDataToPngDataUrl } from '../utils/imageDataPng';
 import { cleanupTracedSvg } from '../utils/svgTraceCleanup';
 import { DEFAULT_COLOR_TRACE, normalizeColorTraceParams, type ColorTraceParams } from '../utils/traceParams';
-import { extractInkPalette } from '../utils/tracePalette';
 import {
   traceImageToVector,
   type TracingUiConfig,
@@ -12,24 +10,13 @@ import { placeTracedSvg } from '../utils/placeTracedSvg';
 
 export type { ColorTraceParams, TracingUiConfig };
 
-function upscaleNearest(imageData: ImageData, factor: number): ImageData {
-  if (factor <= 1) return imageData;
-  const src = document.createElement('canvas');
-  src.width = imageData.width;
-  src.height = imageData.height;
-  const sctx = src.getContext('2d');
-  if (!sctx) return imageData;
-  sctx.putImageData(imageData, 0, 0);
-  const w = Math.max(1, Math.round(imageData.width * factor));
-  const h = Math.max(1, Math.round(imageData.height * factor));
-  const dst = document.createElement('canvas');
-  dst.width = w;
-  dst.height = h;
-  const dctx = dst.getContext('2d', { willReadFrequently: true });
-  if (!dctx) return imageData;
-  dctx.imageSmoothingEnabled = false;
-  dctx.drawImage(src, 0, 0, w, h);
-  return dctx.getImageData(0, 0, w, h);
+function rgbaToBase64(data: Uint8ClampedArray): string {
+  const CHUNK = 32_768;
+  let binary = '';
+  for (let i = 0; i < data.length; i += CHUNK) {
+    binary += String.fromCharCode(...data.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
 }
 
 export function useVectorEngine(canvas: fabric.Canvas | null = null) {
@@ -43,30 +30,27 @@ export function useVectorEngine(canvas: fabric.Canvas | null = null) {
    */
   const traceImage = useCallback(async (imageData: ImageData, params?: ColorTraceParams): Promise<string> => {
     const options = normalizeColorTraceParams(params);
-    const scaled = upscaleNearest(imageData, 2);
-    const palette = options.palette ?? extractInkPalette(
-      scaled.data,
-      scaled.width,
-      scaled.height,
-      options.maxColors,
-    );
     const body = {
-      image: imageDataToPngDataUrl(scaled),
-      width: scaled.width,
-      height: scaled.height,
+      rgba: rgbaToBase64(imageData.data),
+      width: imageData.width,
+      height: imageData.height,
       ...options,
-      palette,
     };
     const res = await fetch('/api/trace', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    const json = await res.json().catch(() => ({})) as { svg?: string; error?: string };
+    const json = await res.json().catch(() => ({})) as {
+      svg?: string;
+      error?: string;
+      width?: number;
+      height?: number;
+    };
     if (!res.ok || !json.svg) {
       throw new Error(json.error || `Trace request failed (${res.status})`);
     }
-    return cleanupTracedSvg(json.svg, scaled.width, scaled.height);
+    return cleanupTracedSvg(json.svg, json.width ?? imageData.width, json.height ?? imageData.height);
   }, []);
 
   /**

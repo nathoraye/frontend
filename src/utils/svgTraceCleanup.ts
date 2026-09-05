@@ -122,8 +122,8 @@ function readSvgSize(svg: string, fallbackW: number, fallbackH: number): { width
 export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
   const parsed = readSvgSize(svg, width, height);
   const size = {
-    width: width > 0 ? width : parsed.width,
-    height: height > 0 ? height : parsed.height,
+    width: parsed.width > 0 ? parsed.width : width,
+    height: parsed.height > 0 ? parsed.height : height,
   };
   const canvasArea = Math.max(1, size.width * size.height);
   type Kept = { fill: string; d: string; bbox: BBox };
@@ -168,10 +168,7 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
   for (const [fill, ds] of ordered) {
     const united = mergeSameColorDs(ds);
     if (!united) continue;
-    const stroke = fillLuma(fill) < 32
-      ? ` stroke="${fill}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"`
-      : '';
-    paths.push(`<path fill="${fill}"${stroke} fill-rule="evenodd" d="${united}"/>`);
+    paths.push(`<path fill="${fill}" fill-rule="evenodd" d="${united}"/>`);
   }
 
   const w = Math.round(size.width * 10) / 10;

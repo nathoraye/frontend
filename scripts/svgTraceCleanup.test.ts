@@ -14,6 +14,13 @@ test('cleanup keeps distinct fills and sets evenodd + viewBox', () => {
   assert.equal((out.match(/<path /g) || []).length, 2);
 });
 
+test('cleanup does not stroke dark fills — that thickens pixel stairs', () => {
+  const svg = `<svg width="40" height="40"><path fill="#141414" d="M 2 2 L 20 2 L 20 20 L 2 20 Z"/></svg>`;
+  const out = cleanupTracedSvg(svg, 40, 40);
+  assert.doesNotMatch(out, /stroke-width/);
+  assert.match(out, /fill="#141414"/);
+});
+
 test('cleanup paints lighter fills first so dark outlines sit on top', () => {
   const svg = `<svg width="40" height="40">
     <path fill="#141414" d="M 1 1 L 30 1 L 30 30 L 1 30 Z"/>
@@ -63,8 +70,8 @@ test('cleanup concatenates disjoint same-colour blobs instead of evenodd-punchin
   const out = cleanupTracedSvg(svg, 40, 40);
   assert.equal((out.match(/<path /g) || []).length, 1);
   assert.match(out, /fill="#00AA00"/);
-  assert.match(out, /M 1 1/);
-  assert.match(out, /M 20 20/);
+  assert.match(out, /M\s*1[, ]1/);
+  assert.match(out, /M\s*20[, ]20/);
 });
 
 test('cleanup unions overlapping same-colour paths so evenodd cannot punch the overlap', () => {
@@ -107,7 +114,7 @@ test('cleanup rewrites a leading Lineto to Move so the path is not drawn from th
   const out = cleanupTracedSvg(svg, 80, 80);
   assert.match(out, /d="M25,9/);
   assert.doesNotMatch(out, /d="L/);
-  assert.match(out, /Z M10,45/);
+  assert.match(out, /Z\s*M10,45/);
   assert.doesNotMatch(out, /Z L10,45/);
 });
 
