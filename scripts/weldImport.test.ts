@@ -13,6 +13,20 @@ test('100% background parsed as a 100×100 square at the origin is dropped', () 
     isPhantomWeldRect({ type: 'rect', fill: 'transparent', width: 100, height: 100, left: 0, top: 0, strokeWidth: 0 }),
     true,
   );
+  // Real Fabric 7 import: center origin moves the 100×100 paper to 50,50
+  assert.equal(
+    isPhantomWeldRect({
+      type: 'rect',
+      fill: 'transparent',
+      stroke: '',
+      strokeWidth: 1,
+      width: 100,
+      height: 100,
+      left: 50,
+      top: 50,
+    }),
+    true,
+  );
 });
 
 test('real artwork and weeding boxes are kept', () => {

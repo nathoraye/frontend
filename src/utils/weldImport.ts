@@ -49,8 +49,17 @@ export function isPhantomWeldRect(obj: WeldImportShape, frame?: WeldImportFrame)
   const height = Math.abs((obj.height || 0) * (obj.scaleY || 1));
   const left = obj.left ?? 0;
   const top = obj.top ?? 0;
+  // Percent 100% parses as 100×100. Fabric's default center origin then
+  // places that square at left/top ≈ 50, not 0.
   const looksLikePercentParsedAsHundred =
-    width >= 99 && width <= 101 && height >= 99 && height <= 101 && left <= 1 && top <= 1;
+    width >= 99 &&
+    width <= 101 &&
+    height >= 99 &&
+    height <= 101 &&
+    left >= -1 &&
+    left <= 51 &&
+    top >= -1 &&
+    top <= 51;
   return looksLikePercentParsedAsHundred && invisibleFill;
 }
 
