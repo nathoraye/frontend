@@ -160,7 +160,8 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
   }
 
   const paths: string[] = [];
-  for (const [fill, ds] of byColor) {
+  const ordered = [...byColor.entries()].sort((a, b) => fillLuma(b[0]) - fillLuma(a[0]));
+  for (const [fill, ds] of ordered) {
     const united = mergeSameColorDs(ds);
     if (!united) continue;
     paths.push(`<path fill="${fill}" fill-rule="evenodd" d="${united}"/>`);
@@ -168,5 +169,6 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
 
   const w = Math.round(size.width * 10) / 10;
   const h = Math.round(size.height * 10) / 10;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet">${paths.join('')}</svg>`;
+  // width/height 100% + meet so the preview pane cannot clip the fox / 01.
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">${paths.join('')}</svg>`;
 }
