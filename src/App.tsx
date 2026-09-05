@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as fabric from 'fabric'; 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useCanvasEngine } from './hooks/useCanvasEngine';
 import { useHistoryEngine } from './hooks/useHistoryEngine';
 import { useAlignmentEngine } from './hooks/useAlignmentEngine'; 
@@ -627,6 +628,7 @@ export default function App() {
         {activeOrderTab && canvas && (
             <OrderModal canvas={canvas} initialTab={activeOrderTab} onClose={() => setActiveOrderTab(null)} />
         )}
+        <SpeedInsights />
     </div>
   );
 }
