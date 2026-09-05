@@ -4,6 +4,10 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  build: {
+    // Fabric (~800 kB) and the SVGO export chunk sit above Vite's 500 kB default.
+    chunkSizeWarningLimit: 850,
+  },
   server: {
     proxy: {
       '/api': {

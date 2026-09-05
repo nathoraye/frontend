@@ -12,6 +12,7 @@
  * deeper geometric validation, use the validation script in /scripts.
  */
 
+import DOMPurify from 'dompurify';
 import type { Canvas as FabricCanvas } from 'fabric';
 
 interface SvgoPlugin {
@@ -61,8 +62,8 @@ export async function exportCanvasToOptimizedSVG(canvas: FabricCanvas, opts?: Ex
   // Optional: prefix metadata
   const svgWithMeta = opts?.addMetadata ? `<!-- West Vinyl Studio export -->\n${rawSVG}` : rawSVG;
 
-  // 2) Optimize with SVGO (dynamically imported to avoid large bundle impact during heavy canvas usage)
-  const svgoModule = await import('svgo') as SvgoOptimizeModule;
+  // 2) Optimize with the browser SVGO build (avoids Node fs/path/os in the client bundle)
+  const svgoModule = await import('svgo/browser') as SvgoOptimizeModule;
   const optimize = svgoModule.optimize;
 
   const svgoConfig = {
@@ -80,19 +81,9 @@ export async function exportCanvasToOptimizedSVG(canvas: FabricCanvas, opts?: Ex
 
   let optimizedSVG = optimized.data;
 
-  // 3) Sanitize in-browser only (dynamic import of DOMPurify). If running in Node (SSR) skip.
-  try {
-    if (typeof window !== 'undefined') {
-      const dompurifyModule = await import('dompurify') as unknown;
-      const createDOMPurify = (
-        (dompurifyModule as { default?: (win: Window) => { sanitize: (value: string, options?: Record<string, unknown>) => string } }).default
-        ?? (dompurifyModule as (win: Window) => { sanitize: (value: string, options?: Record<string, unknown>) => string })
-      );
-      const DOMPurify = createDOMPurify(window);
-      optimizedSVG = DOMPurify.sanitize(optimizedSVG, { USE_PROFILES: { svg: true } });
-    }
-  } catch (err) {
-    console.warn('DOMPurify sanitization skipped or failed:', err);
+  // 3) Sanitize in-browser. Skip in Node (no window) so scripts can still call this.
+  if (typeof window !== 'undefined') {
+    optimizedSVG = DOMPurify.sanitize(optimizedSVG, { USE_PROFILES: { svg: true } });
   }
 
   return optimizedSVG;
