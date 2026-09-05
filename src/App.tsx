@@ -377,7 +377,10 @@ export default function App() {
                 <button onClick={() => setViewMode('sticker')} className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'sticker' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}>2D Studio</button>
                 <button
                   type="button"
-                  onClick={() => { setViewMode('product'); applyDesignToProduct(); }}
+                  onClick={() => {
+                    applyDesignToProduct();
+                    setViewMode('product');
+                  }}
                   className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'product' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}
                 >
                   Product Preview
@@ -407,7 +410,12 @@ export default function App() {
               ref={containerRef}
               style={{ backgroundColor: viewMode === 'sticker' ? CANVAS_BG : undefined }}
             >
-                <canvas ref={canvasRef} style={viewMode === 'product' ? { visibility: 'hidden', position: 'absolute' } : undefined} />
+                <div
+                  className={viewMode === 'product' ? 'pointer-events-none invisible absolute inset-0 overflow-hidden' : 'contents'}
+                  aria-hidden={viewMode === 'product'}
+                >
+                  <canvas ref={canvasRef} />
+                </div>
 
                 {viewMode === 'sticker' && tool === 'wand' && (
                   <div className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-fuchsia-500/30 bg-[#1e2230]/95 p-1 shadow-xl">

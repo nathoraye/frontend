@@ -165,7 +165,7 @@ export function ApparelMockupViewer({
     <div className="relative flex h-full w-full items-center justify-center overflow-visible bg-[#0f111a] p-4">
       <div
         ref={garmentRef}
-        className="relative flex h-full max-h-[min(72vh,640px)] w-auto max-w-[520px] items-center justify-center overflow-visible"
+        className="relative h-full max-h-[min(72vh,640px)] w-fit max-w-[520px] overflow-visible"
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
@@ -174,7 +174,7 @@ export function ApparelMockupViewer({
           src={imageSrc}
           alt={tintWithColor ? '' : `${mockup.label} mockup`}
           aria-hidden={tintWithColor || undefined}
-          className={`h-full w-auto max-w-full select-none object-contain ${tintWithColor ? 'opacity-0' : ''}`}
+          className={`block h-full w-auto max-w-full select-none object-contain ${tintWithColor ? 'opacity-0' : ''}`}
           draggable={false}
           onError={() => setFailedSrc(mockup.imageSrc)}
         />
