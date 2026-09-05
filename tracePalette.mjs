@@ -48,7 +48,9 @@ export function extractInkPalette(data, width, height, maxColors) {
   const picked = [];
   const tooClose = (c) =>
     picked.some((p) => {
-      if (p.r === 0 && p.g === 0 && p.b === 0 && c.lum < 55) return true;
+      const inkBlack = p.r === 0 && p.g === 0 && p.b === 0;
+      if (inkBlack && c.lum < 62 && c.r > c.g + 16 && c.r > c.b + 16) return true;
+      if (inkBlack && c.lum < 55) return true;
       return Math.hypot(p.r - c.r, p.g - c.g, p.b - c.b) < 28;
     });
 

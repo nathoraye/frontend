@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const vtracer = require('@visioncortex/vtracer');
 
 export const DEFAULT_COLOR_TRACE = {
-  maxColors: 8,
+  maxColors: 4,
   cornerThreshold: 90,
   curveFit: 2,
   filterSpeckle: 0,

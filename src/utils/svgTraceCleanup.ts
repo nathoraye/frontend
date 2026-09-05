@@ -169,6 +169,5 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
 
   const w = Math.round(size.width * 10) / 10;
   const h = Math.round(size.height * 10) / 10;
-  // width/height 100% + meet so the preview pane cannot clip the fox / 01.
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">${paths.join('')}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet">${paths.join('')}</svg>`;
 }

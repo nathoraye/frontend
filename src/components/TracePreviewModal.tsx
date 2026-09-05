@@ -89,7 +89,7 @@ export function TracePreviewModal({
           <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Colours <span className="font-mono text-[#FF1493]">{maxColors}</span>
             <input type="range" min={2} max={16} value={maxColors} onChange={(e) => setMaxColors(Number(e.target.value))} className="w-full accent-[#FF1493] mt-2" />
-            <span className="block normal-case font-medium tracking-normal mt-1 text-slate-500">6–8 keeps thin outlines as their own ink.</span>
+            <span className="block normal-case font-medium tracking-normal mt-1 text-slate-500">4 locks outline + fill; raise only for extra paints.</span>
           </label>
           <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Corner sharpness <span className="font-mono text-[#FF1493]">{cornerThreshold}°</span>

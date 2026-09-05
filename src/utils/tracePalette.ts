@@ -53,7 +53,10 @@ export function extractInkPalette(
   const picked: typeof buckets = [];
   const tooClose = (c: (typeof buckets)[0]) =>
     picked.some((p) => {
-      if (p.r === 0 && p.g === 0 && p.b === 0 && c.lum < 55) return true;
+      const inkBlack = p.r === 0 && p.g === 0 && p.b === 0;
+      // Mid dark-reds steal the outline slot; keep one black ink.
+      if (inkBlack && c.lum < 62 && c.r > c.g + 16 && c.r > c.b + 16) return true;
+      if (inkBlack && c.lum < 55) return true;
       return Math.hypot(p.r - c.r, p.g - c.g, p.b - c.b) < 28;
     });
 

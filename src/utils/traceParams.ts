@@ -14,7 +14,7 @@ export interface ColorTraceParams {
 }
 
 export const DEFAULT_COLOR_TRACE: Required<Omit<ColorTraceParams, 'palette'>> = {
-  maxColors: 8,
+  maxColors: 4,
   cornerThreshold: 90,
   curveFit: 2,
   filterSpeckle: 0,
