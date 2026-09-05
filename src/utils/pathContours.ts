@@ -213,7 +213,7 @@ function rdpOpen(pts: Pt[], eps: number): Pt[] {
 }
 
 /** Drop pixel-stair vertices; keep real corners (large deviation from the chord). */
-export function simplifyClosedContour(pts: Pt[], epsilon = 1.6): Pt[] {
+export function simplifyClosedContour(pts: Pt[], epsilon = 2.2): Pt[] {
   let ring = pts;
   if (
     ring.length >= 2

@@ -22,7 +22,7 @@ test('simplifyClosedContour collapses a pixel staircase', () => {
     stair.push({ x: i + 1, y: i });
   }
   stair.push({ x: 16, y: 16 });
-  const simp = simplifyClosedContour(stair, 1.6);
+  const simp = simplifyClosedContour(stair, 2.2);
   assert.ok(simp.length < stair.length / 2, `expected stairs to collapse, got ${simp.length} from ${stair.length}`);
 });
 
