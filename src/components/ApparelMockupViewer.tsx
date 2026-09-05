@@ -2,13 +2,10 @@ import { useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ProductId } from '../three/productCatalog';
 import { getMockupView } from '../three/mockupCatalog';
-
-export interface ProductPlacement {
-  posX: number;
-  posY: number;
-  scale: number;
-  rotationDeg: number;
-}
+import {
+  clampPlacement,
+  type ProductPlacement,
+} from '../utils/apparelPlacement';
 
 export interface ApparelMockupViewerProps {
   productId: ProductId;
@@ -34,7 +31,30 @@ function isDarkHex(color: string): boolean {
   return (r * 299 + g * 587 + b * 114) / 1000 < 80;
 }
 
-/** Front/back flat mockup with the current design composited onto the print zone. */
+function Handle({
+  label,
+  kind,
+  className,
+  onBegin,
+}: {
+  label: string;
+  kind: Exclude<DragKind, 'move' | null>;
+  className: string;
+  onBegin: (kind: Exclude<DragKind, 'move' | null>, event: ReactPointerEvent) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      className={`absolute z-20 flex h-11 w-11 items-center justify-center touch-none ${className}`}
+      onPointerDown={(event) => onBegin(kind, event)}
+    >
+      <span className="h-4 w-4 rounded-sm border-2 border-white bg-[#FF1493] shadow-md shadow-black/50" />
+    </button>
+  );
+}
+
+/** Front/back flat mockup with the current design composited onto the garment. */
 export function ApparelMockupViewer({
   productId,
   color,
@@ -56,20 +76,21 @@ export function ApparelMockupViewer({
     if (!mockup) return undefined;
     const zone = mockup.printZone;
     return {
-      left: `${zone.centerX + placement.posX * 0.25}%`,
-      top: `${zone.centerY - placement.posY * 0.25}%`,
+      left: `${zone.centerX + placement.posX}%`,
+      top: `${zone.centerY - placement.posY}%`,
       width: `${zone.widthPct * placement.scale}%`,
       height: `${zone.heightPct * placement.scale}%`,
       transform: `translate(-50%, -50%) rotate(${placement.rotationDeg}deg)`,
     };
   }, [mockup, placement.posX, placement.posY, placement.scale, placement.rotationDeg]);
 
-  const clampPlacement = (next: ProductPlacement): ProductPlacement => ({
-    posX: Math.max(-80, Math.min(80, next.posX)),
-    posY: Math.max(-80, Math.min(80, next.posY)),
-    scale: Math.max(0.2, Math.min(3, next.scale)),
-    rotationDeg: next.rotationDeg,
-  });
+  const designCenter = (bounds: DOMRect, origin: ProductPlacement) => {
+    const zone = mockup!.printZone;
+    return {
+      x: bounds.left + (bounds.width * (zone.centerX + origin.posX)) / 100,
+      y: bounds.top + (bounds.height * (zone.centerY - origin.posY)) / 100,
+    };
+  };
 
   const beginDrag = (kind: DragKind, event: ReactPointerEvent) => {
     if (!interactive || !onPlacementChange) return;
@@ -87,24 +108,25 @@ export function ApparelMockupViewer({
     const dy = event.clientY - startY;
 
     if (kind === 'move') {
-      const posX = origin.posX + (dx / bounds.width) * 400;
-      const posY = origin.posY - (dy / bounds.height) * 400;
+      const posX = origin.posX + (dx / Math.max(1, bounds.width)) * 100;
+      const posY = origin.posY - (dy / Math.max(1, bounds.height)) * 100;
       onPlacementChange(clampPlacement({ ...origin, posX, posY }));
       return;
     }
 
     if (kind === 'scale') {
-      const delta = (dx - dy) / Math.max(120, bounds.width * 0.25);
-      onPlacementChange(clampPlacement({ ...origin, scale: origin.scale + delta }));
+      const center = designCenter(bounds, origin);
+      const startDist = Math.hypot(startX - center.x, startY - center.y);
+      const nowDist = Math.hypot(event.clientX - center.x, event.clientY - center.y);
+      const ratio = startDist > 4 ? nowDist / startDist : 1;
+      onPlacementChange(clampPlacement({ ...origin, scale: origin.scale * ratio }));
       return;
     }
 
     if (kind === 'rotate') {
-      const zone = mockup.printZone;
-      const centerX = bounds.left + (bounds.width * (zone.centerX + origin.posX * 0.25)) / 100;
-      const centerY = bounds.top + (bounds.height * (zone.centerY - origin.posY * 0.25)) / 100;
-      const startAngle = Math.atan2(startY - centerY, startX - centerX);
-      const nowAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX);
+      const center = designCenter(bounds, origin);
+      const startAngle = Math.atan2(startY - center.y, startX - center.x);
+      const nowAngle = Math.atan2(event.clientY - center.y, event.clientX - center.x);
       const deg = origin.rotationDeg + ((nowAngle - startAngle) * 180) / Math.PI;
       onPlacementChange({ ...origin, rotationDeg: Math.round(deg) });
     }
@@ -140,10 +162,10 @@ export function ApparelMockupViewer({
   } as const;
 
   return (
-    <div className="relative flex h-full w-full items-center justify-center bg-[#0f111a] p-4">
+    <div className="relative flex h-full w-full items-center justify-center overflow-visible bg-[#0f111a] p-4">
       <div
         ref={garmentRef}
-        className="relative flex h-full max-h-[min(72vh,640px)] w-auto max-w-[520px] items-center justify-center"
+        className="relative flex h-full max-h-[min(72vh,640px)] w-auto max-w-[520px] items-center justify-center overflow-visible"
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
@@ -175,6 +197,9 @@ export function ApparelMockupViewer({
             style={designStyle}
             onPointerDown={(event) => beginDrag('move', event)}
           >
+            {interactive ? (
+              <div className="pointer-events-none absolute -inset-1 rounded-sm border-2 border-[#FF1493] shadow-[0_0_0_1px_rgba(0,0,0,0.45)]" />
+            ) : null}
             <img
               src={designDataUrl}
               alt="Design preview"
@@ -183,18 +208,19 @@ export function ApparelMockupViewer({
             />
             {interactive && (
               <>
+                <span className="pointer-events-none absolute left-1/2 top-0 z-10 h-6 w-px -translate-x-1/2 -translate-y-full bg-emerald-400" />
                 <button
                   type="button"
                   aria-label="Rotate print"
-                  className="absolute -top-5 left-1/2 z-10 h-3 w-3 -translate-x-1/2 rounded-full border border-white bg-emerald-400"
+                  className="absolute left-1/2 top-0 z-20 flex h-11 w-11 -translate-x-1/2 -translate-y-[calc(100%+4px)] items-center justify-center touch-none"
                   onPointerDown={(event) => beginDrag('rotate', event)}
-                />
-                <button
-                  type="button"
-                  aria-label="Scale print"
-                  className="absolute -bottom-1 -right-1 z-10 h-3 w-3 rounded-sm border border-white bg-[#FF1493]"
-                  onPointerDown={(event) => beginDrag('scale', event)}
-                />
+                >
+                  <span className="h-4 w-4 rounded-full border-2 border-white bg-emerald-400 shadow-md shadow-black/50" />
+                </button>
+                <Handle label="Scale from top left" kind="scale" className="-left-5 -top-5 cursor-nwse-resize" onBegin={beginDrag} />
+                <Handle label="Scale from top right" kind="scale" className="-right-5 -top-5 cursor-nesw-resize" onBegin={beginDrag} />
+                <Handle label="Scale from bottom left" kind="scale" className="-bottom-5 -left-5 cursor-nesw-resize" onBegin={beginDrag} />
+                <Handle label="Scale from bottom right" kind="scale" className="-bottom-5 -right-5 cursor-nwse-resize" onBegin={beginDrag} />
               </>
             )}
           </div>
