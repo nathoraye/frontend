@@ -90,6 +90,7 @@ function renderAnchorControl(
 /** Symbol used to stash the original controls so we can restore them. */
 const ORIGINAL_CONTROLS_KEY = '__nodeEditOriginalControls__';
 const ORIGINAL_CACHING_KEY = '__nodeEditOriginalCaching__';
+const ORIGINAL_LOCKS_KEY = '__nodeEditOriginalLocks__';
 
 const NODE_EDITABLE_TYPES = new Set(['path', 'polygon', 'polyline']);
 
@@ -175,6 +176,15 @@ export function enterNodeEditMode(
   if (!editableAny[ORIGINAL_CONTROLS_KEY]) {
     editableAny[ORIGINAL_CONTROLS_KEY] = editable.controls;
     editableAny[ORIGINAL_CACHING_KEY] = editable.objectCaching;
+    editableAny[ORIGINAL_LOCKS_KEY] = {
+      lockMovementX: editable.lockMovementX,
+      lockMovementY: editable.lockMovementY,
+      lockRotation: editable.lockRotation,
+      lockScalingX: editable.lockScalingX,
+      lockScalingY: editable.lockScalingY,
+      lockSkewingX: editable.lockSkewingX,
+      lockSkewingY: editable.lockSkewingY,
+    };
   }
 
   // Path commands use createPathControls; polygons / polylines use vertex controls.
@@ -218,9 +228,21 @@ export function enterNodeEditMode(
   editable.controls = nodeControls;
 
   // Hide the selection bounding-box border — only anchor points are shown.
+  // Lock body transform so dragging the fill cannot steal the gesture
+  // from a vertex (that left the UI stuck in a half-entered state).
   editable.hasBorders = false;
   editable.hasControls = true;
   editable.objectCaching = false;
+  editable.set({
+    lockMovementX: true,
+    lockMovementY: true,
+    lockRotation: true,
+    lockScalingX: true,
+    lockScalingY: true,
+    lockSkewingX: true,
+    lockSkewingY: true,
+    dirty: true,
+  });
 
   // Force Fabric to recompute screen positions of all new controls.
   editable.setCoords();
@@ -251,14 +273,29 @@ export function exitNodeEditMode(
     editable.controls = fabric.Object.prototype.controls;
   }
 
-  // Restore the selection border and original cache setting.
+  // Restore the selection border, cache, and transform locks.
   editable.hasBorders = true;
   editable.hasControls = true;
   if (ORIGINAL_CACHING_KEY in editableAny) {
     editable.objectCaching = Boolean(editableAny[ORIGINAL_CACHING_KEY]);
     delete editableAny[ORIGINAL_CACHING_KEY];
   }
+  const locks = editableAny[ORIGINAL_LOCKS_KEY] as Record<string, boolean> | undefined;
+  if (locks) {
+    editable.set(locks);
+    delete editableAny[ORIGINAL_LOCKS_KEY];
+  }
 
+  // Re-assign geometry so Fabric commits in-place point/path mutations
+  // (otherwise the cached silhouette can snap back on the next render).
+  const poly = editable as fabric.Object & { points?: { x: number; y: number }[]; path?: PathCommand[] };
+  if (Array.isArray(poly.points)) {
+    editable.set('points', poly.points.map((pt) => ({ x: pt.x, y: pt.y })));
+  }
+  if (Array.isArray(poly.path)) {
+    editable.set('path', poly.path.map((cmd) => [...cmd]) as PathCommand[]);
+  }
+  editable.set({ dirty: true });
   editable.setCoords();
   canvas.requestRenderAll();
 }
