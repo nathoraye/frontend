@@ -120,7 +120,11 @@ function readSvgSize(svg: string, fallbackW: number, fallbackH: number): { width
  * evenodd does not punch AA rings. Keep fill-rule=evenodd per path.
  */
 export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
-  const size = readSvgSize(svg, width, height);
+  const parsed = readSvgSize(svg, width, height);
+  const size = {
+    width: width > 0 ? width : parsed.width,
+    height: height > 0 ? height : parsed.height,
+  };
   const canvasArea = Math.max(1, size.width * size.height);
   type Kept = { fill: string; d: string; bbox: BBox };
   const kept: Kept[] = [];
@@ -137,7 +141,9 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
     const area = pathBBoxArea(normalized);
     if (area < 1) continue;
     if (isPaperColor(fill)) continue;
-    if (area / canvasArea > 0.98) continue;
+    // Cutout layers often span the whole artboard. Drop only light
+    // full-frame fills (paper / hole plugs) — dark ink must stay.
+    if (area / canvasArea > 0.98 && fillLuma(fill) > 200) continue;
     const bbox = pathBBox(normalized);
     if (!bbox) continue;
     kept.push({ fill, d: normalized, bbox });
@@ -158,13 +164,17 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
   }
 
   const paths: string[] = [];
-  for (const [fill, ds] of byColor) {
+  const ordered = [...byColor.entries()].sort((a, b) => fillLuma(b[0]) - fillLuma(a[0]));
+  for (const [fill, ds] of ordered) {
     const united = mergeSameColorDs(ds);
     if (!united) continue;
-    paths.push(`<path fill="${fill}" fill-rule="evenodd" d="${united}"/>`);
+    const stroke = fillLuma(fill) < 32
+      ? ` stroke="${fill}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"`
+      : '';
+    paths.push(`<path fill="${fill}"${stroke} fill-rule="evenodd" d="${united}"/>`);
   }
 
   const w = Math.round(size.width * 10) / 10;
   const h = Math.round(size.height * 10) / 10;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${paths.join('')}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet">${paths.join('')}</svg>`;
 }

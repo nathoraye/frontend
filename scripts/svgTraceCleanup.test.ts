@@ -6,10 +6,30 @@ test('cleanup keeps distinct fills and sets evenodd + viewBox', () => {
   const svg = `<svg width="40" height="40"><path fill="#DC1E28" d="M 2.22 2.22 L 12.66 2.22 L 12.66 12.88 Z"/><path fill="#1E5AD2" d="M 20 20 L 30 20 L 30 30 L 20 30 Z"/></svg>`;
   const out = cleanupTracedSvg(svg, 40, 40);
   assert.match(out, /viewBox="0 0 40 40"/);
+  assert.match(out, /preserveAspectRatio="xMidYMid meet"/);
+  assert.match(out, /width="40"/);
   assert.match(out, /fill="#DC1E28"/);
   assert.match(out, /fill="#1E5AD2"/);
   assert.match(out, /fill-rule="evenodd"/);
   assert.equal((out.match(/<path /g) || []).length, 2);
+});
+
+test('cleanup paints lighter fills first so dark outlines sit on top', () => {
+  const svg = `<svg width="40" height="40">
+    <path fill="#141414" d="M 1 1 L 30 1 L 30 30 L 1 30 Z"/>
+    <path fill="#FE0000" d="M 8 8 L 22 8 L 22 22 L 8 22 Z"/>
+  </svg>`;
+  const out = cleanupTracedSvg(svg, 40, 40);
+  const fills = [...out.matchAll(/fill="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(fills, ['#FE0000', '#141414']);
+});
+
+test('cleanup keeps a full-frame dark cutout layer', () => {
+  const cutout = 'M 0 0 L 40 0 L 40 40 L 0 40 Z M 12 12 L 12 28 L 28 28 L 28 12 Z';
+  const svg = `<svg width="40" height="40"><path fill="#141414" d="${cutout}"/></svg>`;
+  const out = cleanupTracedSvg(svg, 40, 40);
+  assert.match(out, /fill="#141414"/);
+  assert.match(out, /M 0 0/);
 });
 
 test('cleanup drops full-frame paper but keeps coloured art', () => {

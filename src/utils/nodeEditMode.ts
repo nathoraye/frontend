@@ -89,6 +89,52 @@ function renderAnchorControl(
 
 /** Symbol used to stash the original controls so we can restore them. */
 const ORIGINAL_CONTROLS_KEY = '__nodeEditOriginalControls__';
+const ORIGINAL_CACHING_KEY = '__nodeEditOriginalCaching__';
+const ORIGINAL_LOCKS_KEY = '__nodeEditOriginalLocks__';
+
+const NODE_EDITABLE_TYPES = new Set(['path', 'polygon', 'polyline']);
+
+export function isNodeEditable(obj: fabric.Object | null | undefined): boolean {
+  if (!obj) return false;
+  return NODE_EDITABLE_TYPES.has((obj.type || '').toLowerCase());
+}
+
+export function isInNodeEditMode(obj: fabric.Object | null | undefined): boolean {
+  if (!obj) return false;
+  return Boolean((obj as unknown as Record<string, unknown>)[ORIGINAL_CONTROLS_KEY]);
+}
+
+export function canNodeEdit(obj: fabric.Object | null | undefined): boolean {
+  if (!obj) return false;
+  if (isNodeEditable(obj)) return true;
+  if ((obj.type || '').toLowerCase() !== 'group') return false;
+  const group = obj as fabric.Group;
+  const children = typeof group.getObjects === 'function' ? group.getObjects() : [];
+  return children.some(isNodeEditable);
+}
+
+/**
+ * Pick the object that should receive node controls.
+ * A traced colour group is ungrouped so each path can be edited with native
+ * Fabric controls (controls on a grouped child do not render).
+ */
+export function resolveEditableObject(
+  obj: fabric.Object,
+  canvas: fabric.Canvas,
+): fabric.Object | null {
+  if (isNodeEditable(obj)) return obj;
+  if ((obj.type || '').toLowerCase() !== 'group') return null;
+  const group = obj as fabric.Group;
+  const children = typeof group.getObjects === 'function' ? group.getObjects() : [];
+  const editable = children.filter(isNodeEditable);
+  if (!editable.length) return null;
+  const maybeUngroup = group as fabric.Group & { toActiveSelection?: () => fabric.ActiveSelection };
+  if (typeof maybeUngroup.toActiveSelection === 'function') {
+    maybeUngroup.toActiveSelection();
+  }
+  canvas.setActiveObject(editable[0]);
+  return editable[0];
+}
 
 /**
  * Enter node-edit mode on a `fabric.Path` object.
@@ -119,21 +165,32 @@ const ORIGINAL_CONTROLS_KEY = '__nodeEditOriginalControls__';
  * @param canvas      The `fabric.Canvas` instance (needed for re-render).
  */
 export function enterNodeEditMode(
-  pathObject: fabric.Path,
+  pathObject: fabric.Object,
   canvas: fabric.Canvas,
 ): void {
   const editable = pathObject as EditablePath;
+  const kind = (editable.type || '').toLowerCase();
 
   // Stash the original controls so we can restore them in exitNodeEditMode.
   const editableAny = editable as unknown as Record<string, unknown>;
   if (!editableAny[ORIGINAL_CONTROLS_KEY]) {
     editableAny[ORIGINAL_CONTROLS_KEY] = editable.controls;
+    editableAny[ORIGINAL_CACHING_KEY] = editable.objectCaching;
+    editableAny[ORIGINAL_LOCKS_KEY] = {
+      lockMovementX: editable.lockMovementX,
+      lockMovementY: editable.lockMovementY,
+      lockRotation: editable.lockRotation,
+      lockScalingX: editable.lockScalingX,
+      lockScalingY: editable.lockScalingY,
+      lockSkewingX: editable.lockSkewingX,
+      lockSkewingY: editable.lockSkewingY,
+    };
   }
 
-  // Generate one Control per path command endpoint / Bézier handle.
-  // createPathControls reads `pathObject.path` and `pathObject.pathOffset`
-  // to build correctly positioned controls.
-  const nodeControls = fabric.controlsUtils.createPathControls(editable);
+  // Path commands use createPathControls; polygons / polylines use vertex controls.
+  const nodeControls = kind === 'path'
+    ? fabric.controlsUtils.createPathControls(editable)
+    : fabric.controlsUtils.createPolyControls(editable as unknown as fabric.Polygon);
 
   // Apply the vinyl-studio visual style to every generated anchor.
   for (const key of Object.keys(nodeControls)) {
@@ -171,7 +228,21 @@ export function enterNodeEditMode(
   editable.controls = nodeControls;
 
   // Hide the selection bounding-box border — only anchor points are shown.
+  // Lock body transform so dragging the fill cannot steal the gesture
+  // from a vertex (that left the UI stuck in a half-entered state).
   editable.hasBorders = false;
+  editable.hasControls = true;
+  editable.objectCaching = false;
+  editable.set({
+    lockMovementX: true,
+    lockMovementY: true,
+    lockRotation: true,
+    lockScalingX: true,
+    lockScalingY: true,
+    lockSkewingX: true,
+    lockSkewingY: true,
+    dirty: true,
+  });
 
   // Force Fabric to recompute screen positions of all new controls.
   editable.setCoords();
@@ -187,7 +258,7 @@ export function enterNodeEditMode(
  * @param canvas      The `fabric.Canvas` instance.
  */
 export function exitNodeEditMode(
-  pathObject: fabric.Path,
+  pathObject: fabric.Object,
   canvas: fabric.Canvas,
 ): void {
   const editable = pathObject as EditablePath;
@@ -202,10 +273,33 @@ export function exitNodeEditMode(
     editable.controls = fabric.Object.prototype.controls;
   }
 
-  // Restore the selection border.
+  // Restore the selection border, cache, and transform locks.
   editable.hasBorders = true;
   editable.hasControls = true;
+  if (ORIGINAL_CACHING_KEY in editableAny) {
+    editable.objectCaching = Boolean(editableAny[ORIGINAL_CACHING_KEY]);
+    delete editableAny[ORIGINAL_CACHING_KEY];
+  }
+  const locks = editableAny[ORIGINAL_LOCKS_KEY] as Record<string, boolean> | undefined;
+  if (locks) {
+    editable.set(locks);
+    delete editableAny[ORIGINAL_LOCKS_KEY];
+  }
 
+  // Re-assign geometry so Fabric commits in-place point/path mutations
+  // (otherwise the cached silhouette can snap back on the next render).
+  const poly = editable as fabric.Object & { points?: { x: number; y: number }[]; path?: PathCommand[] };
+  if (Array.isArray(poly.points)) {
+    editable.set('points', poly.points.map((pt) => ({ x: pt.x, y: pt.y })));
+  }
+  if (Array.isArray(poly.path)) {
+    editable.set('path', poly.path.map((cmd) => [...cmd]) as PathCommand[]);
+  }
+  const withDims = editable as fabric.Object & { setDimensions?: () => void };
+  if (typeof withDims.setDimensions === 'function') {
+    withDims.setDimensions();
+  }
+  editable.set({ dirty: true });
   editable.setCoords();
   canvas.requestRenderAll();
 }

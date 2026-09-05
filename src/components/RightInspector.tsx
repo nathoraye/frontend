@@ -43,6 +43,9 @@ interface RightInspectorProps {
   applyTextCurve: (val: number) => void;
   explodeText: () => void;
   handleVectorTrace: () => void;
+  isNodeEditing?: boolean;
+  canNodeEdit?: boolean;
+  toggleNodeEdit?: () => void;
   saveHistorySnapshot: (canvas: fabric.Canvas, immediate?: boolean) => void;
   borderCol: string;
   bgPanel: string;
@@ -59,7 +62,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
     opacity, wandTolerance, setWandTolerance, wandMode, setWandMode, eraserMode, setEraserMode, textCurve, charSpacing, setCharSpacing,
     lineHeight, setLineHeight, isTracing, offsetSize, setOffsetSize, handleCreateOffset,
     performBoolean, handlePropChange, alignObject, applyTextCurve, explodeText, 
-    handleVectorTrace, saveHistorySnapshot, borderCol, bgPanel,
+    handleVectorTrace, isNodeEditing, canNodeEdit, toggleNodeEdit, saveHistorySnapshot, borderCol, bgPanel,
     isDark, textMuted, textMain, btnHover
   } = props;
 
@@ -253,6 +256,27 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>
                      Explode (Ungroup Letters)
                   </button>
+                </div>
+              </div>
+            )}
+
+            {canNodeEdit && activeObj && (
+              <div className="mt-2">
+                <h3 className={`text-[10px] uppercase font-bold tracking-widest text-[#FF1493] mb-3`}>Node Edit</h3>
+                <div className={`p-4 rounded-xl border ${isNodeEditing ? 'border-[#FF1493]/50 bg-[#FF1493]/5' : borderCol} ${isDark ? 'bg-[#0f111a]' : 'bg-slate-50'}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleNodeEdit?.()}
+                    className={`w-full py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${isNodeEditing ? 'bg-[#FF1493] text-white shadow-lg shadow-pink-900/30' : 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-600'}`}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><path d="M7 12h10M12 7v10"/></svg>
+                    {isNodeEditing ? 'Done editing nodes' : 'Edit nodes'}
+                  </button>
+                  <p className={`text-[10px] mt-3 leading-relaxed ${textMuted}`}>
+                    {isNodeEditing
+                      ? 'Drag the pink dots to reshape the cut. Press Esc or Done when the silhouette looks right.'
+                      : 'Double-click the shape, press N, or use this button to drag individual path anchors. Traced groups ungroup first so each colour layer can be edited.'}
+                  </p>
                 </div>
               </div>
             )}
