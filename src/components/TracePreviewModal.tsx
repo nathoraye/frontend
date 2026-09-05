@@ -99,7 +99,7 @@ export function TracePreviewModal({
           <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Drop specks <span className="font-mono text-[#FF1493]">{filterSpeckle}</span>
             <input type="range" min={0} max={8} value={filterSpeckle} onChange={(e) => setFilterSpeckle(Number(e.target.value))} className="w-full accent-[#FF1493] mt-2" />
-            <span className="block normal-case font-medium tracking-normal mt-1 text-slate-500">0 keeps small numbers and thin strokes.</span>
+            <span className="block normal-case font-medium tracking-normal mt-1 text-slate-500">0 keeps thin outlines; raise to drop dust.</span>
           </label>
         </div>
         <div className="flex flex-wrap justify-center gap-2">

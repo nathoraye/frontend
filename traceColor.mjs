@@ -12,7 +12,7 @@ export const DEFAULT_COLOR_TRACE = {
   maxColors: 8,
   cornerThreshold: 90,
   curveFit: 2,
-  filterSpeckle: 1,
+  filterSpeckle: 0,
 };
 
 function clampInt(value, min, max, fallback) {

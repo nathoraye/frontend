@@ -23,13 +23,13 @@ function paint(w: number, h: number, fn: (x: number, y: number) => [number, numb
 test('defaults keep colour count, sharp corners, and low speckle', () => {
   assert.equal(DEFAULT_COLOR_TRACE.maxColors, 8);
   assert.equal(DEFAULT_COLOR_TRACE.cornerThreshold, 90);
-  assert.equal(DEFAULT_COLOR_TRACE.filterSpeckle, 1);
+  assert.equal(DEFAULT_COLOR_TRACE.filterSpeckle, 0);
   const opts = buildVtracerOptions(DEFAULT_COLOR_TRACE);
   assert.equal(opts.clustering, 'color-cluster');
   assert.equal(opts.hierarchical, 'cutout');
   assert.equal(opts.mode, 'spline');
   assert.equal(opts.maxColors, 8);
-  assert.equal(opts.filterSpeckle, 1);
+  assert.equal(opts.filterSpeckle, 0);
   assert.equal(opts.cornerThreshold, 90);
   assert.ok(Number(opts.lengthThreshold) >= 1.2);
   assert.equal(opts.mode, 'spline');

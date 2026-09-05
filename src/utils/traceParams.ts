@@ -17,7 +17,7 @@ export const DEFAULT_COLOR_TRACE: Required<Omit<ColorTraceParams, 'palette'>> = 
   maxColors: 8,
   cornerThreshold: 90,
   curveFit: 2,
-  filterSpeckle: 1,
+  filterSpeckle: 0,
 };
 
 export function clampTraceInt(value: unknown, min: number, max: number, fallback: number): number {
