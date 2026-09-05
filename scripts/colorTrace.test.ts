@@ -95,7 +95,7 @@ test('VTracer emits one fill per distinct colour and keeps the ring hole', () =>
   assert.ok(unique.size >= 3, `expected ≥3 colours, got ${[...unique]}`);
   assert.ok([...unique].some((f) => f === '#DC1E28' || f.startsWith('#DC')));
   assert.ok([...unique].some((f) => f === '#1E5AD2' || f.startsWith('#1E')));
-  const black = [...svg.matchAll(/<path fill="([^"]+)" fill-rule="evenodd" d="([^"]+)"/g)]
+  const black = [...svg.matchAll(/<path fill="([^"]+)"[^>]* d="([^"]+)"/g)]
     .find((m) => {
       const hex = m[1];
       if (hex === '#000000' || hex === '#141414' || hex === '#151515' || hex === '#161616') return true;

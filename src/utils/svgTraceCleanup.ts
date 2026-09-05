@@ -120,7 +120,11 @@ function readSvgSize(svg: string, fallbackW: number, fallbackH: number): { width
  * evenodd does not punch AA rings. Keep fill-rule=evenodd per path.
  */
 export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
-  const size = readSvgSize(svg, width, height);
+  const parsed = readSvgSize(svg, width, height);
+  const size = {
+    width: width > 0 ? width : parsed.width,
+    height: height > 0 ? height : parsed.height,
+  };
   const canvasArea = Math.max(1, size.width * size.height);
   type Kept = { fill: string; d: string; bbox: BBox };
   const kept: Kept[] = [];
@@ -164,7 +168,10 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
   for (const [fill, ds] of ordered) {
     const united = mergeSameColorDs(ds);
     if (!united) continue;
-    paths.push(`<path fill="${fill}" fill-rule="evenodd" d="${united}"/>`);
+    const stroke = fillLuma(fill) < 32
+      ? ` stroke="${fill}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"`
+      : '';
+    paths.push(`<path fill="${fill}"${stroke} fill-rule="evenodd" d="${united}"/>`);
   }
 
   const w = Math.round(size.width * 10) / 10;

@@ -71,7 +71,7 @@ export function TracePreviewModal({
           <figcaption className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
             Vector trace {loading ? '(updating…)' : ''}
           </figcaption>
-          <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden rounded-lg" style={{ backgroundImage: 'linear-gradient(45deg,#2a2d38 25%,transparent 25%),linear-gradient(-45deg,#2a2d38 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2a2d38 75%),linear-gradient(-45deg,transparent 75%,#2a2d38 75%)', backgroundSize: '16px 16px', backgroundPosition: '0 0,0 8px,8px -8px,-8px 0', backgroundColor: '#1a1c24' }}>
+          <div className="flex-1 min-h-0 flex items-center justify-center rounded-lg" style={{ backgroundImage: 'linear-gradient(45deg,#2a2d38 25%,transparent 25%),linear-gradient(-45deg,#2a2d38 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2a2d38 75%),linear-gradient(-45deg,transparent 75%,#2a2d38 75%)', backgroundSize: '16px 16px', backgroundPosition: '0 0,0 8px,8px -8px,-8px 0', backgroundColor: '#1a1c24' }}>
             {error && <p className="text-red-400 text-sm px-4 text-center">{error}</p>}
             {!error && safeSvg && (
               <img
