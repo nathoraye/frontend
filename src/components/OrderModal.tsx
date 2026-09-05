@@ -328,7 +328,7 @@ function Step2Placement({ config, onConfigChange, designDataUrl }: Step2Props) {
           onPlacementChange={(next) => updatePlacement(next)}
         />
       </div>
-      <p className="text-[10px] font-mono text-slate-300">Drag the print to move. Pink handle scales. Green handle rotates.</p>
+      <p className="text-[10px] font-mono text-slate-300">Drag the print anywhere on the garment. Pink corners scale. Green handle rotates.</p>
     </div>
   );
 }

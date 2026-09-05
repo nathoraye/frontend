@@ -16,7 +16,8 @@ import { CropModal } from './components/CropModal';
 import { ContourModal } from './components/ContourModal';
 import { TracePreviewModal } from './components/TracePreviewModal';
 import { OrderModal } from './components/OrderModal';
-import { ApparelMockupViewer, type ProductPlacement } from './components/ApparelMockupViewer';
+import { ApparelMockupViewer } from './components/ApparelMockupViewer';
+import { PLACEMENT_SCALE_MAX, PLACEMENT_SCALE_MIN, type ProductPlacement } from './utils/apparelPlacement';
 import { PRODUCT_CATALOG, PRODUCT_IDS, type ProductId } from './three/productCatalog';
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
 import { tracedSvgToObject } from './utils/placeTracedSvg';
@@ -441,12 +442,34 @@ export default function App() {
 
                       <button onClick={applyDesignToProduct} className="h-8 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-black uppercase tracking-wider">Apply Design</button>
 
+                      <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Size
+                        <input
+                          type="range"
+                          min={PLACEMENT_SCALE_MIN}
+                          max={PLACEMENT_SCALE_MAX}
+                          step={0.05}
+                          value={productPlacement.scale}
+                          onChange={(e) => setProductPlacement((prev) => ({ ...prev, scale: Number(e.target.value) }))}
+                          className="w-28 accent-[#FF1493]"
+                          aria-label="Print size"
+                        />
+                        <span className="font-mono text-[#FF1493]">{Math.round(productPlacement.scale * 100)}%</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setProductPlacement({ posX: 0, posY: 0, scale: 1, rotationDeg: 0 })}
+                        className="h-8 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[10px] font-black uppercase tracking-wider border border-slate-600"
+                      >
+                        Reset place
+                      </button>
+
                       <div className="ml-auto flex flex-wrap items-center gap-2">
                         <button onClick={handleSafeSVGExport} className="h-8 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-black uppercase tracking-wider">Export SVG</button>
                         <button onClick={() => setActiveOrderTab('vinyl')} className="h-8 px-3 bg-[#FF1493] hover:bg-[#ff4da6] text-black rounded text-[10px] font-black uppercase tracking-wider shadow-sm">Buy Sticker</button>
                         <button onClick={() => setActiveOrderTab('apparel')} className="h-8 px-3 bg-emerald-500 hover:bg-emerald-400 text-black rounded text-[10px] font-black uppercase tracking-wider">Buy Apparel</button>
                       </div>
-                      <p className="w-full text-[10px] font-mono text-slate-300">Drag the print to move. Corner handles scale. Top handle rotates.</p>
+                      <p className="w-full text-[10px] font-mono text-slate-300">Drag the print anywhere on the garment. Pink corner squares scale. Green handle rotates. Size slider also scales.</p>
                     </div>
                   </div>
                 )}
