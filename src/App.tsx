@@ -96,7 +96,8 @@ export default function App() {
 
   const applyDesignToProduct = useCallback(() => {
     if (!canvas) return;
-    setDesignSnapshot(snapshotDesignAsDataURL(canvas));
+    const next = snapshotDesignAsDataURL(canvas);
+    if (next) setDesignSnapshot(next);
   }, [canvas]);
 
   const { saveHistorySnapshot, handleUndo, handleRedo } = useHistoryEngine({ setCanvasObjects });

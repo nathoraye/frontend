@@ -22,6 +22,9 @@ export function useCanvasEngine() {
       if (containerRef.current && initCanvas) {
         const w = containerRef.current.clientWidth;
         const h = containerRef.current.clientHeight;
+        // Product Preview hides the studio canvas; a 0×0 measure would wipe the
+        // artwork and make Apply Design snapshot an empty print.
+        if (w < 8 || h < 8) return;
         initCanvas.setDimensions({ width: w, height: h });
         initCanvas.requestRenderAll();
       }
