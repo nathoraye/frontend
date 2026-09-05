@@ -295,6 +295,10 @@ export function exitNodeEditMode(
   if (Array.isArray(poly.path)) {
     editable.set('path', poly.path.map((cmd) => [...cmd]) as PathCommand[]);
   }
+  const withDims = editable as fabric.Object & { setDimensions?: () => void };
+  if (typeof withDims.setDimensions === 'function') {
+    withDims.setDimensions();
+  }
   editable.set({ dirty: true });
   editable.setCoords();
   canvas.requestRenderAll();
