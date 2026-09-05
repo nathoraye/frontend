@@ -12,6 +12,26 @@ import { placeTracedSvg } from '../utils/placeTracedSvg';
 
 export type { ColorTraceParams, TracingUiConfig };
 
+function upscaleNearest(imageData: ImageData, factor: number): ImageData {
+  if (factor <= 1) return imageData;
+  const src = document.createElement('canvas');
+  src.width = imageData.width;
+  src.height = imageData.height;
+  const sctx = src.getContext('2d');
+  if (!sctx) return imageData;
+  sctx.putImageData(imageData, 0, 0);
+  const w = Math.max(1, Math.round(imageData.width * factor));
+  const h = Math.max(1, Math.round(imageData.height * factor));
+  const dst = document.createElement('canvas');
+  dst.width = w;
+  dst.height = h;
+  const dctx = dst.getContext('2d', { willReadFrequently: true });
+  if (!dctx) return imageData;
+  dctx.imageSmoothingEnabled = false;
+  dctx.drawImage(src, 0, 0, w, h);
+  return dctx.getImageData(0, 0, w, h);
+}
+
 export function useVectorEngine(canvas: fabric.Canvas | null = null) {
   const [isTracing, setIsTracing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,16 +43,17 @@ export function useVectorEngine(canvas: fabric.Canvas | null = null) {
    */
   const traceImage = useCallback(async (imageData: ImageData, params?: ColorTraceParams): Promise<string> => {
     const options = normalizeColorTraceParams(params);
+    const scaled = upscaleNearest(imageData, 2);
     const palette = options.palette ?? extractInkPalette(
-      imageData.data,
-      imageData.width,
-      imageData.height,
+      scaled.data,
+      scaled.width,
+      scaled.height,
       options.maxColors,
     );
     const body = {
-      image: imageDataToPngDataUrl(imageData),
-      width: imageData.width,
-      height: imageData.height,
+      image: imageDataToPngDataUrl(scaled),
+      width: scaled.width,
+      height: scaled.height,
       ...options,
       palette,
     };
@@ -45,7 +66,7 @@ export function useVectorEngine(canvas: fabric.Canvas | null = null) {
     if (!res.ok || !json.svg) {
       throw new Error(json.error || `Trace request failed (${res.status})`);
     }
-    return cleanupTracedSvg(json.svg, imageData.width, imageData.height);
+    return cleanupTracedSvg(json.svg, scaled.width, scaled.height);
   }, []);
 
   /**

@@ -52,10 +52,17 @@ export function extractInkPalette(
 
   const picked: typeof buckets = [];
   const tooClose = (c: (typeof buckets)[0]) =>
-    picked.some((p) => Math.hypot(p.r - c.r, p.g - c.g, p.b - c.b) < 28);
+    picked.some((p) => {
+      if (p.r === 0 && p.g === 0 && p.b === 0 && c.lum < 55) return true;
+      return Math.hypot(p.r - c.r, p.g - c.g, p.b - c.b) < 28;
+    });
 
   const darkest = [...buckets].sort((a, b) => a.lum - b.lum || b.count - a.count)[0];
-  if (darkest) picked.push(darkest);
+  if (darkest) {
+    // Thin anti-aliased outlines read as dark red/brown. Snap them to
+    // ink-black so they stay a separate layer from the fill.
+    picked.push(darkest.lum < 55 ? { ...darkest, r: 0, g: 0, b: 0, lum: 0 } : darkest);
+  }
 
   const chroma = [...buckets].sort((a, b) => b.sat - a.sat || b.count - a.count)[0];
   if (chroma && !tooClose(chroma)) picked.push(chroma);

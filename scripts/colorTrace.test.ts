@@ -96,7 +96,13 @@ test('VTracer emits one fill per distinct colour and keeps the ring hole', () =>
   assert.ok([...unique].some((f) => f === '#DC1E28' || f.startsWith('#DC')));
   assert.ok([...unique].some((f) => f === '#1E5AD2' || f.startsWith('#1E')));
   const black = [...svg.matchAll(/<path fill="([^"]+)" fill-rule="evenodd" d="([^"]+)"/g)]
-    .find((m) => m[1] === '#141414' || m[1] === '#151515' || m[1] === '#161616');
+    .find((m) => {
+      const hex = m[1];
+      if (hex === '#000000' || hex === '#141414' || hex === '#151515' || hex === '#161616') return true;
+      const n = Number.parseInt(hex.slice(1), 16);
+      const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+      return 0.299 * r + 0.587 * g + 0.114 * b < 40;
+    });
   assert.ok(black, 'missing dark graffiti path');
   const subpaths = black![2].split(/M/i).filter(Boolean).length;
   assert.ok(subpaths >= 2, 'ring must keep a hole subpath so O/0 counters stay open');
