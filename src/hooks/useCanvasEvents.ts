@@ -251,17 +251,62 @@ export function useCanvasEvents(props: CanvasEventProps) {
             const ctx = el.getContext('2d', { willReadFrequently: true });
             if (!ctx || !client) { p.current.isProcessingRef.current = false; return; }
             const { x, y } = canvasPixelFromClient(el, client.x, client.y);
-            const sampled = sampleOpaquePixel(ctx, x, y, 12);
+            const sampled = sampleOpaquePixel(ctx, x, y, 20);
+            const target = hitTarget;
+            const colorFromObject = (obj: any): string | null => {
+                if (!obj) return null;
+                const candidates = [obj.fill, obj.stroke];
+                if (typeof obj.getObjects === 'function') {
+                    const kids = obj.getObjects();
+                    if (kids?.[0]) { candidates.push(kids[0].fill, kids[0].stroke); }
+                }
+                for (const c of candidates) {
+                    if (!c || c === 'transparent' || c === 'none') continue;
+                    const s = typeof c === 'string' ? c : c.toString?.();
+                    if (!s) continue;
+                    if (s.startsWith('#')) return s.length === 4 ? `#${s[1]}${s[1]}${s[2]}${s[2]}${s[3]}${s[3]}` : s;
+                    if (s.startsWith('rgb')) {
+                        const parts = s.match(/\d+/g);
+                        if (parts) return rgbToHex(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]));
+                    }
+                }
+                return null;
+            };
+            const clickedHex = sampled ? rgbToHex(sampled.r, sampled.g, sampled.b) : colorFromObject(target);
             
-            if (sampled) {
-                const clickedHex = rgbToHex(sampled.r, sampled.g, sampled.b);
+            if (clickedHex && target) {
                 const targetRGB = hexToRgbObj(clickedHex);
-                const target = hitTarget;
-                if (!target) { p.current.isProcessingRef.current = false; return; }
 
                 // 1. EXTRACT MODE
                 if (p.current.wandMode === 'extract') {
-                    if (target.type === 'image') {
+                    if (target.type !== 'image') {
+                        const cloned = await (target as any).clone();
+                        cloned.set({
+                            left: (target.left || 0) + 16,
+                            top: (target.top || 0) + 16,
+                            evented: true,
+                        });
+                        const keepMatching = (obj: any) => {
+                            if (obj.type === 'group' || obj.type === 'activeSelection' || obj._objects) {
+                                const objects = obj._objects || (typeof obj.getObjects === 'function' ? obj.getObjects() : []);
+                                for (let i = objects.length - 1; i >= 0; i -= 1) {
+                                    keepMatching(objects[i]);
+                                    if ((!objects[i].fill || objects[i].fill === 'transparent') && (!objects[i].stroke || objects[i].stroke === 'transparent')) {
+                                        obj.removeWithUpdate ? obj.removeWithUpdate(objects[i]) : obj.remove(objects[i]);
+                                    }
+                                }
+                            } else {
+                                if (!isColorMatch(obj.fill, clickedHex, p.current.wandTolerance)) obj.set('fill', 'transparent');
+                                if (!isColorMatch(obj.stroke, clickedHex, p.current.wandTolerance)) obj.set('stroke', 'transparent');
+                                obj.set('dirty', true);
+                            }
+                        };
+                        keepMatching(cloned);
+                        canvas.add(cloned);
+                        canvas.setActiveObject(cloned);
+                        canvas.requestRenderAll();
+                        p.current.saveHistorySnapshot(canvas, true);
+                    } else if (target.type === 'image') {
                         const imgEl = (target as any).getElement();
                         if (!imgEl) throw new Error("Image element not found");
 
