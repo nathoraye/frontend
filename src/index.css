@@ -1,8 +1,19 @@
 @import "tailwindcss";
 
+html,
+body {
+  touch-action: manipulation;
+}
+
 /* Fabric paints its own wrapper; keep it clear so the studio mat color shows through. */
 .canvas-container,
 .canvas-container canvas.lower-canvas,
 .canvas-container canvas.upper-canvas {
   background: transparent !important;
+  touch-action: none;
+}
+
+.canvas-container {
+  -webkit-user-select: none;
+  user-select: none;
 }

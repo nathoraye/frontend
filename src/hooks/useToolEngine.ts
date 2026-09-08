@@ -25,7 +25,22 @@ function applyBrush(canvas: fabric.Canvas, color: string, size: number, type: 'r
   brush.strokeLineJoin = type === 'chisel' ? 'miter' : 'round';
 }
 
+function applyTouchFriendlyHandles(obj: fabric.Object) {
+  obj.set({ touchCornerSize: 36, cornerSize: 16, padding: 6 });
+}
+
 export function useToolEngine({ canvas, tool, brushColor, brushSize, brushType, setQuickMenu, eraserTargetRef }: ToolEngineProps) {
+  useEffect(() => {
+    if (!canvas) return;
+    const onAdded = (e: { target?: fabric.Object }) => {
+      if (e.target) applyTouchFriendlyHandles(e.target);
+    };
+    canvas.on('object:added', onAdded);
+    return () => {
+      canvas.off('object:added', onAdded);
+    };
+  }, [canvas]);
+
   useEffect(() => {
     if (!canvas) return;
     const canvasInstance = canvas;
@@ -44,6 +59,7 @@ export function useToolEngine({ canvas, tool, brushColor, brushSize, brushType, 
 
     const objects = canvas.getObjects();
     objects.forEach((obj) => {
+      applyTouchFriendlyHandles(obj);
       if (tool === 'select') {
         obj.set({ selectable: true, evented: true });
       } else if (tool === 'eraser') {
@@ -52,6 +68,7 @@ export function useToolEngine({ canvas, tool, brushColor, brushSize, brushType, 
         obj.set({ selectable: false, evented: tool === 'wand' || tool === 'bucket' });
       }
     });
+    canvasInstance.targetFindTolerance = tool === 'wand' || tool === 'bucket' ? 20 : 16;
 
     if (tool === 'select') {
       canvas.selection = true;

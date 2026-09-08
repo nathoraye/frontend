@@ -14,6 +14,12 @@ export function useCanvasEngine() {
       selection: true,
       stopContextMenu: true,
       fireRightClick: true,
+      // Pointer events give fingers the same clientX/Y as a mouse, so wand /
+      // bucket / draw / transform all fire from a tap instead of a TouchEvent
+      // that has no client coordinates.
+      enablePointerEvents: true,
+      allowTouchScrolling: false,
+      targetFindTolerance: 16,
     });
 
     setCanvas(initCanvas);

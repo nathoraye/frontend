@@ -57,7 +57,7 @@ interface ToolBtnProps {
 
 function ToolBtn({ icon, active, onClick, tooltip }: ToolBtnProps) {
   return (
-    <button onClick={onClick} title={tooltip} className={`p-3 rounded-xl transition-all ${active ? 'bg-[#FF1493] text-white shadow-lg shadow-pink-900/40 transform scale-105' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/50'}`}>
+    <button type="button" onClick={onClick} title={tooltip} className={`min-h-11 min-w-11 p-3 rounded-xl transition-all touch-manipulation ${active ? 'bg-[#FF1493] text-white shadow-lg shadow-pink-900/40 transform scale-105' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/50'}`}>
       {icon}
     </button>
   );

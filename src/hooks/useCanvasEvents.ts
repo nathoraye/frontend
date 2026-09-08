@@ -1,11 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/immutability */
 import * as fabric from 'fabric';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type MutableRefObject } from 'react';
 import { tracedSvgToObject } from '../utils/placeTracedSvg';
 import { applyEraserStroke } from '../utils/eraseStroke';
 import { yieldToPaint } from '../utils/tracePrep';
 import type { ColorTraceParams } from '../utils/traceParams';
+import {
+  canvasPixelFromClient,
+  distance,
+  getClientPoint,
+  midpoint,
+  sampleOpaquePixel,
+} from '../utils/pointerEvents';
+
+export interface TrackLineApi {
+  finish: (close?: boolean) => void;
+  isDrawing: () => boolean;
+}
 
 interface CanvasEventProps {
   canvas: fabric.Canvas | null;
@@ -28,6 +40,7 @@ interface CanvasEventProps {
   eraserTargetRef?: React.MutableRefObject<fabric.Object | null>;
   isNodeEditing?: boolean;
   onNodeEditToggle?: (obj: fabric.Object) => void;
+  trackLineApiRef?: MutableRefObject<TrackLineApi | null>;
 }
 
 export function useCanvasEvents(props: CanvasEventProps) {
@@ -184,39 +197,67 @@ export function useCanvasEvents(props: CanvasEventProps) {
         if (opt.scenePoint) return opt.scenePoint;
         if (typeof (canvas as any).getScenePoint === 'function') return (canvas as any).getScenePoint(opt.e);
         if (typeof (canvas as any).getPointer === 'function') return (canvas as any).getPointer(opt.e);
-        return { x: opt.e.clientX, y: opt.e.clientY };
+        const client = getClientPoint(opt.e);
+        return client ?? { x: 0, y: 0 };
     };
 
+    const resolveHitTarget = (opt: any) => {
+      if (opt.target) return opt.target;
+      if (opt.e && typeof (canvas as any).findTarget === 'function') {
+        try {
+          const info = (canvas as any).findTarget(opt.e);
+          if (info?.target) return info.target;
+        } catch { /* ignore */ }
+      }
+      const pointer = getSafePointer(opt);
+      const objects = canvas.getObjects();
+      for (let i = objects.length - 1; i >= 0; i -= 1) {
+        const obj = objects[i];
+        if (obj.evented === false) continue;
+        try {
+          if (typeof obj.containsPoint === 'function' && obj.containsPoint(pointer as any)) return obj;
+        } catch { /* ignore */ }
+      }
+      return null;
+    };
+
+    const lastTrackTap = { t: 0, x: 0, y: 0 };
+    const isPinching = { current: false };
+    const pinchPointers = new Map<number, { x: number; y: number }>();
+    let pinchMid: { x: number; y: number } | null = null;
+    let pinchDist = 0;
+
     const onMouseDown = async (opt: any) => {
-      if (p.current.isProcessingRef.current) return; 
-      const evt = opt.e as MouseEvent;
+      if (p.current.isProcessingRef.current || isPinching.current) return; 
+      const evt = opt.e;
+      const client = getClientPoint(evt);
       
-      if (evt.altKey || evt.button === 1 || evt.button === 2) {
-        isPanning.current = true; canvas.selection = false; lastPanX.current = evt.clientX; lastPanY.current = evt.clientY; 
+      if (evt?.altKey || evt?.button === 1 || evt?.button === 2) {
+        if (!client) return;
+        isPanning.current = true; canvas.selection = false; lastPanX.current = client.x; lastPanY.current = client.y; 
         p.current.setQuickMenu(null); return;
       }
       
-      if (!opt.target) p.current.setQuickMenu(null);
+      const hitTarget = resolveHitTarget(opt);
+      if (!hitTarget) p.current.setQuickMenu(null);
       const pointer = getSafePointer(opt);
 
       // --- DUAL MODE WAND ENGINE ---
-      if (p.current.tool === 'wand' && opt.target) {
+      if (p.current.tool === 'wand') {
         p.current.isProcessingRef.current = true;
         try {
             const el = (canvas as any).lowerCanvasEl || document.querySelector('canvas');
             if (!el) throw new Error("DOM canvas not found");
             const ctx = el.getContext('2d', { willReadFrequently: true });
-            const rect = el.getBoundingClientRect();
+            if (!ctx || !client) { p.current.isProcessingRef.current = false; return; }
+            const { x, y } = canvasPixelFromClient(el, client.x, client.y);
+            const sampled = sampleOpaquePixel(ctx, x, y, 12);
             
-            const scaleX = el.width / rect.width; const scaleY = el.height / rect.height;
-            const x = Math.floor((evt.clientX - rect.left) * scaleX);
-            const y = Math.floor((evt.clientY - rect.top) * scaleY);
-            const pixelData = ctx.getImageData(x, y, 1, 1).data;
-            
-            if (pixelData[3] > 0) {
-                const clickedHex = rgbToHex(pixelData[0], pixelData[1], pixelData[2]);
+            if (sampled) {
+                const clickedHex = rgbToHex(sampled.r, sampled.g, sampled.b);
                 const targetRGB = hexToRgbObj(clickedHex);
-                const target = opt.target;
+                const target = hitTarget;
+                if (!target) { p.current.isProcessingRef.current = false; return; }
 
                 // 1. EXTRACT MODE
                 if (p.current.wandMode === 'extract') {
@@ -473,6 +514,19 @@ export function useCanvasEvents(props: CanvasEventProps) {
 
       // --- MAGNETIC TRACK-LINE ENGINE ---
       if (p.current.tool === 'track-line') {
+        const now = Date.now();
+        if (
+          isDrawingPolyline.current &&
+          now - lastTrackTap.t < 350 &&
+          Math.hypot(pointer.x - lastTrackTap.x, pointer.y - lastTrackTap.y) < 22
+        ) {
+          lastTrackTap.t = 0;
+          finishPolyline(false);
+          return;
+        }
+        lastTrackTap.t = now;
+        lastTrackTap.x = pointer.x;
+        lastTrackTap.y = pointer.y;
         if (isDrawingPolyline.current && polylinePoints.current.length > 2 && Math.sqrt(Math.pow(pointer.x - polylinePoints.current[0].x, 2) + Math.pow(pointer.y - polylinePoints.current[0].y, 2)) < 20) { finishPolyline(true); return; }
         
         const lineSettings = { strokeWidth: p.current.brushSize || 5, fill: 'transparent', stroke: p.current.brushColor || '#FF1493', selectable: false, evented: false, strokeLineCap: p.current.brushType === 'chisel' ? 'square' : 'round', strokeLineJoin: p.current.brushType === 'chisel' ? 'miter' : 'round' };
@@ -489,9 +543,11 @@ export function useCanvasEvents(props: CanvasEventProps) {
     };
 
     const onMouseMove = (opt: any) => {
-      if (isPanning.current && canvas.viewportTransform) {
-        const vpt = canvas.viewportTransform; vpt[4] += opt.e.clientX - lastPanX.current; vpt[5] += opt.e.clientY - lastPanY.current;
-        canvas.setViewportTransform(vpt); canvas.requestRenderAll(); lastPanX.current = opt.e.clientX; lastPanY.current = opt.e.clientY;
+      if (isPinching.current) return;
+      const moveClient = getClientPoint(opt.e);
+      if (isPanning.current && canvas.viewportTransform && moveClient) {
+        const vpt = canvas.viewportTransform; vpt[4] += moveClient.x - lastPanX.current; vpt[5] += moveClient.y - lastPanY.current;
+        canvas.setViewportTransform(vpt); canvas.requestRenderAll(); lastPanX.current = moveClient.x; lastPanY.current = moveClient.y;
         syncMatOverlay(); updateMenuPosition();
       }
       
@@ -552,6 +608,60 @@ export function useCanvasEvents(props: CanvasEventProps) {
        p.current.saveHistorySnapshot(canvas, true); 
     };
 
+    if (p.current.trackLineApiRef) {
+      p.current.trackLineApiRef.current = {
+        finish: (close = false) => finishPolyline(close),
+        isDrawing: () => isDrawingPolyline.current,
+      };
+    }
+
+    const upperEl = (canvas as any).upperCanvasEl as HTMLCanvasElement | undefined;
+    const onPinchPointerDown = (e: PointerEvent) => {
+      pinchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinchPointers.size >= 2) {
+        isPinching.current = true;
+        (canvas as any)._currentTransform = undefined;
+        const pts = [...pinchPointers.values()];
+        pinchMid = midpoint(pts[0], pts[1]);
+        pinchDist = distance(pts[0], pts[1]) || 1;
+      }
+    };
+    const onPinchPointerMove = (e: PointerEvent) => {
+      if (!pinchPointers.has(e.pointerId)) return;
+      pinchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinchPointers.size < 2 || !pinchMid || !upperEl) return;
+      const pts = [...pinchPointers.values()];
+      const mid = midpoint(pts[0], pts[1]);
+      const distNow = distance(pts[0], pts[1]) || 1;
+      const vpt = canvas.viewportTransform;
+      if (vpt) {
+        vpt[4] += mid.x - pinchMid.x;
+        vpt[5] += mid.y - pinchMid.y;
+        canvas.setViewportTransform(vpt);
+      }
+      const rect = upperEl.getBoundingClientRect();
+      const nextZoom = Math.min(10, Math.max(0.05, canvas.getZoom() * (distNow / pinchDist)));
+      canvas.zoomToPoint({ x: mid.x - rect.left, y: mid.y - rect.top } as any, nextZoom);
+      pinchMid = mid;
+      pinchDist = distNow;
+      syncMatOverlay();
+      canvas.requestRenderAll();
+      updateMenuPosition();
+    };
+    const onPinchPointerUp = (e: PointerEvent) => {
+      pinchPointers.delete(e.pointerId);
+      if (pinchPointers.size < 2) {
+        isPinching.current = false;
+        pinchMid = null;
+      }
+    };
+    if (upperEl) {
+      upperEl.addEventListener('pointerdown', onPinchPointerDown);
+      upperEl.addEventListener('pointermove', onPinchPointerMove);
+      upperEl.addEventListener('pointerup', onPinchPointerUp);
+      upperEl.addEventListener('pointercancel', onPinchPointerUp);
+    }
+
     canvas.on('mouse:wheel', onMouseWheel); 
     canvas.on('mouse:down', onMouseDown); 
     canvas.on('mouse:move', onMouseMove);
@@ -571,6 +681,13 @@ export function useCanvasEvents(props: CanvasEventProps) {
     canvas.on('object:modified', handleObjectModified);
 
     return () => {
+      if (p.current.trackLineApiRef) p.current.trackLineApiRef.current = null;
+      if (upperEl) {
+        upperEl.removeEventListener('pointerdown', onPinchPointerDown);
+        upperEl.removeEventListener('pointermove', onPinchPointerMove);
+        upperEl.removeEventListener('pointerup', onPinchPointerUp);
+        upperEl.removeEventListener('pointercancel', onPinchPointerUp);
+      }
       canvas.off('mouse:wheel', onMouseWheel); 
       canvas.off('mouse:down', onMouseDown); 
       canvas.off('mouse:move', onMouseMove);

@@ -5,7 +5,7 @@ import { useCanvasEngine } from './hooks/useCanvasEngine';
 import { useHistoryEngine } from './hooks/useHistoryEngine';
 import { useAlignmentEngine } from './hooks/useAlignmentEngine'; 
 import { useVectorEngine } from './hooks/useVectorEngine';      
-import { useCanvasEvents } from './hooks/useCanvasEvents';   
+import { useCanvasEvents, type TrackLineApi } from './hooks/useCanvasEvents';   
 import { useVectorMath } from './hooks/useVectorMath';   
 import { useStudioActions } from './hooks/useStudioActions'; 
 import { useToolEngine } from './hooks/useToolEngine'; 
@@ -43,7 +43,10 @@ export default function App() {
   
   const [tool, setTool] = useState<AppTool>('select');
   const [activeTab, setActiveTab] = useState<'design' | 'layers'>('design');
-  const [showRightPanel, setShowRightPanel] = useState<boolean>(true);
+  const [showRightPanel, setShowRightPanel] = useState<boolean>(() =>
+    typeof window === 'undefined' ? true : !window.matchMedia('(max-width: 1023px)').matches
+  );
+  const trackLineApiRef = useRef<TrackLineApi | null>(null);
   const [showLeftPanel, setShowLeftPanel] = useState<boolean>(true);
   const [isMobileLayout, setIsMobileLayout] = useState<boolean>(false);
    
@@ -291,13 +294,17 @@ export default function App() {
     canvas.requestRenderAll(); saveHistorySnapshot(canvas);
   };
 
-  useCanvasEvents({ canvas, matOverlayRef, isProcessingRef, tool, brushColor, brushSize, brushType, wandTolerance, wandMode, eraserMode, setIsTracing, setQuickMenu, updateUIFromSelection, saveHistorySnapshot, traceImage, setTool, quickMenuRef, eraserTargetRef, isNodeEditing, onNodeEditToggle: toggleNodeEdit });
+  useCanvasEvents({ canvas, matOverlayRef, isProcessingRef, tool, brushColor, brushSize, brushType, wandTolerance, wandMode, eraserMode, setIsTracing, setQuickMenu, updateUIFromSelection, saveHistorySnapshot, traceImage, setTool, quickMenuRef, eraserTargetRef, isNodeEditing, onNodeEditToggle: toggleNodeEdit, trackLineApiRef });
   useToolEngine({ canvas, tool, brushColor, brushSize, brushType, setQuickMenu, eraserTargetRef });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mediaQuery = window.matchMedia('(max-width: 1023px)');
-    const updateLayout = () => setIsMobileLayout(mediaQuery.matches);
+    const updateLayout = () => {
+      const mobile = mediaQuery.matches;
+      setIsMobileLayout(mobile);
+      if (mobile) setShowRightPanel(false);
+    };
     updateLayout();
     mediaQuery.addEventListener?.('change', updateLayout);
     return () => mediaQuery.removeEventListener?.('change', updateLayout);
@@ -358,9 +365,9 @@ export default function App() {
 
   return (
     <div className="fixed inset-0 flex flex-col font-sans select-none overflow-hidden bg-[#0f111a] text-slate-200">
-        <header className="h-14 border-b border-slate-800 bg-[#181a25] flex items-center justify-between px-4 z-20 shrink-0 shadow-sm">
+        <header className="min-h-14 border-b border-slate-800 bg-[#181a25] flex items-center justify-between gap-2 px-3 sm:px-4 z-20 shrink-0 shadow-sm overflow-x-auto">
             <div className="flex items-center gap-4">
-              <span className="font-black tracking-widest uppercase text-sm">West Vinyl Studio</span>
+              <span className="font-black tracking-widest uppercase text-sm whitespace-nowrap">West Vinyl Studio</span>
               <div className="h-5 w-px bg-slate-800 mx-1"></div>
               <div className="flex items-center gap-1 bg-slate-500/5 rounded-lg p-1">
                 <button onClick={() => handleUndo(canvas)} className="p-1.5 rounded-md transition-colors hover:bg-slate-700/50 text-slate-300" title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
@@ -410,9 +417,16 @@ export default function App() {
                 <canvas ref={canvasRef} style={viewMode === 'product' ? { visibility: 'hidden', position: 'absolute' } : undefined} />
 
                 {viewMode === 'sticker' && tool === 'wand' && (
-                  <div className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-fuchsia-500/30 bg-[#1e2230]/95 p-1 shadow-xl">
-                    <button type="button" onClick={() => setWandMode('erase')} className={`rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'erase' ? 'bg-fuchsia-500 text-black' : 'text-slate-300 hover:text-white'}`}>Erase Color</button>
-                    <button type="button" onClick={() => setWandMode('extract')} className={`rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'extract' ? 'bg-fuchsia-500 text-black' : 'text-slate-300 hover:text-white'}`}>Extract Shape</button>
+                  <div className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-fuchsia-500/30 bg-[#1e2230]/95 p-1 shadow-xl touch-manipulation">
+                    <button type="button" onClick={() => setWandMode('erase')} className={`min-h-10 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'erase' ? 'bg-fuchsia-500 text-black' : 'text-slate-300 hover:text-white'}`}>Erase Color</button>
+                    <button type="button" onClick={() => setWandMode('extract')} className={`min-h-10 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'extract' ? 'bg-fuchsia-500 text-black' : 'text-slate-300 hover:text-white'}`}>Extract Shape</button>
+                  </div>
+                )}
+                {viewMode === 'sticker' && tool === 'track-line' && (
+                  <div className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-[#FF1493]/30 bg-[#1e2230]/95 p-1 shadow-xl touch-manipulation">
+                    <span className="hidden px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:inline">Tap points</span>
+                    <button type="button" onClick={() => trackLineApiRef.current?.finish(false)} className="min-h-10 rounded-lg bg-[#FF1493] px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white">Finish</button>
+                    <button type="button" onClick={() => trackLineApiRef.current?.finish(true)} className="min-h-10 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-300 hover:text-white">Close shape</button>
                   </div>
                 )}
                 {viewMode === 'sticker' && tool === 'eraser' && (
@@ -523,7 +537,7 @@ export default function App() {
                         </div>
                     ) : (
                         <>
-                            <button onClick={duplicateSelected} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300" title="Duplicate (Ctrl+C, Ctrl+V)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            <button onClick={duplicateSelected} className="min-h-10 min-w-10 p-2.5 rounded-lg hover:bg-slate-700 text-slate-300 touch-manipulation" title="Duplicate (Ctrl+C, Ctrl+V)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
                             
                             {activeObj?.type === 'image' && (
                                 <button onClick={handleTraceCanvasImage} className="p-1.5 rounded-lg hover:bg-[#FF1493]/20 text-[#FF1493] transition-colors" title="Trace Image to Vector"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
