@@ -127,7 +127,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
             </div>
             
             <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
-               {wandMode === 'erase' ? 'Click to delete a color from the image.' : 'Click a color to extract it into a brand new vector layer.'}
+               {wandMode === 'erase' ? 'Tap or click a colour to delete it from the image.' : 'Tap or click a colour to extract it into a brand new vector layer.'}
             </p>
             
             <div className="flex justify-between text-xs mb-2"><span className="font-bold">Tolerance</span><span className={textMuted}>{Math.round(wandTolerance * 100)}%</span></div>
