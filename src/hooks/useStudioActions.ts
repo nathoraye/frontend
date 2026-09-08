@@ -5,6 +5,12 @@ import { validateSVGForCutting } from '../utils/geometryValidation';
 
 const AI_API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
+/** Scene-space centre so a new object lands in the visible viewport (phones included). */
+function viewportDrop(canvas: fabric.Canvas) {
+  const center = canvas.getVpCenter();
+  return { left: center.x, top: center.y };
+}
+
 type ToolMode = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
 
 interface StudioActionProps {
@@ -56,7 +62,8 @@ export function useStudioActions({
 
   const addText = useCallback(() => {
     if (!canvas) return;
-    const text = new fabric.IText('WEST VINYL', { left: 500, top: 500, fontFamily: 'Montserrat', fontWeight: 'bold', fill: brushColor, fontSize: 80, cornerColor: '#FF1493', transparentCorners: false, cornerStyle: 'circle' as const, objectCaching: true });
+    const drop = viewportDrop(canvas);
+    const text = new fabric.IText('WEST VINYL', { left: drop.left, top: drop.top, fontFamily: 'Montserrat', fontWeight: 'bold', fill: brushColor, fontSize: 64, cornerColor: '#FF1493', transparentCorners: false, cornerStyle: 'circle' as const, objectCaching: true });
     canvas.add(text); canvas.setActiveObject(text); setTool('select'); canvas.requestRenderAll(); saveHistorySnapshot(canvas, true);
   }, [canvas, brushColor, setTool, saveHistorySnapshot]);
 
@@ -73,9 +80,10 @@ export function useStudioActions({
       const img = await fabric.Image.fromURL(objectUrl);
       
       // 3. Apply standard styling and drop it into the physical view
+      const drop = viewportDrop(canvas);
       img.set({ 
-          left: 400, 
-          top: 400, 
+          left: drop.left, 
+          top: drop.top, 
           cornerColor: '#FF1493', 
           transparentCorners: false, 
           cornerStyle: 'circle' as const, 
@@ -104,7 +112,8 @@ export function useStudioActions({
 
   const addShape = useCallback((shapeType: 'rect' | 'circle' | 'triangle' | 'star' | 'hex') => {
     if (!canvas) return;
-    const props = { left: 500, top: 500, fill: brushColor, cornerColor: '#FF1493', transparentCorners: false, cornerStyle: 'circle' as const, objectCaching: true };
+    const drop = viewportDrop(canvas);
+    const props = { left: drop.left, top: drop.top, fill: brushColor, cornerColor: '#FF1493', transparentCorners: false, cornerStyle: 'circle' as const, objectCaching: true };
     let shape;
     if (shapeType === 'rect') shape = new fabric.Rect({ ...props, width: 200, height: 200 });
     if (shapeType === 'circle') shape = new fabric.Circle({ ...props, radius: 100 });
