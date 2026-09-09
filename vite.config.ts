@@ -4,6 +4,10 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  build: {
+    // Fabric + studio stay in one client chunk (~800 kB). Warn above that.
+    chunkSizeWarningLimit: 850,
+  },
   server: {
     proxy: {
       '/api': {
