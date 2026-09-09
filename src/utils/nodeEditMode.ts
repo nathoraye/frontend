@@ -104,36 +104,61 @@ export function isInNodeEditMode(obj: fabric.Object | null | undefined): boolean
   return Boolean((obj as unknown as Record<string, unknown>)[ORIGINAL_CONTROLS_KEY]);
 }
 
+function isGroupType(obj: fabric.Object | null | undefined): obj is fabric.Group {
+  if (!obj) return false;
+  const type = String(obj.type || '').toLowerCase();
+  return type === 'group' || type === 'activeselection';
+}
+
+function groupChildren(obj: fabric.Object): fabric.Object[] {
+  const group = obj as fabric.Group;
+  return typeof group.getObjects === 'function' ? group.getObjects() ?? [] : [];
+}
+
+function explodeGroup(group: fabric.Group, canvas: fabric.Canvas): fabric.Object[] {
+  const children = typeof group.removeAll === 'function' ? group.removeAll() : groupChildren(group);
+  canvas.remove(group);
+  children.forEach((child) => canvas.add(child));
+  return children;
+}
+
 export function canNodeEdit(obj: fabric.Object | null | undefined): boolean {
   if (!obj) return false;
   if (isNodeEditable(obj)) return true;
-  if ((obj.type || '').toLowerCase() !== 'group') return false;
-  const group = obj as fabric.Group;
-  const children = typeof group.getObjects === 'function' ? group.getObjects() : [];
-  return children.some(isNodeEditable);
+  if (!isGroupType(obj)) return false;
+  return groupChildren(obj).some(canNodeEdit);
 }
 
 /**
  * Pick the object that should receive node controls.
- * A traced colour group is ungrouped so each path can be edited with native
- * Fabric controls (controls on a grouped child do not render).
+ * Razor SVG and layered SVG groups are ungrouped (including nested colour
+ * sheets) so each path can be edited with native Fabric controls.
  */
 export function resolveEditableObject(
   obj: fabric.Object,
   canvas: fabric.Canvas,
 ): fabric.Object | null {
   if (isNodeEditable(obj)) return obj;
-  if ((obj.type || '').toLowerCase() !== 'group') return null;
-  const group = obj as fabric.Group;
-  const children = typeof group.getObjects === 'function' ? group.getObjects() : [];
-  const editable = children.filter(isNodeEditable);
-  if (!editable.length) return null;
-  const maybeUngroup = group as fabric.Group & { toActiveSelection?: () => fabric.ActiveSelection };
-  if (typeof maybeUngroup.toActiveSelection === 'function') {
-    maybeUngroup.toActiveSelection();
+  if (!isGroupType(obj)) return null;
+  let current: fabric.Object | null = obj;
+  const seen = new Set<fabric.Object>();
+  while (current && isGroupType(current) && !seen.has(current)) {
+    seen.add(current);
+    const kids = groupChildren(current);
+    const leaf = kids.find(isNodeEditable);
+    const nested = kids.find((child) => child !== leaf && canNodeEdit(child));
+    explodeGroup(current, canvas);
+    if (leaf) {
+      canvas.setActiveObject(leaf);
+      return leaf;
+    }
+    current = nested ?? null;
   }
-  canvas.setActiveObject(editable[0]);
-  return editable[0];
+  if (current && isNodeEditable(current)) {
+    canvas.setActiveObject(current);
+    return current;
+  }
+  return null;
 }
 
 /**

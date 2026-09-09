@@ -11,6 +11,7 @@ import { useStudioActions } from './hooks/useStudioActions';
 import { useToolEngine } from './hooks/useToolEngine'; 
 import { useBooleanEngine } from './hooks/useBooleanEngine';
 import { useNodeEditEngine } from './hooks/useNodeEditEngine';
+import { groupActiveSelection, isUngroupable, ungroupOnce } from './utils/groupOps';
 import { LeftDock } from './components/LeftDock';
 import { RightInspector } from './components/RightInspector';
 import { CropModal } from './components/CropModal';
@@ -134,6 +135,22 @@ export default function App() {
     openImageTrace(activeObj as fabric.Image, 'stacked');
   };
   const handleCreateOffset = () => offsetCore(activeObj, offsetSize);
+  const handleUngroup = useCallback(() => {
+    if (!canvas) return;
+    const obj = canvas.getActiveObject();
+    if (!isUngroupable(obj)) return;
+    ungroupOnce(canvas, obj);
+    saveHistorySnapshot(canvas, true);
+    setQuickMenu(null);
+  }, [canvas, saveHistorySnapshot]);
+  const handleGroupSelection = useCallback(() => {
+    if (!canvas) return;
+    const obj = canvas.getActiveObject() as fabric.ActiveSelection | null;
+    if (!obj || String(obj.type || '').toLowerCase() !== 'activeselection') return;
+    groupActiveSelection(canvas, obj);
+    saveHistorySnapshot(canvas, true);
+    setQuickMenu(null);
+  }, [canvas, saveHistorySnapshot]);
 
   const { isNodeEditing, canEditActive, toggleNodeEdit, exitNodeEdit } = useNodeEditEngine({
     canvas,
@@ -576,11 +593,11 @@ export default function App() {
                             <button onClick={() => setShowOffsetConfig(true)} className="p-1.5 rounded-lg hover:bg-amber-500/20 text-amber-500 transition-colors" title="Create Offset Outline"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16v16H4z" strokeDasharray="2 2" /><path d="M8 8h8v8H8z" fill="currentColor" opacity="0.5" /></svg></button>
                             <button onClick={() => { addWeedingBox(); setQuickMenu(null); }} className="p-1.5 rounded-lg hover:bg-[#00FFFF]/20 text-[#00FFFF] transition-colors" title="Add Weeding Box"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeDasharray="3 3"/><path d="M9 9h6v6H9z" fill="currentColor" stroke="none" opacity="0.5"/></svg></button>
                             
-                            {(canvas?.getActiveObjects()?.length || 0) > 1 && activeObj?.type !== 'group' && (
-                              <button onClick={() => { const sel = canvas?.getActiveObject() as fabric.ActiveSelection | null; if (sel && sel.type === 'activeSelection') { const group = (sel as any).toGroup(); canvas?.setActiveObject(group); canvas?.requestRenderAll(); saveHistorySnapshot(canvas!, true); setQuickMenu(null); } }} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300" title="Group Objects"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></button>
+                            {(canvas?.getActiveObjects()?.length || 0) > 1 && !isUngroupable(activeObj) && (
+                              <button onClick={handleGroupSelection} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300" title="Group Objects"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></button>
                             )}
-                            {activeObj?.type === 'group' && (
-                              <button onClick={() => { const group = canvas?.getActiveObject() as fabric.Group | null; if (group && group.type === 'group') { const sel = (group as any).toActiveSelection(); canvas?.setActiveObject(sel); canvas?.requestRenderAll(); saveHistorySnapshot(canvas!, true); setQuickMenu(null); } }} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300" title="Ungroup"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3h18v18H3z"/></svg></button>
+                            {isUngroupable(activeObj) && (
+                              <button onClick={handleUngroup} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300" title="Ungroup"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3h18v18H3z"/></svg></button>
                             )}
                             {((canvas?.getActiveObjects()?.length || 0) > 1 || activeObj?.type === 'group') && (
                               <>
@@ -612,7 +629,7 @@ export default function App() {
                         textCurve={textCurve} charSpacing={charSpacing} setCharSpacing={setCharSpacing}
                         lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
                         performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} handleStackedVectorTrace={handleStackedVectorTrace}
-                        isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)}
+                        isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)} handleUngroup={handleUngroup}
                         saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
                       />
                     )}
@@ -633,7 +650,7 @@ export default function App() {
                 textCurve={textCurve} charSpacing={charSpacing} setCharSpacing={setCharSpacing}
                 lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
                 performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} handleStackedVectorTrace={handleStackedVectorTrace}
-                isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)}
+                isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)} handleUngroup={handleUngroup}
                 saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
               />
             ) : null}
