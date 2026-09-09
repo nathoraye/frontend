@@ -38,12 +38,39 @@ export function forEachLeafObject(obj: fabric.Object, visit: (leaf: fabric.Objec
 
 const OFFSET_COLOR = '#FF1493';
 
+function paintNode(
+  obj: fabric.Object,
+  style: Record<string, unknown>,
+): void {
+  obj.set({ ...style, dirty: true, objectCaching: false });
+  if (isGroupLike(obj)) {
+    getGroupChildren(obj).forEach((child) => paintNode(child, style));
+  }
+}
+
+/**
+ * Keep only the underbase sheet on a layered SVG clone so offset is one
+ * kiss-cut halo, not a second copy of every colour layer.
+ */
+export function reduceToOffsetSilhouette(obj: fabric.Object): void {
+  if (!isGroupLike(obj)) return;
+  const kids = getGroupChildren(obj);
+  const keep = kids.find((child) => (
+    String((child as fabric.Object & { name?: string }).name || '') === 'Silhouette'
+  ));
+  if (!keep || kids.length < 2) return;
+  kids.forEach((child) => {
+    if (child !== keep) (obj as fabric.Group).remove(child);
+  });
+}
+
 /** Paint every nested path so a layered SVG gets a kiss-cut halo, not a duplicate. */
 export function paintOffsetAppearance(
   obj: fabric.Object,
   strokeWidth: number,
   color: string = OFFSET_COLOR,
 ): void {
+  reduceToOffsetSilhouette(obj);
   const style = {
     fill: color,
     stroke: color,
@@ -51,18 +78,14 @@ export function paintOffsetAppearance(
     strokeLineJoin: 'round' as const,
     strokeLineCap: 'round' as const,
     strokeUniform: true,
-    dirty: true,
   };
+  paintNode(obj, style);
   obj.set({
-    ...style,
     originX: 'center',
     originY: 'center',
     evented: true,
-    objectCaching: true,
   });
-  forEachLeafObject(obj, (leaf) => {
-    leaf.set(style);
-  });
+  (obj as fabric.Object & { name?: string }).name = 'Offset';
 }
 
 /** Fabric v7 dropped Group.toActiveSelection — explode one group level onto the canvas. */

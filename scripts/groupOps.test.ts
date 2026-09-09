@@ -35,13 +35,15 @@ test('paintOffsetAppearance reaches nested layered SVG leaves', () => {
   paintOffsetAppearance(stacked, 12);
   const fills: string[] = [];
   const widths: number[] = [];
-  forEachLeafObject(stacked!, (leaf) => {
+  forEachLeafObject(stacked, (leaf) => {
     fills.push(String(leaf.fill));
     widths.push(leaf.strokeWidth || 0);
   });
-  assert.ok(fills.length >= 2);
-  assert.ok(fills.every((fill) => fill === '#FF1493'));
-  assert.ok(widths.every((width) => width === 12));
+  assert.equal(fills.length, 1);
+  assert.equal(fills[0], '#FF1493');
+  assert.equal(widths[0], 12);
+  assert.equal((stacked as fabric.Object & { name?: string }).name, 'Offset');
+  assert.equal(getGroupChildren(stacked).length, 1);
 });
 
 test('ungroupOnce explodes a layered stack into named cut sheets', () => {
