@@ -252,7 +252,7 @@ export function useCanvasEvents(props: CanvasEventProps) {
             if (!ctx || !client) { p.current.isProcessingRef.current = false; return; }
             const { x, y } = canvasPixelFromClient(el, client.x, client.y);
             const sampled = sampleOpaquePixel(ctx, x, y, 20);
-            const target = hitTarget;
+            let target = hitTarget;
             const colorFromObject = (obj: any): string | null => {
                 if (!obj) return null;
                 const candidates = [obj.fill, obj.stroke];
@@ -272,7 +272,18 @@ export function useCanvasEvents(props: CanvasEventProps) {
                 }
                 return null;
             };
-            const clickedHex = sampled ? rgbToHex(sampled.r, sampled.g, sampled.b) : colorFromObject(target);
+            let clickedHex = sampled ? rgbToHex(sampled.r, sampled.g, sampled.b) : colorFromObject(target);
+            if (clickedHex && !target) {
+                const objects = canvas.getObjects();
+                for (let i = objects.length - 1; i >= 0; i -= 1) {
+                    const obj = objects[i];
+                    if (isColorMatch(obj.fill, clickedHex, p.current.wandTolerance) || isColorMatch(obj.stroke, clickedHex, p.current.wandTolerance)) {
+                        target = obj;
+                        break;
+                    }
+                }
+            }
+            if (!clickedHex && target) clickedHex = colorFromObject(target);
             
             if (clickedHex && target) {
                 const targetRGB = hexToRgbObj(clickedHex);
