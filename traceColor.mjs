@@ -7,6 +7,10 @@ import { extractInkPalette, normalizePalette, prepareColorTraceRgba } from './tr
 
 const require = createRequire(import.meta.url);
 const vtracer = require('@visioncortex/vtracer');
+const { PNG } = require('pngjs');
+
+/** Vercel Hobby/Pro serverless request body limit. Raw RGBA JSON exceeds this. */
+export const TRACE_REQUEST_BODY_LIMIT = 4_500_000;
 
 export const DEFAULT_COLOR_TRACE = {
   maxColors: 4,
@@ -90,8 +94,35 @@ export function traceRgba(rgba, width, height, params = {}) {
   );
 }
 
+export function isPng(bytes) {
+  return bytes.length >= 8
+    && bytes[0] === 0x89
+    && bytes[1] === 0x50
+    && bytes[2] === 0x4e
+    && bytes[3] === 0x47
+    && bytes[4] === 0x0d
+    && bytes[5] === 0x0a
+    && bytes[6] === 0x1a
+    && bytes[7] === 0x0a;
+}
+
+export function decodePngToRgba(buffer) {
+  const png = PNG.sync.read(Buffer.from(buffer));
+  return { rgba: png.data, width: png.width, height: png.height };
+}
+
+export function encodePngRgba(rgba, width, height) {
+  const png = new PNG({ width, height });
+  Buffer.from(rgba).copy(png.data);
+  return PNG.sync.write(png);
+}
+
 export function traceImageBuffer(buffer, params = {}) {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  if (isPng(bytes)) {
+    const png = decodePngToRgba(bytes);
+    return traceRgba(png.rgba, png.width, png.height, params);
+  }
   return vtracer.convertBuffer(bytes, buildVtracerOptions(params));
 }
 
