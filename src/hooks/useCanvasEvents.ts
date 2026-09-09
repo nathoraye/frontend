@@ -13,6 +13,7 @@ import {
   midpoint,
   sampleOpaquePixel,
 } from '../utils/pointerEvents';
+import { eraseMatchingVectorColors, keepMatchingVectorColors } from '../utils/wandVectorCleanup';
 
 export interface TrackLineApi {
   finish: (close?: boolean) => void;
@@ -315,22 +316,7 @@ export function useCanvasEvents(props: CanvasEventProps) {
                             top: (target.top || 0) + 16,
                             evented: true,
                         });
-                        const keepMatching = (obj: any) => {
-                            if (obj.type === 'group' || obj.type === 'activeSelection' || obj._objects) {
-                                const objects = obj._objects || (typeof obj.getObjects === 'function' ? obj.getObjects() : []);
-                                for (let i = objects.length - 1; i >= 0; i -= 1) {
-                                    keepMatching(objects[i]);
-                                    if ((!objects[i].fill || objects[i].fill === 'transparent') && (!objects[i].stroke || objects[i].stroke === 'transparent')) {
-                                        obj.removeWithUpdate ? obj.removeWithUpdate(objects[i]) : obj.remove(objects[i]);
-                                    }
-                                }
-                            } else {
-                                if (!isColorMatch(obj.fill, clickedHex, p.current.wandTolerance)) obj.set('fill', 'transparent');
-                                if (!isColorMatch(obj.stroke, clickedHex, p.current.wandTolerance)) obj.set('stroke', 'transparent');
-                                obj.set('dirty', true);
-                            }
-                        };
-                        keepMatching(cloned);
+                        keepMatchingVectorColors(cloned, clickedHex, p.current.wandTolerance, isColorMatch);
                         canvas.add(cloned);
                         canvas.setActiveObject(cloned);
                         canvas.requestRenderAll();
@@ -439,28 +425,7 @@ export function useCanvasEvents(props: CanvasEventProps) {
                         };
                         newImg.src = tempCanvas.toDataURL('image/png');
                     } else {
-                        const processVector = (obj: any) => {
-                            if (obj.type === 'group' || obj.type === 'activeSelection' || obj._objects) {
-                                const objects = obj._objects || (typeof obj.getObjects === 'function' ? obj.getObjects() : []);
-                                for (let i = objects.length - 1; i >= 0; i--) {
-                                    const child = objects[i];
-                                    processVector(child);
-                                    if ((!child.fill || child.fill === '' || child.fill === 'transparent') && (!child.stroke || child.stroke === '' || child.stroke === 'transparent')) {
-                                        if (obj.removeWithUpdate) {
-                                            obj.removeWithUpdate(child);
-                                        } else {
-                                            obj.remove(child);
-                                        }
-                                    }
-                                }
-                            } else {
-                                if (isColorMatch(obj.fill, clickedHex, p.current.wandTolerance)) obj.set('fill', 'transparent');
-                                if (isColorMatch(obj.stroke, clickedHex, p.current.wandTolerance)) obj.set('stroke', 'transparent');
-                                obj.set('dirty', true);
-                            }
-                        };
-
-                        processVector(target);
+                        eraseMatchingVectorColors(target, clickedHex, p.current.wandTolerance, isColorMatch);
 
                         if (target.type !== 'group' && target.type !== 'activeSelection' && !target._objects) {
                             if ((!target.fill || target.fill === '' || target.fill === 'transparent') && (!target.stroke || target.stroke === '' || target.stroke === 'transparent')) {
