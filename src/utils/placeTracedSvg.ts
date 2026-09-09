@@ -1,5 +1,5 @@
 import * as fabric from 'fabric';
-import { isBackgroundFill, isBlackFill, isFullFrameShape } from './traceFills';
+import { isBackgroundFill, isBlackFill, isFullFrameShape, normalizeFill } from './traceFills';
 
 export { isBackgroundFill, isBlackFill, isFullFrameShape, normalizeFill } from './traceFills';
 
@@ -18,10 +18,11 @@ export function filterTracedObjects(
   svgWidth: number,
   svgHeight: number,
   keepOnlyBlack = false,
+  keepFullFrame = false,
 ): fabric.Object[] {
   return objects.filter((raw) => {
     const obj = raw as FabricAny;
-    if (isFullFrameShape(obj, svgWidth, svgHeight)) return false;
+    if (!keepFullFrame && isFullFrameShape(obj, svgWidth, svgHeight)) return false;
     if (isBackgroundFill(obj.fill) && (isBackgroundFill(obj.stroke) || !obj.stroke)) return false;
     if (keepOnlyBlack && !isBlackFill(obj.fill) && !isBlackFill(obj.stroke)) return false;
     return true;
@@ -31,12 +32,13 @@ export function filterTracedObjects(
 export async function loadTracedObjects(
   svgString: string,
   keepOnlyBlack = false,
+  keepFullFrame = false,
 ): Promise<fabric.Object[]> {
   const result = await (fabric as { loadSVGFromString: (svg: string) => Promise<{ objects?: fabric.Object[]; options?: { width?: number; height?: number } }> }).loadSVGFromString(svgString);
   const objects = (result.objects || []).filter(Boolean);
   const svgWidth = Number(result.options?.width || 0);
   const svgHeight = Number(result.options?.height || 0);
-  return filterTracedObjects(objects, svgWidth, svgHeight, keepOnlyBlack);
+  return filterTracedObjects(objects, svgWidth, svgHeight, keepOnlyBlack, keepFullFrame);
 }
 
 const CONTROL_STYLE = {
@@ -62,7 +64,7 @@ export function groupTracedObjects(
       // giving mathematically correct solid silhouettes for knife-plotter
       // output.  'evenodd' would punch holes through nested paths and create
       // stacked transparency artefacts that confuse vinyl-cutting software.
-      fillRule: 'nonzero',
+      fillRule: (style?.fillRule as string) ?? 'nonzero',
       objectCaching: true,
       ...(style?.fill != null ? { fill: style.fill as string } : {}),
     });
@@ -82,6 +84,44 @@ export function groupTracedObjects(
   });
   group.setCoords();
   return group;
+}
+
+function layerNameForFill(fill: string, index: number): string {
+  const hex = String(fill || '').toUpperCase();
+  if (index === 0 && (hex === '#000000' || hex === '#000')) return 'Silhouette';
+  return hex || `Layer ${index + 1}`;
+}
+
+/** One Fabric group per vinyl colour, nested so Ungroup yields cut sheets. */
+export function groupStackedTracedObjects(objects: fabric.Object[]): fabric.Object | null {
+  if (!objects.length) return null;
+  const buckets: { fill: string; items: fabric.Object[] }[] = [];
+  for (const obj of objects) {
+    const fill = normalizeFill((obj as FabricAny).fill) || '#000000';
+    const last = buckets[buckets.length - 1];
+    if (last && last.fill === fill) last.items.push(obj);
+    else buckets.push({ fill, items: [obj] });
+  }
+  const layers = buckets
+    .map((bucket, index) => {
+      const grouped = groupTracedObjects(bucket.items, {
+        fill: bucket.fill,
+        fillRule: 'evenodd',
+      });
+      if (!grouped) return null;
+      (grouped as fabric.Object & { name?: string }).name = layerNameForFill(bucket.fill, index);
+      return grouped;
+    })
+    .filter((obj): obj is fabric.Object => !!obj);
+  if (!layers.length) return null;
+  if (layers.length === 1) return layers[0];
+  const stack = new fabric.Group(layers, {
+    ...CONTROL_STYLE,
+    subTargetCheck: false,
+  });
+  (stack as fabric.Group & { name?: string }).name = 'Layered SVG';
+  stack.setCoords();
+  return stack;
 }
 
 /** Match the traced group to the source image's on-canvas size and pose. */
@@ -111,12 +151,20 @@ export async function tracedSvgToObject(
     keepOnlyBlack?: boolean;
     fill?: string;
     source?: fabric.Object;
+    hierarchical?: 'cutout' | 'stacked';
     /** @deprecated Traces are fitted to the source's on-canvas size. */
     scaleDivisor?: number;
   },
 ): Promise<fabric.Object | null> {
-  const objects = await loadTracedObjects(svgString, options?.keepOnlyBlack ?? false);
-  const grouped = groupTracedObjects(objects, options?.fill != null ? { fill: options.fill } : undefined);
+  const stacked = options?.hierarchical === 'stacked';
+  const objects = await loadTracedObjects(
+    svgString,
+    options?.keepOnlyBlack ?? false,
+    stacked,
+  );
+  const grouped = stacked
+    ? groupStackedTracedObjects(objects)
+    : groupTracedObjects(objects, options?.fill != null ? { fill: options.fill } : undefined);
   if (!grouped) return null;
   if (options?.source) {
     placeOverSource(grouped, options.source);

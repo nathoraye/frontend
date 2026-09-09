@@ -175,3 +175,108 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
   const h = Math.round(size.height * 10) / 10;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet">${paths.join('')}</svg>`;
 }
+
+export type StackedLayerPreview = {
+  id: string;
+  fill: string;
+  label: string;
+};
+
+function layerLabel(id: string, fill: string): string {
+  if (id === 'layer-silhouette' || /silhouette/i.test(id)) return 'Silhouette';
+  return fill.toUpperCase();
+}
+
+function parseGroupFill(attrs: string, fallback: string): string {
+  return parseFill(attrs) || fallback;
+}
+
+/**
+ * Keep SvgTrace-style `<g id="layer-…">` sheets. Do not merge colours or
+ * drop the black underbase even when it spans most of the frame.
+ */
+export function cleanupStackedTracedSvg(svg: string, width = 0, height = 0): string {
+  const parsed = readSvgSize(svg, width, height);
+  const size = {
+    width: parsed.width > 0 ? parsed.width : width,
+    height: parsed.height > 0 ? parsed.height : height,
+  };
+  const layers: { id: string; fill: string; ds: string[] }[] = [];
+  const groupRe = /<g\b([^>]*)>([\s\S]*?)<\/g>/gi;
+  let groupMatch: RegExpExecArray | null;
+  while ((groupMatch = groupRe.exec(svg)) !== null) {
+    const attrs = groupMatch[1];
+    const body = groupMatch[2];
+    const id = parseAttr(attrs, 'id') || `layer-${layers.length + 1}`;
+    let fill = parseGroupFill(attrs, '#000000');
+    const ds: string[] = [];
+    const pathRe = /<path\b([^>]*)\/?>/gi;
+    let pathMatch: RegExpExecArray | null;
+    while ((pathMatch = pathRe.exec(body)) !== null) {
+      const pathAttrs = pathMatch[1];
+      const pathFill = parseFill(pathAttrs);
+      if (pathFill) fill = pathFill;
+      const d = parseAttr(pathAttrs, 'd');
+      if (!d) continue;
+      const normalized = normalizeTracedPathD(d);
+      if (!/[MLCQ]/i.test(normalized) || pathBBoxArea(normalized) < 1) continue;
+      if (pathFill && isPaperColor(pathFill)) continue;
+      ds.push(normalized);
+    }
+    if (!ds.length) continue;
+    if (isPaperColor(fill) && id !== 'layer-silhouette') continue;
+    layers.push({ id, fill, ds });
+  }
+
+  if (!layers.length) {
+    const re = /<path\b([^>]*)\/?>/gi;
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(svg)) !== null) {
+      const attrs = match[1];
+      const fill = parseFill(attrs);
+      const d = parseAttr(attrs, 'd');
+      if (!fill || !d || isPaperColor(fill)) continue;
+      const normalized = normalizeTracedPathD(d);
+      if (!/[MLCQ]/i.test(normalized) || pathBBoxArea(normalized) < 1) continue;
+      layers.push({
+        id: fill === '#000000' ? 'layer-silhouette' : `layer-${fill.slice(1).toLowerCase()}`,
+        fill,
+        ds: [normalized],
+      });
+    }
+  }
+
+  const w = Math.round(size.width * 10) / 10;
+  const h = Math.round(size.height * 10) / 10;
+  const body = layers.map((layer) => {
+    const paths = layer.ds
+      .map((d) => `<path fill="${layer.fill}" fill-rule="evenodd" d="${d}"/>`)
+      .join('');
+    return `<g id="${layer.id}" fill="${layer.fill}">${paths}</g>`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet">${body}</svg>`;
+}
+
+export function listStackedLayers(svg: string): StackedLayerPreview[] {
+  const layers: StackedLayerPreview[] = [];
+  const groupRe = /<g\b([^>]*)>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = groupRe.exec(svg)) !== null) {
+    const attrs = match[1];
+    const id = parseAttr(attrs, 'id') || `layer-${layers.length + 1}`;
+    const fill = parseFill(attrs) || '#000000';
+    layers.push({ id, fill, label: layerLabel(id, fill) });
+  }
+  return layers;
+}
+
+export function cleanupTraceSvg(
+  svg: string,
+  width = 0,
+  height = 0,
+  hierarchical: 'cutout' | 'stacked' = 'cutout',
+): string {
+  return hierarchical === 'stacked'
+    ? cleanupStackedTracedSvg(svg, width, height)
+    : cleanupTracedSvg(svg, width, height);
+}
