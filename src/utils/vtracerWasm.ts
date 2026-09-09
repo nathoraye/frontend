@@ -14,15 +14,15 @@
  * `require('fs')`.  Importing `convert_image_to_svg` (or `convertPixels`) from
  * that package in a Vite browser bundle would pull `fs` into the client and
  * fail at runtime.  The function below matches the declared
- * `convert_image_to_svg` signature and forwards RGBA to `/api/trace`, which
+ * `convert_image_to_svg` signature and forwards a PNG to `/api/trace`, which
  * runs the same VTracer WASM (`convertPixels` / `traceRgba`) on the server.
  */
 
 import type { VTracerConfig } from '@visioncortex/vtracer';
-import { cleanupTracedSvg } from './svgTraceCleanup';
 import type { ColorTraceParams } from './traceParams';
 import { normalizeColorTraceParams } from './traceParams';
 import { extractInkPalette } from './tracePalette';
+import { requestServerTrace } from './traceRequest';
 import {
   binarizeRgba,
   mapUiConfigToVtracer,
@@ -41,15 +41,6 @@ export {
 
 const UPSCALE_FACTOR = 2;
 
-function rgbaToBase64(data: Uint8ClampedArray): string {
-  const CHUNK = 32_768;
-  let binary = '';
-  for (let i = 0; i < data.length; i += CHUNK) {
-    binary += String.fromCharCode(...data.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
-}
-
 function yieldToUi(): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, 0);
@@ -58,7 +49,7 @@ function yieldToUi(): Promise<void> {
 
 /**
  * Adapter matching the declared `convert_image_to_svg` signature.
- * Forwards RGBA to `/api/trace` (VTracer WASM on the server).
+ * Forwards a PNG to `/api/trace` (VTracer WASM on the server).
  */
 export async function convert_image_to_svg(
   imgData: Uint8ClampedArray | number[],
@@ -69,22 +60,9 @@ export async function convert_image_to_svg(
   const pixels = imgData instanceof Uint8ClampedArray
     ? imgData
     : Uint8ClampedArray.from(imgData);
+  const copy = new Uint8ClampedArray(pixels);
   const params = vtracerConfigToServerParams(config);
-  const res = await fetch('/api/trace', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      rgba: rgbaToBase64(pixels),
-      width,
-      height,
-      ...params,
-    }),
-  });
-  const json = await res.json().catch(() => ({})) as { svg?: string; error?: string };
-  if (!res.ok || !json.svg) {
-    throw new Error(json.error ?? `VTracer WASM trace failed (HTTP ${res.status})`);
-  }
-  return json.svg;
+  return requestServerTrace(new ImageData(copy, width, height), params);
 }
 
 async function traceCanvasStencil(
@@ -115,13 +93,12 @@ async function traceCanvasStencil(
   // Yield so the binarisation loop doesn't freeze React's render thread
   // before the WASM/network hop.
   await yieldToUi();
-  const svgOutput = await convert_image_to_svg(
+  return convert_image_to_svg(
     imgDataWrapper.data,
     width,
     height,
     vtracerConfig,
   );
-  return cleanupTracedSvg(svgOutput, width, height);
 }
 
 async function traceImageDataColor(
@@ -135,30 +112,7 @@ async function traceImageDataColor(
     pixelData.height,
     p.maxColors,
   );
-  const res = await fetch('/api/trace', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      rgba: rgbaToBase64(pixelData.data),
-      width: pixelData.width,
-      height: pixelData.height,
-      maxColors: p.maxColors,
-      cornerThreshold: p.cornerThreshold,
-      curveFit: p.curveFit,
-      filterSpeckle: p.filterSpeckle,
-      palette,
-    }),
-  });
-  const json = await res.json().catch(() => ({})) as {
-    svg?: string;
-    error?: string;
-    width?: number;
-    height?: number;
-  };
-  if (!res.ok || !json.svg) {
-    throw new Error(json.error ?? `VTracer WASM trace failed (HTTP ${res.status})`);
-  }
-  return cleanupTracedSvg(json.svg, json.width ?? pixelData.width, json.height ?? pixelData.height);
+  return requestServerTrace(pixelData, { ...p, palette });
 }
 
 /**

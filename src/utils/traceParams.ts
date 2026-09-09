@@ -43,3 +43,26 @@ export function normalizeColorTraceParams(params?: ColorTraceParams): Normalized
     palette: palette && palette.length >= 2 ? palette : undefined,
   };
 }
+
+/** Vercel Hobby/Pro serverless request body limit. Raw RGBA JSON exceeds this. */
+export const TRACE_REQUEST_BODY_LIMIT = 4_500_000;
+
+export function buildTraceQuery(params?: ColorTraceParams): string {
+  const options = normalizeColorTraceParams(params);
+  const qs = new URLSearchParams({
+    maxColors: String(options.maxColors),
+    cornerThreshold: String(options.cornerThreshold),
+    curveFit: String(options.curveFit),
+    filterSpeckle: String(options.filterSpeckle),
+  });
+  if (options.palette?.length) qs.set('palette', options.palette.join(','));
+  return qs.toString();
+}
+
+export function traceHttpError(status: number, message?: string): Error {
+  if (status === 413) {
+    return new Error('Trace image is too large to send. Try a smaller graphic.');
+  }
+  return new Error(message || `Trace request failed (${status})`);
+}
+
