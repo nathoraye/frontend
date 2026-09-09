@@ -1,6 +1,7 @@
 import React from 'react';
 import * as fabric from 'fabric';
 import { FontPicker } from './FontPicker';
+import { tightPackWeldObject } from '../utils/weldImport';
 
 const SWATCHES = [
   '#FFFFFF', '#000000', '#FF1493', '#FF0000', '#FF7F00', '#FFFF00', '#32CD32', '#00FF00', 
@@ -66,11 +67,10 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
     isDark, textMuted, textMain, btnHover
   } = props;
 
-  // NEW: Shrink-Wraps the bounding box tight to the object
+  // Fit the selection box to the remaining artwork (drops weld/trace dust).
   const handleShrinkWrapBounds = () => {
     if (!activeObj || !canvas) return;
-    
-    // For text, trim trailing spaces and recalculate exact width
+
     if (activeObj.type === 'textbox' || activeObj.type === 'i-text') {
         const textObj = activeObj as unknown as {
           text?: string;
@@ -82,7 +82,8 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
             textObj.set('width', textObj.calcTextWidth());
         }
     }
-    
+
+    tightPackWeldObject(activeObj);
     activeObj.setCoords();
     canvas.requestRenderAll();
     saveHistorySnapshot(canvas, true);

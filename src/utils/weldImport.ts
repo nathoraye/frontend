@@ -12,6 +12,8 @@ export type WeldImportShape = {
   scaleY?: number;
   left?: number;
   top?: number;
+  originX?: string | number;
+  originY?: string | number;
 };
 
 export interface WeldImportFrame {
@@ -19,9 +21,57 @@ export interface WeldImportFrame {
   height: number;
 }
 
+export interface ShapeBBox {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+/** Distant dust smaller than this fraction of the largest piece is dropped. */
+export const WELD_SPECK_AREA_RATIO = 0.015;
+/** Keep drips within this padding of the main artwork (ratio of the main size). */
+export const WELD_SPECK_PAD_RATIO = 0.1;
+export const WELD_SPECK_PAD_MIN = 12;
+
 function isInvisiblePaint(value: unknown): boolean {
   const n = normalizeFill(value);
   return n === '' || n === 'transparent' || n === 'none';
+}
+
+function originOffset(origin: string | number | undefined, size: number): number {
+  if (origin === 'center' || origin === 0.5) return size / 2;
+  if (origin === 'right' || origin === 'bottom' || origin === 1) return size;
+  return 0;
+}
+
+export function shapeBBox(obj: WeldImportShape): ShapeBBox | null {
+  const width = Math.abs((obj.width || 0) * (obj.scaleX || 1));
+  const height = Math.abs((obj.height || 0) * (obj.scaleY || 1));
+  if (width <= 0 && height <= 0) return null;
+  const left = obj.left ?? 0;
+  const top = obj.top ?? 0;
+  const minX = left - originOffset(obj.originX, width);
+  const minY = top - originOffset(obj.originY, height);
+  return { minX, minY, maxX: minX + width, maxY: minY + height };
+}
+
+function bboxArea(box: ShapeBBox): number {
+  return Math.max(0, box.maxX - box.minX) * Math.max(0, box.maxY - box.minY);
+}
+
+function bboxOverlap(a: ShapeBBox, b: ShapeBBox): boolean {
+  return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY;
+}
+
+function unionBoxes(boxes: ShapeBBox[]): ShapeBBox | null {
+  if (!boxes.length) return null;
+  return {
+    minX: Math.min(...boxes.map((b) => b.minX)),
+    minY: Math.min(...boxes.map((b) => b.minY)),
+    maxX: Math.max(...boxes.map((b) => b.maxX)),
+    maxY: Math.max(...boxes.map((b) => b.maxY)),
+  };
 }
 
 /**
@@ -70,10 +120,73 @@ export function filterWeldImportedObjects<T extends WeldImportShape>(
   return objects.filter((obj) => !!obj && !isPhantomWeldRect(obj, frame));
 }
 
+/**
+ * Trace/weld dust far from the main cut expands the selection box (artwork
+ * sits in a corner of a huge frame). Keep nearby drips; drop tiny outliers.
+ */
+export function dropDistantSpecks<T extends WeldImportShape>(objects: T[]): T[] {
+  if (objects.length < 2) return objects;
+  const boxes = objects.map(shapeBBox);
+  const areas = boxes.map((box) => (box ? bboxArea(box) : 0));
+  const maxArea = Math.max(...areas);
+  if (maxArea <= 0) return objects;
+
+  const mainBoxes = boxes.filter((box, i) => box && areas[i] >= maxArea * WELD_SPECK_AREA_RATIO) as ShapeBBox[];
+  const main = unionBoxes(mainBoxes);
+  if (!main) return objects;
+
+  const padX = Math.max(WELD_SPECK_PAD_MIN, (main.maxX - main.minX) * WELD_SPECK_PAD_RATIO);
+  const padY = Math.max(WELD_SPECK_PAD_MIN, (main.maxY - main.minY) * WELD_SPECK_PAD_RATIO);
+  const padded: ShapeBBox = {
+    minX: main.minX - padX,
+    minY: main.minY - padY,
+    maxX: main.maxX + padX,
+    maxY: main.maxY + padY,
+  };
+
+  return objects.filter((_, i) => {
+    if (areas[i] >= maxArea * WELD_SPECK_AREA_RATIO) return true;
+    const box = boxes[i];
+    return !!box && bboxOverlap(padded, box);
+  });
+}
+
+export function flattenWeldObjects<T extends WeldImportShape>(objects: T[]): T[] {
+  const out: T[] = [];
+  for (const obj of objects) {
+    if (!obj) continue;
+    const type = String(obj.type || '').toLowerCase();
+    const group = obj as T & { getObjects?: () => unknown[] };
+    if ((type === 'group' || type === 'activeselection') && typeof group.getObjects === 'function') {
+      const kids = flattenWeldObjects((group.getObjects() as T[]) || []);
+      if (kids.length) {
+        out.push(...kids);
+        continue;
+      }
+    }
+    out.push(obj);
+  }
+  return out;
+}
+
+export function keepWeldArtwork<T extends WeldImportShape>(
+  objects: T[],
+  frame?: WeldImportFrame,
+): T[] {
+  return dropDistantSpecks(filterWeldImportedObjects(flattenWeldObjects(objects), frame));
+}
+
 type GroupLike = WeldImportShape & {
   getObjects?: () => unknown[];
   remove?: (...objects: unknown[]) => unknown;
+  triggerLayout?: () => void;
+  setCoords?: () => void;
 };
+
+function relayoutGroup(group: GroupLike): void {
+  group.triggerLayout?.();
+  group.setCoords?.();
+}
 
 /**
  * Remove leftover weld-export rects from an already-grouped object so Add
@@ -93,4 +206,29 @@ export function stripPhantomWeldChildren(obj: unknown): number {
     }
   }
   return removed;
+}
+
+/**
+ * Drop distant specks / leftover paper inside a live group and fit the
+ * selection box to the remaining artwork.
+ */
+export function tightPackWeldObject(obj: unknown): number {
+  const removedPhantoms = stripPhantomWeldChildren(obj);
+  const group = obj as GroupLike | null;
+  const type = String(group?.type || '').toLowerCase();
+  if (!group || (type !== 'group' && type !== 'activeselection')) {
+    if (removedPhantoms) relayoutGroup(group as GroupLike);
+    return removedPhantoms;
+  }
+  const children = (group.getObjects?.() ?? []) as WeldImportShape[];
+  const kept = new Set(dropDistantSpecks(children));
+  let removedSpecks = 0;
+  for (const child of [...children]) {
+    if (!kept.has(child) && group.remove) {
+      group.remove(child);
+      removedSpecks += 1;
+    }
+  }
+  relayoutGroup(group);
+  return removedPhantoms + removedSpecks;
 }

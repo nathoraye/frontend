@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback } from 'react';
 import * as fabric from 'fabric';
-import { filterWeldImportedObjects } from '../utils/weldImport';
+import { keepWeldArtwork, tightPackWeldObject } from '../utils/weldImport';
 
 export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapshot: (c: fabric.Canvas, i?: boolean) => void) {
 
@@ -89,7 +89,7 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
                 width: Number(options?.width || 0),
                 height: Number(options?.height || 0),
             };
-            const validObjects = filterWeldImportedObjects(
+            const validObjects = keepWeldArtwork(
                 ((objects || []).filter(Boolean) as fabric.Object[]),
                 frame,
             );
@@ -124,6 +124,7 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
                 objectCaching: true,
                 fillRule: 'nonzero'
             });
+            tightPackWeldObject(result);
             
             canvas.add(result);
             canvas.setActiveObject(result);
