@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as fabric from 'fabric/node';
-import { filterWeldImportedObjects, isPhantomWeldRect } from '../src/utils/weldImport.ts';
+import { filterWeldImportedObjects, isPhantomWeldRect, keepWeldArtwork } from '../src/utils/weldImport.ts';
 
 function summarize(objects: fabric.FabricObject[]) {
   return objects.filter(Boolean).map((obj) => ({
@@ -69,6 +69,29 @@ test('painting every weld child without filtering would create extra outline box
 
   const filtered = filterWeldImportedObjects(summarize(broken.imported));
   assert.equal(filtered.filter((obj) => isPhantomWeldRect(obj)).length, 0);
+
+  canvas.dispose();
+});
+
+test('weld of artwork plus a distant speck fits the box to the artwork', async () => {
+  const canvas = new fabric.Canvas(undefined, { width: 1200, height: 800, backgroundColor: '' });
+  canvas.add(new fabric.Rect({ left: 720, top: 520, width: 280, height: 90, fill: '#111111' }));
+  canvas.add(new fabric.Rect({ left: 40, top: 30, width: 3, height: 3, fill: '#111111' }));
+
+  const svg = canvas.toSVG();
+  const { objects, options } = await fabric.loadSVGFromString(svg);
+  const imported = (objects || []).filter(Boolean) as fabric.FabricObject[];
+  const loose = new fabric.Group(imported, { originX: 'center', originY: 'center' });
+  assert.ok((loose.width || 0) > 500, 'unfiltered weld box should swallow the speck');
+
+  const kept = keepWeldArtwork(imported, {
+    width: Number(options?.width || 0),
+    height: Number(options?.height || 0),
+  });
+  assert.equal(kept.length, 1);
+  const tight = kept[0];
+  assert.ok((tight.width || 0) <= 290, `expected tight width, got ${tight.width}`);
+  assert.ok((tight.height || 0) <= 100, `expected tight height, got ${tight.height}`);
 
   canvas.dispose();
 });
