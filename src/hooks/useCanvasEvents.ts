@@ -238,9 +238,27 @@ export function useCanvasEvents(props: CanvasEventProps) {
         p.current.setQuickMenu(null); return;
       }
       
-      const hitTarget = resolveHitTarget(opt);
-      if (!hitTarget) p.current.setQuickMenu(null);
       const pointer = getSafePointer(opt);
+      let hitTarget = resolveHitTarget(opt);
+      if (!hitTarget && (p.current.tool === 'wand' || p.current.tool === 'bucket')) {
+        const evented = canvas.getObjects().filter((obj) => obj.evented !== false);
+        if (evented.length === 1) {
+          hitTarget = evented[0];
+        } else if (evented.length > 1) {
+          let best: fabric.Object | null = null;
+          let bestDist = Infinity;
+          for (const obj of evented) {
+            const c = obj.getCenterPoint();
+            const d = Math.hypot(c.x - pointer.x, c.y - pointer.y);
+            if (d < bestDist) {
+              bestDist = d;
+              best = obj;
+            }
+          }
+          if (best && bestDist < 140) hitTarget = best;
+        }
+      }
+      if (!hitTarget) p.current.setQuickMenu(null);
 
       // --- DUAL MODE WAND ENGINE ---
       if (p.current.tool === 'wand') {
