@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/immutability */
 import * as fabric from 'fabric';
-import { useEffect, useRef, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
 import { tracedSvgToObject } from '../utils/placeTracedSvg';
 import { applyEraserStroke } from '../utils/eraseStroke';
 import { yieldToPaint } from '../utils/tracePrep';
@@ -14,6 +14,7 @@ import {
   sampleOpaquePixel,
 } from '../utils/pointerEvents';
 import { eraseMatchingVectorColors, keepMatchingVectorColors } from '../utils/wandVectorCleanup';
+import { collectTrackPoints, createTrackLineShape } from '../utils/trackLineShape';
 
 export interface TrackLineApi {
   finish: (close?: boolean) => void;
@@ -59,19 +60,43 @@ export function useCanvasEvents(props: CanvasEventProps) {
 
   const canvas = props.canvas;
 
+  const commitTrackLine = useCallback((
+    autoClose: boolean = false,
+    opts: { switchToSelect?: boolean; canvas?: fabric.Canvas | null } = {},
+  ) => {
+    const c = opts.canvas ?? p.current.canvas;
+    if (!isDrawingPolyline.current || !c) return;
+    isDrawingPolyline.current = false;
+    const pts = collectTrackPoints(polylinePoints.current, activeLine.current);
+    if (activeLine.current) { c.remove(activeLine.current); activeLine.current = null; }
+    tempLines.current.forEach((line) => c.remove(line));
+    const finalShape = createTrackLineShape(fabric as typeof fabric, pts, {
+      closed: autoClose,
+      brushSize: p.current.brushSize,
+      brushColor: p.current.brushColor,
+      brushType: p.current.brushType,
+    });
+    if (finalShape) {
+      c.add(finalShape);
+      c.setActiveObject(finalShape);
+      finalShape.setCoords();
+      finalShape.set('dirty', true);
+      p.current.saveHistorySnapshot(c, true);
+    }
+    polylinePoints.current = [];
+    tempLines.current = [];
+    if (opts.switchToSelect !== false && p.current.setTool) p.current.setTool('select');
+    c.requestRenderAll();
+  }, []);
+
   useEffect(() => { 
     if (p.current.isProcessingRef) p.current.isProcessingRef.current = false; 
     p.current.setIsTracing(false); 
 
     if (props.tool !== 'track-line' && isDrawingPolyline.current) {
-        isDrawingPolyline.current = false;
-        if (activeLine.current) { props.canvas?.remove(activeLine.current); activeLine.current = null; }
-        tempLines.current.forEach(line => props.canvas?.remove(line));
-        tempLines.current = [];
-        polylinePoints.current = [];
-        props.canvas?.requestRenderAll();
+      commitTrackLine(false, { switchToSelect: false });
     }
-  }, [props.tool, props.canvas]);
+  }, [props.tool, props.canvas, commitTrackLine]);
 
   useEffect(() => {
     if (!canvas) return;
@@ -162,28 +187,8 @@ export function useCanvasEvents(props: CanvasEventProps) {
       if (pos) p.current.setQuickMenu({ top: pos.top, left: pos.left, show: true });
     };
 
-    const finishPolyline = (autoClose: boolean = false) => {
-       if (!isDrawingPolyline.current) return;
-       isDrawingPolyline.current = false;
-       if (activeLine.current) { canvas.remove(activeLine.current); activeLine.current = null; }
-       tempLines.current.forEach(line => canvas.remove(line));
-       const pts = [...polylinePoints.current];
-       const uniquePoints = pts.filter((pt, idx, self) => {
-          if (idx === 0) return true; 
-          const prev = self[idx - 1]; 
-          return Math.abs(pt.x - prev.x) > 2 || Math.abs(pt.y - prev.y) > 2;
-       });
-       if (uniquePoints.length >= 2) {
-          const ShapeClass = autoClose ? (fabric as any).Polygon : (fabric as any).Polyline;
-          const finalShape = new ShapeClass(uniquePoints, {
-             strokeWidth: p.current.brushSize || 5, fill: autoClose ? 'rgba(255,255,255,0.01)' : 'transparent', stroke: p.current.brushColor || '#FF1493', strokeUniform: true, cornerColor: '#FF1493', transparentCorners: false, objectCaching: false, strokeLineCap: p.current.brushType === 'chisel' ? 'square' : 'round', strokeLineJoin: p.current.brushType === 'chisel' ? 'miter' : 'round'
-          });
-          canvas.add(finalShape); canvas.setActiveObject(finalShape); finalShape.setCoords(); finalShape.set('dirty', true);
-          p.current.saveHistorySnapshot(canvas, true);
-       }
-       polylinePoints.current = []; tempLines.current = [];
-       if (p.current.setTool) p.current.setTool('select');
-       canvas.requestRenderAll();
+    const finishPolyline = (autoClose: boolean = false, opts: { switchToSelect?: boolean } = {}) => {
+      commitTrackLine(autoClose, { ...opts, canvas });
     };
 
     const onMouseWheel = (opt: any) => {
@@ -720,6 +725,9 @@ export function useCanvasEvents(props: CanvasEventProps) {
     canvas.on('object:modified', handleObjectModified);
 
     return () => {
+      if (isDrawingPolyline.current) {
+        commitTrackLine(false, { switchToSelect: false, canvas });
+      }
       if (p.current.trackLineApiRef) p.current.trackLineApiRef.current = null;
       if (upperEl) {
         upperEl.removeEventListener('pointerdown', onPinchPointerDown);
@@ -741,5 +749,5 @@ export function useCanvasEvents(props: CanvasEventProps) {
       canvas.off('selection:cleared', handleSelectionCleared); 
       canvas.off('object:modified', handleObjectModified);
     };
-  }, [canvas]); 
+  }, [canvas, commitTrackLine]); 
 }

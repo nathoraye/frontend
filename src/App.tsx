@@ -235,11 +235,11 @@ export default function App() {
   const handleAcceptTrace = async (svgString: string) => {
       if (!canvas || !pendingTrace) return;
       const source = pendingTrace.source;
-      setPendingTrace(null);
+      const mode = pendingTrace.mode;
       try {
           const traced = await tracedSvgToObject(svgString, {
             source,
-            hierarchical: pendingTrace.mode,
+            hierarchical: mode,
           });
           if (!traced) throw new Error('No solid shapes found to trace after background removal.');
           if (source) {
@@ -257,9 +257,10 @@ export default function App() {
           eraserTargetRef.current = traced;
           canvas.requestRenderAll();
           saveHistorySnapshot(canvas, true);
+          setPendingTrace(null);
       } catch (err) {
           console.error('Place trace failed:', err);
-          alert('Failed to place the traced SVG.');
+          alert('Failed to place the traced SVG. The original image is still on the mat.');
       }
   };
 
