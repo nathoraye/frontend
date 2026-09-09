@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as fabric from 'fabric';
 import { useCallback } from 'react';
+import { paintOffsetAppearance } from '../utils/groupOps';
 import { tracedSvgToObject } from '../utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from '../utils/tracePrep';
 import { tightPackWeldObject } from '../utils/weldImport';
@@ -71,34 +72,8 @@ export function useVectorMath({
       tightPackWeldObject(activeObj);
 
       const clonedObj = await (activeObj as any).clone();
-      const offsetColor = '#FF1493';
       tightPackWeldObject(clonedObj);
-
-      clonedObj.set({
-        fill: offsetColor,
-        stroke: offsetColor,
-        strokeWidth: offsetSize * 2,
-        strokeLineJoin: 'round',
-        strokeLineCap: 'round',
-        strokeUniform: true,
-        originX: 'center',
-        originY: 'center',
-        evented: true,
-        objectCaching: true,
-      });
-
-      if (clonedObj.type === 'group' || clonedObj.type === 'activeSelection') {
-        clonedObj.getObjects().forEach((child: any) => {
-          child.set({
-            fill: offsetColor,
-            stroke: offsetColor,
-            strokeWidth: offsetSize * 2,
-            strokeLineJoin: 'round',
-            strokeLineCap: 'round',
-            strokeUniform: true,
-          });
-        });
-      }
+      paintOffsetAppearance(clonedObj, offsetSize * 2);
 
       const center = activeObj.getCenterPoint();
       clonedObj.set({ left: center.x, top: center.y, originX: 'center', originY: 'center' });

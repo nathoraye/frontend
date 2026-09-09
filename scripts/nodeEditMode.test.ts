@@ -29,3 +29,10 @@ test('groups with a path child can enter node edit', () => {
   assert.equal(canNodeEdit(group), true);
   assert.equal(canNodeEdit(new fabric.Group([new fabric.Rect({ width: 4, height: 4 })])), false);
 });
+
+test('nested layered colour groups can enter node edit', () => {
+  const path = new fabric.Path('M 0 0 L 8 8 Z');
+  const sheet = new fabric.Group([path]);
+  const stack = new fabric.Group([sheet]);
+  assert.equal(canNodeEdit(stack), true);
+});

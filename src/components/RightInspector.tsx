@@ -2,6 +2,7 @@ import React from 'react';
 import * as fabric from 'fabric';
 import { FontPicker } from './FontPicker';
 import { tightPackWeldObject } from '../utils/weldImport';
+import { isUngroupable } from '../utils/groupOps';
 
 const SWATCHES = [
   '#FFFFFF', '#000000', '#FF1493', '#FF0000', '#FF7F00', '#FFFF00', '#32CD32', '#00FF00', 
@@ -48,6 +49,7 @@ interface RightInspectorProps {
   isNodeEditing?: boolean;
   canNodeEdit?: boolean;
   toggleNodeEdit?: () => void;
+  handleUngroup?: () => void;
   saveHistorySnapshot: (canvas: fabric.Canvas, immediate?: boolean) => void;
   borderCol: string;
   bgPanel: string;
@@ -64,7 +66,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
     opacity, wandTolerance, setWandTolerance, wandMode, setWandMode, eraserMode, setEraserMode, textCurve, charSpacing, setCharSpacing,
     lineHeight, setLineHeight, isTracing, offsetSize, setOffsetSize, handleCreateOffset,
     performBoolean, handlePropChange, alignObject, applyTextCurve, explodeText, 
-    handleVectorTrace, handleStackedVectorTrace, isNodeEditing, canNodeEdit, toggleNodeEdit, saveHistorySnapshot, borderCol, bgPanel,
+    handleVectorTrace, handleStackedVectorTrace, isNodeEditing, canNodeEdit, toggleNodeEdit, handleUngroup, saveHistorySnapshot, borderCol, bgPanel,
     isDark, textMuted, textMain, btnHover
   } = props;
 
@@ -258,6 +260,25 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>
                      Explode (Ungroup Letters)
                   </button>
+                </div>
+              </div>
+            )}
+
+            {isUngroupable(activeObj) && (
+              <div className="mt-2">
+                <h3 className={`text-[10px] uppercase font-bold tracking-widest text-[#FF1493] mb-3`}>Layers</h3>
+                <div className={`p-4 rounded-xl border ${borderCol} ${isDark ? 'bg-[#0f111a]' : 'bg-slate-50'}`}>
+                  <button
+                    type="button"
+                    onClick={handleUngroup}
+                    className="w-full bg-slate-800 hover:bg-slate-700 text-white py-2.5 rounded-lg text-xs font-bold transition-all border border-slate-600 flex items-center justify-center gap-2"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3h18v18H3z"/><path d="M8 8h8v8H8z"/></svg>
+                    Ungroup layers
+                  </button>
+                  <p className={`text-[10px] mt-3 leading-relaxed ${textMuted}`}>
+                    Layered SVG ungroups into named cut sheets (silhouette, then each vinyl colour), the same way Razor SVG ungroups colour paths.
+                  </p>
                 </div>
               </div>
             )}
