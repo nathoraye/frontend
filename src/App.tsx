@@ -77,6 +77,7 @@ export default function App() {
     imageData: ImageData;
     dataUrl: string;
     source?: fabric.Object;
+    mode?: 'cutout' | 'stacked';
   } | null>(null);
   const [showOffsetConfig, setShowOffsetConfig] = useState<boolean>(false);
   const [contourTarget, setContourTarget] = useState<fabric.Path | null>(null);
@@ -108,13 +109,14 @@ export default function App() {
 
   const { performBoolean } = useBooleanEngine(canvas, saveHistorySnapshot);
   const { handleCreateOffset: offsetCore } = useVectorMath({ canvas, isProcessingRef, setIsTracing, traceImage, saveHistorySnapshot });
-  const openImageTrace = useCallback((img: fabric.Image) => {
+  const openImageTrace = useCallback((img: fabric.Image, mode: 'cutout' | 'stacked' = 'cutout') => {
     const imageData = rasterToImageData(img.getElement());
     setQuickMenu(null);
     setPendingTrace({
       imageData,
       dataUrl: imageDataToPngDataUrl(imageData),
       source: img,
+      mode,
     });
   }, []);
   const handleVectorTrace = () => {
@@ -122,7 +124,14 @@ export default function App() {
       alert('Select a raster image to trace. Vector shapes are already cut-ready.');
       return;
     }
-    openImageTrace(activeObj as fabric.Image);
+    openImageTrace(activeObj as fabric.Image, 'cutout');
+  };
+  const handleStackedVectorTrace = () => {
+    if (!activeObj || activeObj.type !== 'image') {
+      alert('Select a raster image to trace. Vector shapes are already cut-ready.');
+      return;
+    }
+    openImageTrace(activeObj as fabric.Image, 'stacked');
   };
   const handleCreateOffset = () => offsetCore(activeObj, offsetSize);
 
@@ -211,7 +220,10 @@ export default function App() {
       const source = pendingTrace.source;
       setPendingTrace(null);
       try {
-          const traced = await tracedSvgToObject(svgString, source ? { source } : undefined);
+          const traced = await tracedSvgToObject(svgString, {
+            source,
+            hierarchical: pendingTrace.mode,
+          });
           if (!traced) throw new Error('No solid shapes found to trace after background removal.');
           if (source) {
               canvas.remove(source);
@@ -599,7 +611,7 @@ export default function App() {
                         eraserMode={eraserMode} setEraserMode={setEraserMode} 
                         textCurve={textCurve} charSpacing={charSpacing} setCharSpacing={setCharSpacing}
                         lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
-                        performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace}
+                        performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} handleStackedVectorTrace={handleStackedVectorTrace}
                         isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)}
                         saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
                       />
@@ -620,7 +632,7 @@ export default function App() {
                 eraserMode={eraserMode} setEraserMode={setEraserMode} 
                 textCurve={textCurve} charSpacing={charSpacing} setCharSpacing={setCharSpacing}
                 lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
-                performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace}
+                performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} handleStackedVectorTrace={handleStackedVectorTrace}
                 isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)}
                 saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
               />
@@ -635,6 +647,7 @@ export default function App() {
           <TracePreviewModal
             rasterDataUrl={pendingTrace.dataUrl}
             imageData={pendingTrace.imageData}
+            mode={pendingTrace.mode}
             traceImage={traceImage}
             onAccept={handleAcceptTrace}
             onCancel={() => setPendingTrace(null)}

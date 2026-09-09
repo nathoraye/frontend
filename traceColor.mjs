@@ -4,6 +4,7 @@
  */
 import { createRequire } from 'node:module';
 import { extractInkPalette, normalizePalette, prepareColorTraceRgba } from './tracePalette.mjs';
+import { traceStackedRgba } from './traceStacked.mjs';
 
 const require = createRequire(import.meta.url);
 const vtracer = require('@visioncortex/vtracer');
@@ -17,7 +18,23 @@ export const DEFAULT_COLOR_TRACE = {
   cornerThreshold: 90,
   curveFit: 4,
   filterSpeckle: 0,
+  hierarchical: 'cutout',
 };
+
+export const DEFAULT_STACKED_TRACE = {
+  maxColors: 6,
+  cornerThreshold: 90,
+  curveFit: 4,
+  filterSpeckle: 2,
+  hierarchical: 'stacked',
+};
+
+export function normalizeHierarchical(value, fallback = 'cutout') {
+  const v = String(value || '').toLowerCase();
+  if (v === 'stacked') return 'stacked';
+  if (v === 'cutout') return 'cutout';
+  return fallback === 'stacked' ? 'stacked' : 'cutout';
+}
 
 function clampInt(value, min, max, fallback) {
   const n = Number(value);
@@ -32,6 +49,7 @@ export function normalizeColorTraceParams(params = {}) {
     cornerThreshold: clampInt(params.cornerThreshold, 20, 180, DEFAULT_COLOR_TRACE.cornerThreshold),
     curveFit: clampInt(params.curveFit, 0, 10, DEFAULT_COLOR_TRACE.curveFit),
     filterSpeckle: clampInt(params.filterSpeckle, 0, 16, DEFAULT_COLOR_TRACE.filterSpeckle),
+    hierarchical: normalizeHierarchical(params.hierarchical, DEFAULT_COLOR_TRACE.hierarchical),
     palette,
   };
 }
@@ -48,7 +66,7 @@ export function buildVtracerOptions(params = {}) {
   const palette = p.palette;
   const opts = {
     clustering: 'color-cluster',
-    hierarchical: 'cutout',
+    hierarchical: p.hierarchical === 'stacked' ? 'stacked' : 'cutout',
     mode: 'spline',
     maxColors: palette?.length ?? p.maxColors,
     cornerThreshold: p.cornerThreshold,
@@ -81,13 +99,17 @@ export function traceRgba(rgba, width, height, params = {}) {
   if (pixels.length < w * h * 4) {
     throw new Error('RGBA buffer is shorter than width × height × 4.');
   }
-  const prepared = prepareColorTraceRgba(pixels, w, h, resolveTraceParams(pixels, w, h, params));
+  const resolved = resolveTraceParams(pixels, w, h, params);
+  if (resolved.hierarchical === 'stacked') {
+    return traceStackedRgba(pixels, w, h, resolved);
+  }
+  const prepared = prepareColorTraceRgba(pixels, w, h, resolved);
   return vtracer.convertPixels(
     prepared.rgba,
     prepared.width,
     prepared.height,
     buildVtracerOptions({
-      ...normalizeColorTraceParams(params),
+      ...resolved,
       palette: prepared.palette,
       maxColors: prepared.palette.length,
     }),

@@ -9,6 +9,11 @@ export interface ColorTraceParams {
   curveFit?: number;
   /** VTracer speckle filter in px². Kept low so drips survive. */
   filterSpeckle?: number;
+  /**
+   * `cutout` punches holes (Razor SVG). `stacked` emits overlapping vinyl
+   * sheets: silhouette underbase, then one group per colour for Cricut.
+   */
+  hierarchical?: 'cutout' | 'stacked';
   /** Forced `#rrggbb` inks. When omitted the server extracts them. */
   palette?: string[];
 }
@@ -18,6 +23,15 @@ export const DEFAULT_COLOR_TRACE: Required<Omit<ColorTraceParams, 'palette'>> = 
   cornerThreshold: 90,
   curveFit: 4,
   filterSpeckle: 0,
+  hierarchical: 'cutout',
+};
+
+export const DEFAULT_STACKED_TRACE: Required<Omit<ColorTraceParams, 'palette'>> = {
+  maxColors: 6,
+  cornerThreshold: 90,
+  curveFit: 4,
+  filterSpeckle: 2,
+  hierarchical: 'stacked',
 };
 
 export function clampTraceInt(value: unknown, min: number, max: number, fallback: number): number {
@@ -30,6 +44,16 @@ export type NormalizedColorTraceParams = Required<Omit<ColorTraceParams, 'palett
   palette?: string[];
 };
 
+export function normalizeHierarchical(
+  value: unknown,
+  fallback: 'cutout' | 'stacked' = 'cutout',
+): 'cutout' | 'stacked' {
+  const v = String(value || '').toLowerCase();
+  if (v === 'stacked') return 'stacked';
+  if (v === 'cutout') return 'cutout';
+  return fallback === 'stacked' ? 'stacked' : 'cutout';
+}
+
 export function normalizeColorTraceParams(params?: ColorTraceParams): NormalizedColorTraceParams {
   const palette = Array.isArray(params?.palette)
     ? params.palette.filter((s): s is string => typeof s === 'string' && /^#?[0-9A-Fa-f]{6}$/.test(s.trim()))
@@ -40,6 +64,7 @@ export function normalizeColorTraceParams(params?: ColorTraceParams): Normalized
     cornerThreshold: clampTraceInt(params?.cornerThreshold, 20, 180, DEFAULT_COLOR_TRACE.cornerThreshold),
     curveFit: clampTraceInt(params?.curveFit, 0, 10, DEFAULT_COLOR_TRACE.curveFit),
     filterSpeckle: clampTraceInt(params?.filterSpeckle, 0, 16, DEFAULT_COLOR_TRACE.filterSpeckle),
+    hierarchical: normalizeHierarchical(params?.hierarchical, DEFAULT_COLOR_TRACE.hierarchical),
     palette: palette && palette.length >= 2 ? palette : undefined,
   };
 }
@@ -56,6 +81,7 @@ export function buildTraceQuery(params?: ColorTraceParams): string {
     filterSpeckle: String(options.filterSpeckle),
   });
   if (options.palette?.length) qs.set('palette', options.palette.join(','));
+  if (options.hierarchical === 'stacked') qs.set('hierarchical', 'stacked');
   return qs.toString();
 }
 
