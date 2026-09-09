@@ -1,5 +1,5 @@
 import { encodeTracePng } from './imageDataPng';
-import { cleanupTracedSvg } from './svgTraceCleanup';
+import { cleanupTraceSvg } from './svgTraceCleanup';
 import {
   buildTraceQuery,
   TRACE_REQUEST_BODY_LIMIT,
@@ -35,5 +35,10 @@ export async function requestServerTrace(
   if (!res.ok || !json.svg) {
     throw traceHttpError(res.status, json.error);
   }
-  return cleanupTracedSvg(json.svg, json.width ?? imageData.width, json.height ?? imageData.height);
+  return cleanupTraceSvg(
+    json.svg,
+    json.width ?? imageData.width,
+    json.height ?? imageData.height,
+    params?.hierarchical === 'stacked' ? 'stacked' : 'cutout',
+  );
 }

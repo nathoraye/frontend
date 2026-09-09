@@ -76,6 +76,7 @@ function queryTraceParams(req) {
     cornerThreshold: url.searchParams.get('cornerThreshold') ?? undefined,
     curveFit: url.searchParams.get('curveFit') ?? undefined,
     filterSpeckle: url.searchParams.get('filterSpeckle') ?? undefined,
+    hierarchical: url.searchParams.get('hierarchical') ?? undefined,
     palette,
   };
 }
@@ -86,6 +87,7 @@ function jsonTraceParams(payload) {
     cornerThreshold: payload.cornerThreshold,
     curveFit: payload.curveFit,
     filterSpeckle: payload.filterSpeckle,
+    hierarchical: payload.hierarchical,
     palette: payload.palette,
   };
 }

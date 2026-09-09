@@ -44,6 +44,7 @@ interface RightInspectorProps {
   applyTextCurve: (val: number) => void;
   explodeText: () => void;
   handleVectorTrace: () => void;
+  handleStackedVectorTrace: () => void;
   isNodeEditing?: boolean;
   canNodeEdit?: boolean;
   toggleNodeEdit?: () => void;
@@ -63,7 +64,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
     opacity, wandTolerance, setWandTolerance, wandMode, setWandMode, eraserMode, setEraserMode, textCurve, charSpacing, setCharSpacing,
     lineHeight, setLineHeight, isTracing, offsetSize, setOffsetSize, handleCreateOffset,
     performBoolean, handlePropChange, alignObject, applyTextCurve, explodeText, 
-    handleVectorTrace, isNodeEditing, canNodeEdit, toggleNodeEdit, saveHistorySnapshot, borderCol, bgPanel,
+    handleVectorTrace, handleStackedVectorTrace, isNodeEditing, canNodeEdit, toggleNodeEdit, saveHistorySnapshot, borderCol, bgPanel,
     isDark, textMuted, textMain, btnHover
   } = props;
 
@@ -305,7 +306,16 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
                   {isTracing ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>}
                   {isTracing ? 'Calculating Paths...' : 'Trace to Razor SVG'}
                 </button>
-                <p className={`text-[10px] mt-3 leading-relaxed ${textMuted}`}>Select a raster image to preview a colour vector trace before it replaces the photo.</p>
+                <button
+                  type="button"
+                  onClick={handleStackedVectorTrace}
+                  disabled={isTracing}
+                  className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-900/20 flex justify-center items-center gap-2"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="5" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="15" width="18" height="4" rx="1"/></svg>
+                  Trace layered SVG
+                </button>
+                <p className={`text-[10px] mt-3 leading-relaxed ${textMuted}`}>Select a raster image to preview a colour vector trace before it replaces the photo. Layered SVG stacks a black underbase plus one cut sheet per colour for Cricut.</p>
               </div>
             )}
           </>
@@ -322,7 +332,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
                     <button onClick={(e) => { e.stopPropagation(); obj.set('visible', !obj.visible); canvas?.requestRenderAll(); saveHistorySnapshot(canvas!, true); }} className={`p-1.5 hover:bg-slate-700/50 rounded ${obj.visible ? textMain : 'text-red-400'}`}>
                       {obj.visible ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>}
                     </button>
-                    <span className="text-xs font-bold truncate w-28">{obj.type === 'i-text' ? `Text: ${(obj as fabric.IText).text}` : (obj.type === 'image' ? 'Image' : (obj.type === 'path' ? 'Stroke' : (obj.type === 'polyline' ? 'Track Line' : (obj.type === 'polygon' ? 'Shape' : obj.type))))}</span>
+                    <span className="text-xs font-bold truncate w-28">{obj.type === 'i-text' ? `Text: ${(obj as fabric.IText).text}` : ((obj as fabric.Object & { name?: string }).name || (obj.type === 'image' ? 'Image' : (obj.type === 'path' ? 'Stroke' : (obj.type === 'polyline' ? 'Track Line' : (obj.type === 'polygon' ? 'Shape' : obj.type)))))}</span>
                   </div>
                   <div className="flex items-center bg-slate-800/30 rounded-lg p-0.5 border border-slate-700/50">
                     <button onClick={(e) => {
