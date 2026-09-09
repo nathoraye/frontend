@@ -60,11 +60,9 @@ export function groupTracedObjects(
     obj.set({
       stroke: style?.stroke ?? '',
       strokeWidth: style?.strokeWidth ?? 0,
-      // 'nonzero' fill rule: every sub-path interior is treated as filled,
-      // giving mathematically correct solid silhouettes for knife-plotter
-      // output.  'evenodd' would punch holes through nested paths and create
-      // stacked transparency artefacts that confuse vinyl-cutting software.
-      fillRule: (style?.fillRule as string) ?? 'nonzero',
+      // Keep evenodd from svgTraceCleanup so letter counters (O, D, A) stay
+      // holes instead of filling solid. Callers may override.
+      fillRule: (style?.fillRule as string) ?? 'evenodd',
       objectCaching: true,
       ...(style?.fill != null ? { fill: style.fill as string } : {}),
     });
@@ -132,14 +130,14 @@ export function placeOverSource(
   const center = source.getCenterPoint();
   const sw = Math.max(1, source.getScaledWidth());
   const sh = Math.max(1, source.getScaledHeight());
-  const pw = Math.max(1, (placed.width || 1) * (placed.scaleX || 1));
-  const ph = Math.max(1, (placed.height || 1) * (placed.scaleY || 1));
+  const pw = Math.max(1, placed.getScaledWidth());
+  const ph = Math.max(1, placed.getScaledHeight());
   placed.set({
     ...CONTROL_STYLE,
     left: center.x,
     top: center.y,
-    scaleX: sw / pw,
-    scaleY: sh / ph,
+    scaleX: (placed.scaleX || 1) * (sw / pw),
+    scaleY: (placed.scaleY || 1) * (sh / ph),
     angle: source.angle || 0,
   });
   placed.setCoords();
@@ -178,7 +176,7 @@ export async function tracedSvgToObject(
  * callback + `groupSVGElements` API is gone), so this uses that Promise and
  * the existing `loadTracedObjects` / `groupTracedObjects` helpers which:
  *  - drop paper / full-frame background paths
- *  - set `fillRule: 'nonzero'` on every sub-path
+ *  - keep `fillRule: 'evenodd'` so letter counters stay holes
  */
 export async function placeTracedSvg(
   svgString: string,

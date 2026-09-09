@@ -47,7 +47,6 @@ export function TracePreviewModal({
         if (!cancelled) setSvg(next);
       } catch (err) {
         if (!cancelled) {
-          setSvg('');
           setError(err instanceof Error ? err.message : 'Trace failed');
         }
       } finally {
@@ -89,14 +88,19 @@ export function TracePreviewModal({
           <figcaption className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
             Vector trace {loading ? '(updating…)' : ''}
           </figcaption>
-          <div className="flex-1 min-h-0 flex items-center justify-center rounded-lg" style={{ backgroundImage: 'linear-gradient(45deg,#2a2d38 25%,transparent 25%),linear-gradient(-45deg,#2a2d38 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2a2d38 75%),linear-gradient(-45deg,transparent 75%,#2a2d38 75%)', backgroundSize: '16px 16px', backgroundPosition: '0 0,0 8px,8px -8px,-8px 0', backgroundColor: '#1a1c24' }}>
-            {error && <p className="text-red-400 text-sm px-4 text-center">{error}</p>}
-            {!error && safeSvg && (
+          <div className="relative flex-1 min-h-0 flex items-center justify-center rounded-lg" style={{ backgroundImage: 'linear-gradient(45deg,#2a2d38 25%,transparent 25%),linear-gradient(-45deg,#2a2d38 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2a2d38 75%),linear-gradient(-45deg,transparent 75%,#2a2d38 75%)', backgroundSize: '16px 16px', backgroundPosition: '0 0,0 8px,8px -8px,-8px 0', backgroundColor: '#1a1c24' }}>
+            {safeSvg ? (
               <img
                 src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(safeSvg)}`}
                 alt="Vector trace"
                 className="max-w-full max-h-full object-contain"
               />
+            ) : null}
+            {error && (
+              <p className={`text-red-400 text-sm px-4 text-center ${safeSvg ? 'absolute bottom-2 left-0 right-0 bg-black/70 py-1 rounded' : ''}`}>
+                {error}
+                {safeSvg ? ' Showing last good trace.' : ''}
+              </p>
             )}
           </div>
           {stacked && layers.length > 0 && (
@@ -147,7 +151,7 @@ export function TracePreviewModal({
           </button>
           <button
             type="button"
-            disabled={!svg || loading || !!error}
+            disabled={!svg || loading}
             onClick={() => onAccept(svg)}
             className="h-9 px-5 rounded-lg font-black uppercase tracking-wider text-white bg-[#FF1493] hover:bg-[#ff4da6] disabled:opacity-40 disabled:pointer-events-none"
           >

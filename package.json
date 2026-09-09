@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "validate-export": "node scripts/validateExport.js",
     "compare-trace": "node --experimental-strip-types scripts/compareTrace.ts",
-    "test:trace": "node --experimental-strip-types --test scripts/placeTracedSvg.test.ts scripts/tracePrep.test.ts scripts/svgTraceCleanup.test.ts scripts/colorTrace.test.ts scripts/pathContours.test.ts scripts/vtracerWasm.test.ts scripts/nodeEditMode.test.ts scripts/apparelPlacement.test.ts scripts/weldImport.test.ts scripts/weldSvgRoundtrip.test.ts scripts/designSnapshot.test.ts scripts/pointerEvents.test.ts scripts/wandVectorCleanup.test.ts scripts/traceApi.test.ts scripts/traceStacked.test.ts"
+    "test:trace": "node --experimental-strip-types --test scripts/placeTracedSvg.test.ts scripts/tracePrep.test.ts scripts/svgTraceCleanup.test.ts scripts/colorTrace.test.ts scripts/pathContours.test.ts scripts/vtracerWasm.test.ts scripts/nodeEditMode.test.ts scripts/apparelPlacement.test.ts scripts/weldImport.test.ts scripts/weldSvgRoundtrip.test.ts scripts/designSnapshot.test.ts scripts/pointerEvents.test.ts scripts/wandVectorCleanup.test.ts scripts/traceApi.test.ts scripts/traceStacked.test.ts scripts/trackLineShape.test.ts"
   },
   "dependencies": {
     "@paypal/react-paypal-js": "^10.2.0",
