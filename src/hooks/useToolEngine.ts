@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/immutability */
 import * as fabric from 'fabric';
+import { TOUCH_CORNER_SIZE } from '../utils/quickMenuPosition';
 import { useEffect } from 'react';
 
 interface ToolEngineProps {
@@ -26,7 +27,7 @@ function applyBrush(canvas: fabric.Canvas, color: string, size: number, type: 'r
 }
 
 function applyTouchFriendlyHandles(obj: fabric.Object) {
-  obj.set({ touchCornerSize: 36, cornerSize: 16, padding: 6 });
+  obj.set({ touchCornerSize: TOUCH_CORNER_SIZE, cornerSize: 16, padding: 6 });
 }
 
 export function useToolEngine({ canvas, tool, brushColor, brushSize, brushType, setQuickMenu, eraserTargetRef }: ToolEngineProps) {

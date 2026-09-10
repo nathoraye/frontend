@@ -15,6 +15,12 @@ import {
 } from '../utils/pointerEvents';
 import { eraseMatchingVectorColors, keepMatchingVectorColors } from '../utils/wandVectorCleanup';
 import { collectTrackPoints, createTrackLineShape } from '../utils/trackLineShape';
+import {
+  DEFAULT_QUICK_MENU_HEIGHT,
+  DEFAULT_QUICK_MENU_WIDTH,
+  placeQuickMenu,
+  selectionFromFabricObject,
+} from '../utils/quickMenuPosition';
 
 export interface TrackLineApi {
   finish: (close?: boolean) => void;
@@ -153,16 +159,24 @@ export function useCanvasEvents(props: CanvasEventProps) {
     };
 
     const menuScreenPoint = (obj: any) => {
-      obj.setCoords();
-      const br = obj.getBoundingRect();
-      const centerX = br.left + (br.width / 2);
-      const topY = br.top;
-      const vpt = canvas.viewportTransform || [1, 0, 0, 1, 0, 0];
-      const screenPt = (fabric as any).util.transformPoint({ x: centerX, y: topY }, vpt);
-      return {
-        top: isNaN(screenPt.y) ? 10 : Math.max(10, screenPt.y - 90),
-        left: isNaN(screenPt.x) ? 100 : screenPt.x,
-      };
+      try {
+        const selection = selectionFromFabricObject(obj);
+        if (!selection) return { top: 10, left: 100 };
+        const el = p.current.quickMenuRef?.current;
+        return placeQuickMenu(
+          selection,
+          {
+            width: canvas.getWidth() || 1,
+            height: canvas.getHeight() || 1,
+          },
+          {
+            width: el?.offsetWidth || DEFAULT_QUICK_MENU_WIDTH,
+            height: el?.offsetHeight || DEFAULT_QUICK_MENU_HEIGHT,
+          },
+        );
+      } catch {
+        return { top: 10, left: 100 };
+      }
     };
 
     const updateMenuPosition = () => {
@@ -185,6 +199,11 @@ export function useCanvasEvents(props: CanvasEventProps) {
       if (!obj) return;
       const pos = updateMenuPosition();
       if (pos) p.current.setQuickMenu({ top: pos.top, left: pos.left, show: true });
+      // Remeasure after the bar mounts so offsetHeight clears the rotate handle.
+      requestAnimationFrame(() => {
+        const next = updateMenuPosition();
+        if (next) p.current.setQuickMenu({ top: next.top, left: next.left, show: true });
+      });
     };
 
     const finishPolyline = (autoClose: boolean = false, opts: { switchToSelect?: boolean } = {}) => {
