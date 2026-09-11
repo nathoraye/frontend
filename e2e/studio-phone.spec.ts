@@ -16,8 +16,12 @@ test.describe('phone studio smoke', () => {
     await expect(panel).toBeVisible();
     await expect(panel).toContainText(/weeding box/i);
 
-    page.once('dialog', () => {
-      throw new Error('native alert() should not appear');
+    page.on('dialog', async (dialog) => {
+      if (dialog.type() === 'beforeunload') {
+        await dialog.accept();
+        return;
+      }
+      throw new Error(`unexpected ${dialog.type()}: ${dialog.message()}`);
     });
     await page.getByRole('button', { name: /trace to razor svg/i }).click();
     await expect(page.getByTestId('studio-notice')).toContainText(/already a vector/i);

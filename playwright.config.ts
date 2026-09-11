@@ -19,8 +19,13 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'iphone',
-      use: { ...devices['iPhone 12'] },
+      name: 'phone',
+      use: {
+        ...devices['Pixel 5'],
+        // Cloud/dev VMs often cannot download Playwright's Chromium zip.
+        // CI installs Chromium via `npx playwright install --with-deps chromium`.
+        ...(process.env.CI ? {} : { channel: 'chrome' }),
+      },
     },
   ],
 });
