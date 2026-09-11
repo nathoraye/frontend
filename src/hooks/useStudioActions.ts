@@ -2,6 +2,7 @@ import * as fabric from 'fabric';
 import { useCallback } from 'react';
 import { exportCanvasToOptimizedSVG } from '../utils/exportPipeline';
 import { validateSVGForCutting } from '../utils/geometryValidation';
+import { notifyStudio } from '../utils/studioNotice';
 
 const AI_API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
@@ -103,7 +104,7 @@ export function useStudioActions({
 
     } catch {
       console.error("Upload Engine Crash:");
-      alert("Failed to read image. Ensure it is a valid PNG or JPG.");
+      notifyStudio({ tone: 'error', title: 'Could not read image', detail: 'Use a valid PNG or JPG.' });
     } finally {
       // 5. Always reset the file input so you can re-upload the exact same file later
       e.target.value = '';
@@ -150,10 +151,10 @@ export function useStudioActions({
           canvas.requestRenderAll(); 
           saveHistorySnapshot(canvas, true);
       } else {
-          alert("Backend Error: " + data.error);
+          notifyStudio({ tone: 'error', title: 'Generate failed', detail: String(data.error || 'Unknown error') });
       }
     } catch { 
-      alert("Server error."); 
+      notifyStudio({ tone: 'error', title: 'Generate failed', detail: 'The sticker service did not respond.' });
     } finally { 
       setIsGenerating(false); 
     }
@@ -167,8 +168,12 @@ export function useStudioActions({
       const validation = validateSVGForCutting(svg);
 
       if (!validation.isValid) {
-        const errors = validation.issues.filter((issue) => issue.severity === 'error').map((issue) => `- ${issue.message}`).join('\n');
-        alert(`Export validation failed. Please resolve the issues before cutting:\n\n${errors}`);
+        const errors = validation.issues.filter((issue) => issue.severity === 'error').map((issue) => issue.message);
+        notifyStudio({
+          tone: 'error',
+          title: 'Not cut ready',
+          detail: errors[0] || 'Fix the cut checklist, then export again.',
+        });
         return;
       }
 
@@ -183,13 +188,13 @@ export function useStudioActions({
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed due to a pipeline error.');
+      notifyStudio({ tone: 'error', title: 'Export failed', detail: 'The SVG pipeline hit an error. Try tracing rasters first.' });
     }
   }, [canvas]);
 
   const addWeedingBox = useCallback(() => {
     if (!canvas || !activeObj) {
-      alert("Please select a design first so we know where to draw the box!");
+      notifyStudio({ tone: 'warning', title: 'Select a design first', detail: 'The weeding box is sized to the current selection.' });
       return;
     }
     const bounds = activeObj.getBoundingRect();

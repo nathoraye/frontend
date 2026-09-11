@@ -5,6 +5,7 @@ import { paintOffsetAppearance } from '../utils/groupOps';
 import { tracedSvgToObject } from '../utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from '../utils/tracePrep';
 import { tightPackWeldObject } from '../utils/weldImport';
+import { notifyStudio } from '../utils/studioNotice';
 
 interface VectorMathProps {
   canvas: fabric.Canvas | null;
@@ -25,7 +26,7 @@ export function useVectorMath({
     if (!canvas || !activeObj || isProcessingRef.current) return;
 
     if (activeObj.type !== 'image') {
-      alert('Select a raster image to trace. Vector shapes are already cut-ready.');
+      notifyStudio({ tone: 'info', title: 'Already a vector', detail: 'Select a photo to trace. Shapes on the mat are already cut-ready.' });
       return;
     }
 
@@ -49,7 +50,7 @@ export function useVectorMath({
       saveHistorySnapshot(canvas, true);
     } catch (error) {
       console.error('Vector Trace Failed:', error);
-      alert('Failed to trace image. The design might be too faint or completely transparent.');
+      notifyStudio({ tone: 'error', title: 'Trace failed', detail: 'The design might be too faint or fully transparent.' });
     } finally {
       isProcessingRef.current = false;
       setIsTracing(false);
@@ -60,7 +61,11 @@ export function useVectorMath({
     if (!canvas || !activeObj || isProcessingRef.current) return;
 
     if ((activeObj.type || '').toLowerCase() === 'image') {
-      alert("Raster Image Detected!\n\nVinyl cutters cannot offset pixels. Trace to SVG first, then apply a kiss-cut border.");
+      notifyStudio({
+        tone: 'warning',
+        title: 'Trace this photo first',
+        detail: 'Vinyl cutters cannot offset pixels. Trace to SVG, then apply a kiss-cut border.',
+      });
       return;
     }
 

@@ -21,6 +21,7 @@ import {
   placeQuickMenu,
   selectionFromFabricObject,
 } from '../utils/quickMenuPosition';
+import { notifyStudio } from '../utils/studioNotice';
 
 export interface TrackLineApi {
   finish: (close?: boolean) => void;
@@ -649,7 +650,11 @@ export function useCanvasEvents(props: CanvasEventProps) {
            canvas.remove(path);
            const target = p.current.eraserTargetRef?.current || canvas.getActiveObject() || null;
            if (p.current.eraserMode === 'layer' && !target) {
-               alert('Select a layer first, then erase. The eraser only punches the stroke you draw — it will not delete the whole object.');
+               notifyStudio({
+                 tone: 'warning',
+                 title: 'Select a layer first',
+                 detail: 'The eraser punches the stroke you draw. It will not delete the whole object.',
+               });
                return;
            }
            try {

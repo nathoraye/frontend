@@ -1,9 +1,14 @@
-import *as fabric from 'fabric'; 
+import * as fabric from 'fabric';
 import { useState, useRef, useCallback } from 'react';
+import { deserializeCanvas, serializeCanvas } from '../utils/canvasSerialize';
+import { queueCanvasAutosave } from '../utils/canvasStore';
+import { notifyStudio } from '../utils/studioNotice';
 
 interface UseHistoryEngineProps {
   setCanvasObjects: React.Dispatch<React.SetStateAction<fabric.Object[]>>;
 }
+
+const HISTORY_CAP = 30;
 
 export function useHistoryEngine({ setCanvasObjects }: UseHistoryEngineProps) {
   const history = useRef<string[]>([]);
@@ -19,59 +24,74 @@ export function useHistoryEngine({ setCanvasObjects }: UseHistoryEngineProps) {
     setCanRedo(historyIndex.current < history.current.length - 1);
   }, []);
 
+  const syncObjects = useCallback((targetCanvas: fabric.Canvas) => {
+    setCanvasObjects([...targetCanvas.getObjects()]);
+  }, [setCanvasObjects]);
+
   const saveHistorySnapshot = useCallback((targetCanvas: fabric.Canvas, immediate = false) => {
     if (isHistoryProcessing.current) return;
-    
+
     const save = () => {
-      const json = JSON.stringify(targetCanvas.toJSON());
+      const json = serializeCanvas(targetCanvas);
       if (historyIndex.current < history.current.length - 1) {
         history.current = history.current.slice(0, historyIndex.current + 1);
       }
       history.current.push(json);
-      
-      // Cap memory at 30 steps to prevent browser crashes
-      if (history.current.length > 30) {
+
+      if (history.current.length > HISTORY_CAP) {
         history.current.shift();
       } else {
         historyIndex.current++;
       }
       updateHistoryUI();
-      setCanvasObjects([...targetCanvas.getObjects()]);
+      syncObjects(targetCanvas);
+      queueCanvasAutosave(targetCanvas);
     };
 
-    if (immediate) { 
-      save(); 
-      return; 
+    if (immediate) {
+      save();
+      return;
     }
-    
-    // Debounce slider updates (wait 300ms before saving to history)
+
     if (historyTimeout.current) clearTimeout(historyTimeout.current);
     historyTimeout.current = setTimeout(save, 300);
-  }, [updateHistoryUI, setCanvasObjects]);
+  }, [updateHistoryUI, syncObjects]);
 
-  const handleUndo = useCallback((targetCanvas: fabric.Canvas | null) => {
-    if (!targetCanvas || historyIndex.current <= 0) return;
+  const loadSnapshot = useCallback(async (targetCanvas: fabric.Canvas, json: string) => {
     isHistoryProcessing.current = true;
+    try {
+      await deserializeCanvas(targetCanvas, json);
+      syncObjects(targetCanvas);
+      queueCanvasAutosave(targetCanvas);
+    } finally {
+      isHistoryProcessing.current = false;
+      updateHistoryUI();
+    }
+  }, [syncObjects, updateHistoryUI]);
+
+  const handleUndo = useCallback(async (targetCanvas: fabric.Canvas | null) => {
+    if (!targetCanvas || historyIndex.current <= 0 || isHistoryProcessing.current) return;
     historyIndex.current--;
-    targetCanvas.loadFromJSON(history.current[historyIndex.current], () => {
-      targetCanvas.requestRenderAll();
-      isHistoryProcessing.current = false;
+    try {
+      await loadSnapshot(targetCanvas, history.current[historyIndex.current]);
+    } catch {
+      historyIndex.current++;
       updateHistoryUI();
-      setCanvasObjects([...targetCanvas.getObjects()]);
-    });
-  }, [updateHistoryUI, setCanvasObjects]);
+      notifyStudio({ tone: 'error', title: 'Undo failed', detail: 'The previous step could not be restored.' });
+    }
+  }, [loadSnapshot, updateHistoryUI]);
 
-  const handleRedo = useCallback((targetCanvas: fabric.Canvas | null) => {
-    if (!targetCanvas || historyIndex.current >= history.current.length - 1) return;
-    isHistoryProcessing.current = true;
+  const handleRedo = useCallback(async (targetCanvas: fabric.Canvas | null) => {
+    if (!targetCanvas || historyIndex.current >= history.current.length - 1 || isHistoryProcessing.current) return;
     historyIndex.current++;
-    targetCanvas.loadFromJSON(history.current[historyIndex.current], () => {
-      targetCanvas.requestRenderAll();
-      isHistoryProcessing.current = false;
+    try {
+      await loadSnapshot(targetCanvas, history.current[historyIndex.current]);
+    } catch {
+      historyIndex.current--;
       updateHistoryUI();
-      setCanvasObjects([...targetCanvas.getObjects()]);
-    });
-  }, [updateHistoryUI, setCanvasObjects]);
+      notifyStudio({ tone: 'error', title: 'Redo failed', detail: 'The next step could not be restored.' });
+    }
+  }, [loadSnapshot, updateHistoryUI]);
 
   return {
     history,
@@ -79,6 +99,6 @@ export function useHistoryEngine({ setCanvasObjects }: UseHistoryEngineProps) {
     canRedo,
     saveHistorySnapshot,
     handleUndo,
-    handleRedo
+    handleRedo,
   };
 }
