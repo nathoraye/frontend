@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { notifyStudio } from '../utils/studioNotice';
 
 interface FontPickerProps {
   currentFont: string;
@@ -110,7 +111,7 @@ export function FontPicker({ currentFont, onSelectFont }: FontPickerProps) {
       setIsOpen(false);
     } catch (err) {
       console.error('Failed to load custom font:', err);
-      alert('Could not process this font file. Please upload a valid .TTF, .OTF, or .WOFF file.');
+      notifyStudio({ tone: 'error', title: 'Could not load font', detail: 'Upload a valid .TTF, .OTF, or .WOFF file.' });
     }
 
     if (fileInputRef.current) fileInputRef.current.value = '';

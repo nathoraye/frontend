@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import * as fabric from 'fabric';
 import { keepWeldArtwork, tightPackWeldObject } from '../utils/weldImport';
+import { notifyStudio } from '../utils/studioNotice';
 
 export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapshot: (c: fabric.Canvas, i?: boolean) => void) {
 
@@ -27,12 +28,13 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
     const isText = actives.length === 1 && (actives[0].type === 'i-text' || actives[0].type === 'textbox' || actives[0].type === 'text');
 
     if (actives.length < 2 && !isGroup && !isText) {
-        return alert("Select at least 2 shapes, overlapping Text, or a Group to Weld!");
+        notifyStudio({ tone: 'warning', title: 'Nothing to weld', detail: 'Select at least 2 shapes, overlapping text, or a group.' });
+        return;
     }
 
     if (operation === 'weld') {
         if (selectionHasRasterImage(actives)) {
-            alert("Weld only works on vector shapes. Trace image layers to vectors first, then weld.");
+            notifyStudio({ tone: 'warning', title: 'Trace photos before welding', detail: 'Weld only works on vector shapes.' });
             return;
         }
 
@@ -132,7 +134,7 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
             saveHistorySnapshot(canvas, true);
         } catch (err) {
             console.error("Weld Failed:", err);
-            alert("Weld failed. Your original objects were kept unchanged.");
+            notifyStudio({ tone: 'error', title: 'Weld failed', detail: 'Your original objects were kept unchanged.' });
         }
     }
   }, [canvas, saveHistorySnapshot]);

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as fabric from 'fabric'; 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useCanvasEngine } from './hooks/useCanvasEngine';
 import { useHistoryEngine } from './hooks/useHistoryEngine';
 import { useAlignmentEngine } from './hooks/useAlignmentEngine'; 
@@ -19,6 +19,12 @@ import { ContourModal } from './components/ContourModal';
 import { TracePreviewModal } from './components/TracePreviewModal';
 import { OrderModal } from './components/OrderModal';
 import { ApparelMockupViewer } from './components/ApparelMockupViewer';
+import { StudioNoticeHost } from './components/StudioNoticeHost';
+import { CutReadyBadge } from './components/CutReadyPanel';
+import { inspectObjectsForCut } from './utils/cutReady';
+import { notifyStudio } from './utils/studioNotice';
+import { clearSavedCanvas } from './utils/canvasStore';
+import { useCanvasAutosave } from './hooks/useCanvasAutosave';
 import { PLACEMENT_SCALE_MAX, PLACEMENT_SCALE_MIN, type ProductPlacement } from './utils/apparelPlacement';
 import { PRODUCT_CATALOG, PRODUCT_IDS, type ProductId } from './three/productCatalog';
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
@@ -107,6 +113,9 @@ export default function App() {
 
   const { saveHistorySnapshot, handleUndo, handleRedo } = useHistoryEngine({ setCanvasObjects });
   const clipboard = useRef<fabric.Object | null>(null);
+  useCanvasAutosave(canvas, () => {
+    if (canvas) saveHistorySnapshot(canvas, true);
+  });
 
   const { performBoolean } = useBooleanEngine(canvas, saveHistorySnapshot);
   const { handleCreateOffset: offsetCore } = useVectorMath({ canvas, isProcessingRef, setIsTracing, traceImage, saveHistorySnapshot });
@@ -122,14 +131,14 @@ export default function App() {
   }, []);
   const handleVectorTrace = () => {
     if (!activeObj || activeObj.type !== 'image') {
-      alert('Select a raster image to trace. Vector shapes are already cut-ready.');
+      notifyStudio({ tone: 'info', title: 'Already a vector', detail: 'Select a photo to trace. Shapes on the mat are already cut-ready.' });
       return;
     }
     openImageTrace(activeObj as fabric.Image, 'cutout');
   };
   const handleStackedVectorTrace = () => {
     if (!activeObj || activeObj.type !== 'image') {
-      alert('Select a raster image to trace. Vector shapes are already cut-ready.');
+      notifyStudio({ tone: 'info', title: 'Already a vector', detail: 'Select a photo to trace. Shapes on the mat are already cut-ready.' });
       return;
     }
     openImageTrace(activeObj as fabric.Image, 'stacked');
@@ -165,8 +174,21 @@ export default function App() {
     canvas, activeObj, brushColor, setTool, setIsGenerating, setTextCurve, saveHistorySnapshot
   });
 
+  const cutReport = useMemo(() => inspectObjectsForCut(canvasObjects), [canvasObjects]);
+
   const handleSafeSVGExport = useCallback(() => {
     if (!canvas) return;
+    const report = inspectObjectsForCut(canvas.getObjects());
+    if (!report.ok) {
+      notifyStudio({
+        tone: 'error',
+        title: 'Not cut ready',
+        detail: report.issues.find((i) => i.severity === 'error')?.message,
+      });
+      setShowRightPanel(true);
+      setActiveTab('design');
+      return;
+    }
     try {
         const svgString = canvas.toSVG({
             suppressPreamble: false,
@@ -182,9 +204,20 @@ export default function App() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+        if (report.issues.length > 0) {
+          notifyStudio({
+            tone: 'warning',
+            title: 'Exported with warnings',
+            detail: report.issues[0]?.message,
+          });
+        }
     } catch (err) {
         console.error("SVG Pipeline Error:", err);
-        alert("SVG Export failed. If you have uploaded complex raster images, ensure they are traced to vectors first.");
+        notifyStudio({
+          tone: 'error',
+          title: 'Export failed',
+          detail: 'If the mat has photos, trace them to vectors first.',
+        });
     }
   }, [canvas]);
 
@@ -260,7 +293,7 @@ export default function App() {
           setPendingTrace(null);
       } catch (err) {
           console.error('Place trace failed:', err);
-          alert('Failed to place the traced SVG. The original image is still on the mat.');
+          notifyStudio({ tone: 'error', title: 'Could not place trace', detail: 'The original image is still on the mat.' });
       }
   };
 
@@ -403,11 +436,18 @@ export default function App() {
                 <button onClick={() => handleUndo(canvas)} className="p-1.5 rounded-md transition-colors hover:bg-slate-700/50 text-slate-300" title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
                 <button onClick={() => handleRedo(canvas)} className="p-1.5 rounded-md transition-colors hover:bg-slate-700/50 text-slate-300" title="Redo (Ctrl+Y)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
                 <div className="h-4 w-px bg-slate-800 mx-1"></div>
-                <button onClick={() => {if(canvas){ canvas.clear(); saveHistorySnapshot(canvas, true);}}} className="p-1.5 rounded-md transition-colors hover:bg-red-500/10 hover:text-red-500 text-slate-400" title="Clear Mat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+                <button onClick={() => {if(canvas){ canvas.clear(); void clearSavedCanvas(); saveHistorySnapshot(canvas, true);}}} className="p-1.5 rounded-md transition-colors hover:bg-red-500/10 hover:text-red-500 text-slate-400" title="Clear Mat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
+              <CutReadyBadge
+                report={cutReport}
+                onClick={() => {
+                  setShowRightPanel(true);
+                  setActiveTab('design');
+                }}
+              />
               <button disabled={isGenerating} onClick={handleAIGeneration} className="flex items-center gap-2 bg-[#181a25] border border-slate-700 text-white px-3 py-1.5 rounded-md text-[10px] font-bold hover:bg-slate-800 transition-colors uppercase tracking-wider h-8">{isGenerating ? 'Generating...' : 'Generate AI'}</button>
 
               <div className="flex items-center gap-1 bg-slate-500/5 rounded-lg p-1">
@@ -631,7 +671,7 @@ export default function App() {
                         lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
                         performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} handleStackedVectorTrace={handleStackedVectorTrace}
                         isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)} handleUngroup={handleUngroup}
-                        saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
+                        saveHistorySnapshot={saveHistorySnapshot} cutReport={cutReport} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
                       />
                     )}
                   </div>
@@ -652,7 +692,7 @@ export default function App() {
                 lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
                 performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} handleStackedVectorTrace={handleStackedVectorTrace}
                 isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)} handleUngroup={handleUngroup}
-                saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
+                saveHistorySnapshot={saveHistorySnapshot} cutReport={cutReport} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
               />
             ) : null}
         </div>
@@ -680,6 +720,7 @@ export default function App() {
         {activeOrderTab && canvas && (
             <OrderModal canvas={canvas} initialTab={activeOrderTab} onClose={() => setActiveOrderTab(null)} />
         )}
+        <StudioNoticeHost />
     </div>
   );
 }

@@ -3,6 +3,8 @@ import * as fabric from 'fabric';
 import { FontPicker } from './FontPicker';
 import { tightPackWeldObject } from '../utils/weldImport';
 import { isUngroupable } from '../utils/groupOps';
+import { CutReadyPanel } from './CutReadyPanel';
+import type { CutReadyReport } from '../utils/cutReady';
 
 const SWATCHES = [
   '#FFFFFF', '#000000', '#FF1493', '#FF0000', '#FF7F00', '#FFFF00', '#32CD32', '#00FF00', 
@@ -51,6 +53,7 @@ interface RightInspectorProps {
   toggleNodeEdit?: () => void;
   handleUngroup?: () => void;
   saveHistorySnapshot: (canvas: fabric.Canvas, immediate?: boolean) => void;
+  cutReport: CutReadyReport;
   borderCol: string;
   bgPanel: string;
   isDark: boolean;
@@ -66,7 +69,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
     opacity, wandTolerance, setWandTolerance, wandMode, setWandMode, eraserMode, setEraserMode, textCurve, charSpacing, setCharSpacing,
     lineHeight, setLineHeight, isTracing, offsetSize, setOffsetSize, handleCreateOffset,
     performBoolean, handlePropChange, alignObject, applyTextCurve, explodeText, 
-    handleVectorTrace, handleStackedVectorTrace, isNodeEditing, canNodeEdit, toggleNodeEdit, handleUngroup, saveHistorySnapshot, borderCol, bgPanel,
+    handleVectorTrace, handleStackedVectorTrace, isNodeEditing, canNodeEdit, toggleNodeEdit, handleUngroup, saveHistorySnapshot, cutReport, borderCol, bgPanel,
     isDark, textMuted, textMain, btnHover
   } = props;
 
@@ -100,6 +103,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-6 custom-scrollbar">
+        {activeTab === 'design' && <CutReadyPanel report={cutReport} />}
         
         {tool === 'eraser' && (
           <div className={`p-4 rounded-xl border ${borderCol} bg-red-500/5 border-red-500/20`}>

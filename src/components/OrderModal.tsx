@@ -4,6 +4,7 @@ import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import type { CreateOrderData, CreateOrderActions, OnApproveData, OnApproveActions } from '@paypal/paypal-js';
 import * as fabric from 'fabric';
 import { submitOrder } from '../services/orderService';
+import { notifyStudio } from '../utils/studioNotice';
 import { snapshotDesignAsDataURL } from '../utils/designSnapshot';
 import { ApparelMockupViewer } from './ApparelMockupViewer';
 import { VinylSizePreview } from './VinylSizePreview';
@@ -568,7 +569,7 @@ export function OrderModal({ canvas, initialTab, onClose }: OrderModalProps) {
       }, 2000);
     } catch (error) {
       console.error('Order submission failed:', error);
-      alert('Failed to submit order. Please try again.');
+      notifyStudio({ tone: 'error', title: 'Order not submitted', detail: 'Try again in a moment.' });
     } finally {
       setIsProcessing(false);
     }
