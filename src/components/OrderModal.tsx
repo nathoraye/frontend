@@ -502,52 +502,54 @@ function Step3Details({
           </select>
         </div>
 
-        {!isValid || isProcessing ? (
-          <div className="p-3 bg-red-900 bg-opacity-20 border border-red-700 rounded text-red-400 text-sm font-mono">
-            {isProcessing
-              ? 'Submitting order…'
-              : 'Please fill in all required fields to proceed to payment.'}
-          </div>
-        ) : localCheckout ? (
-          <div className="space-y-2">
-            <p className="text-xs font-mono text-amber-400">
-              PayPal client id not set — using local unverified checkout.
-            </p>
-            <button
-              type="button"
-              onClick={() => void handleLocalCheckout()}
-              className="w-full px-4 py-3 font-mono text-sm bg-pink-500 text-gray-900 rounded hover:bg-pink-600 transition"
+        <div className="sticky bottom-0 z-10 -mx-6 border-t border-gray-800 bg-gray-900 px-6 pt-3">
+          {!isValid || isProcessing ? (
+            <div className="p-3 bg-red-900 bg-opacity-20 border border-red-700 rounded text-red-400 text-sm font-mono">
+              {isProcessing
+                ? 'Submitting order…'
+                : 'Please fill in all required fields to proceed to payment.'}
+            </div>
+          ) : localCheckout ? (
+            <div className="space-y-2">
+              <p className="text-xs font-mono text-amber-400">
+                PayPal client id not set — using local unverified checkout.
+              </p>
+              <button
+                type="button"
+                onClick={() => void handleLocalCheckout()}
+                className="w-full px-4 py-3 font-mono text-sm bg-pink-500 text-gray-900 rounded hover:bg-pink-600 transition"
+              >
+                Complete order (local)
+              </button>
+            </div>
+          ) : (
+            <PayPalScriptProvider
+              options={{
+                clientId: paypalClientId,
+                currency: ORDER_CURRENCY,
+              }}
             >
-              Complete order (local)
-            </button>
-          </div>
-        ) : (
-          <PayPalScriptProvider
-            options={{
-              clientId: paypalClientId,
-              currency: ORDER_CURRENCY,
-            }}
-          >
-            <PayPalButtons
-              createOrder={async () => {
-                const created = await createPayPalCheckout(checkoutOrderConfig);
-                return created.id;
-              }}
-              onApprove={async (orderData: OnApproveData) => {
-                // Capture happens on the server during submitOrder.
-                await handleApprove(orderData);
-              }}
-              onError={(err) => {
-                console.error('PayPal error:', err);
-                notifyStudio({
-                  tone: 'error',
-                  title: 'Payment failed',
-                  detail: 'PayPal could not start checkout. Try again in a moment.',
-                });
-              }}
-            />
-          </PayPalScriptProvider>
-        )}
+              <PayPalButtons
+                createOrder={async () => {
+                  const created = await createPayPalCheckout(checkoutOrderConfig);
+                  return created.id;
+                }}
+                onApprove={async (orderData: OnApproveData) => {
+                  // Capture happens on the server during submitOrder.
+                  await handleApprove(orderData);
+                }}
+                onError={(err) => {
+                  console.error('PayPal error:', err);
+                  notifyStudio({
+                    tone: 'error',
+                    title: 'Payment failed',
+                    detail: 'PayPal could not start checkout. Try again in a moment.',
+                  });
+                }}
+              />
+            </PayPalScriptProvider>
+          )}
+        </div>
       </form>
     </div>
   );
@@ -703,13 +705,16 @@ export function OrderModal({ canvas, initialTab, onClose }: OrderModalProps) {
             Step {step} / 3
           </div>
 
-          <button
-            onClick={handleNext}
-            disabled={step === 3}
-            className="px-6 py-2 font-mono text-sm bg-pink-500 text-gray-900 rounded hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            Next →
-          </button>
+          {step < 3 ? (
+            <button
+              onClick={handleNext}
+              className="px-6 py-2 font-mono text-sm bg-pink-500 text-gray-900 rounded hover:bg-pink-600 transition"
+            >
+              Next →
+            </button>
+          ) : (
+            <div className="px-3 py-2 font-mono text-xs text-gray-500">Pay above</div>
+          )}
         </div>
       </div>
     </div>
