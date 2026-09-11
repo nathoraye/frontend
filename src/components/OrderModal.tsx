@@ -1,11 +1,18 @@
 import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
-import type { CreateOrderData, CreateOrderActions, OnApproveData, OnApproveActions } from '@paypal/paypal-js';
+import type { OnApproveData } from '@paypal/paypal-js';
 import * as fabric from 'fabric';
-import { submitOrder } from '../services/orderService';
+import { createPayPalCheckout, submitOrder } from '../services/orderService';
 import { notifyStudio } from '../utils/studioNotice';
 import { snapshotDesignAsDataURL } from '../utils/designSnapshot';
+import {
+  calculateOrderTotal,
+  ORDER_CURRENCY,
+  PERMANENT_SURCHARGE,
+  SHIPPING_COST,
+  UNIT_PRICES,
+} from '../utils/orderPricing';
 import { ApparelMockupViewer } from './ApparelMockupViewer';
 import { VinylSizePreview } from './VinylSizePreview';
 import { PRODUCT_CATALOG, PRODUCT_IDS, type ProductId } from '../three/productCatalog';
@@ -60,14 +67,6 @@ const DEFAULT_PRINT_CONFIG: PrintConfig = {
   rotationDeg: 0,
 };
 
-const UNIT_PRICES: Record<OrderType, number> = {
-  vinyl: 12.99,
-  product: 24.99,
-};
-
-const PERMANENT_SURCHARGE = 6;
-const SHIPPING_COST = 5.99;
-
 const COUNTRIES = [
   'Australia',
   'United States',
@@ -78,9 +77,11 @@ const COUNTRIES = [
 ];
 
 function calculatePrice(config: OrderConfig): number {
-  const unitPrice = UNIT_PRICES[config.orderType] + (config.orderType === 'vinyl' && config.vinylPermanent ? PERMANENT_SURCHARGE : 0);
-  const subtotal = unitPrice * config.quantity;
-  return subtotal + SHIPPING_COST;
+  return calculateOrderTotal({
+    orderType: config.orderType,
+    quantity: config.quantity,
+    vinylPermanent: config.vinylPermanent,
+  });
 }
 
 function printConfigsForProduct(productId: ProductId): Record<string, PrintConfig> {
@@ -355,10 +356,37 @@ function Step3Details({
 
   const totalPrice = calculatePrice(config);
   const unitPrice = UNIT_PRICES[config.orderType] + (config.orderType === 'vinyl' && config.vinylPermanent ? PERMANENT_SURCHARGE : 0);
+  const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID as string | undefined;
+  const localCheckout = !paypalClientId || paypalClientId === 'test' || paypalClientId.includes('your_paypal');
+
+  const checkoutOrderConfig = {
+    orderType: config.orderType,
+    quantity: config.quantity,
+    vinylPermanent: config.vinylPermanent,
+    vinylWidthCm: config.vinylWidthCm,
+    vinylHeightCm: config.vinylHeightCm,
+    productId: config.productId,
+    productColor: config.productColor,
+    productSize: config.productSize,
+  };
 
   const handleApprove = async (orderData: OnApproveData) => {
     const formData = getValues();
     await onConfirm(formData, orderData.orderID);
+  };
+
+  const handleLocalCheckout = async () => {
+    try {
+      const created = await createPayPalCheckout(checkoutOrderConfig);
+      await handleApprove({ orderID: created.id } as OnApproveData);
+    } catch (error) {
+      console.error('Local checkout failed:', error);
+      notifyStudio({
+        tone: 'error',
+        title: 'Order not submitted',
+        detail: error instanceof Error ? error.message : 'Try again in a moment.',
+      });
+    }
   };
 
   return (
@@ -474,45 +502,52 @@ function Step3Details({
           </select>
         </div>
 
-        <PayPalScriptProvider
-          options={{
-            clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID,
-            currency: 'AUD',
-          }}
-        >
-          {isValid && !isProcessing ? (
+        {!isValid || isProcessing ? (
+          <div className="p-3 bg-red-900 bg-opacity-20 border border-red-700 rounded text-red-400 text-sm font-mono">
+            {isProcessing
+              ? 'Submitting order…'
+              : 'Please fill in all required fields to proceed to payment.'}
+          </div>
+        ) : localCheckout ? (
+          <div className="space-y-2">
+            <p className="text-xs font-mono text-amber-400">
+              PayPal client id not set — using local unverified checkout.
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleLocalCheckout()}
+              className="w-full px-4 py-3 font-mono text-sm bg-pink-500 text-gray-900 rounded hover:bg-pink-600 transition"
+            >
+              Complete order (local)
+            </button>
+          </div>
+        ) : (
+          <PayPalScriptProvider
+            options={{
+              clientId: paypalClientId,
+              currency: ORDER_CURRENCY,
+            }}
+          >
             <PayPalButtons
-              createOrder={(_data: CreateOrderData, actions: CreateOrderActions) =>
-                actions.order.create({
-                  intent: 'CAPTURE',
-                  purchase_units: [
-                    {
-                      amount: {
-                        currency_code: 'AUD',
-                        value: totalPrice.toFixed(2),
-                      },
-                      reference_id: `WVS-${Date.now()}`,
-                      description: `West Vinyl Studio - ${config.orderType}`,
-                    },
-                  ],
-                })
-              }
-              onApprove={async (orderData: OnApproveData, actions: OnApproveActions) => {
-                const details = await actions.order?.capture();
-                if (details) {
-                  await handleApprove(orderData);
-                }
+              createOrder={async () => {
+                const created = await createPayPalCheckout(checkoutOrderConfig);
+                return created.id;
+              }}
+              onApprove={async (orderData: OnApproveData) => {
+                // Capture happens on the server during submitOrder.
+                await handleApprove(orderData);
               }}
               onError={(err) => {
                 console.error('PayPal error:', err);
+                notifyStudio({
+                  tone: 'error',
+                  title: 'Payment failed',
+                  detail: 'PayPal could not start checkout. Try again in a moment.',
+                });
               }}
             />
-          ) : (
-            <div className="p-3 bg-red-900 bg-opacity-20 border border-red-700 rounded text-red-400 text-sm font-mono">
-              Please fill in all required fields to proceed to payment.
-            </div>
-          )}
-        </PayPalScriptProvider>
+          </PayPalScriptProvider>
+        )}
       </form>
     </div>
   );
@@ -558,18 +593,50 @@ export function OrderModal({ canvas, initialTab, onClose }: OrderModalProps) {
   const handleConfirm = async (customer: CustomerFormValues, paypalOrderId: string) => {
     setIsProcessing(true);
     try {
-      await submitOrder({
+      const result = await submitOrder({
         paypalOrderId,
-        customer,
-        orderConfig: config,
+        customer: {
+          fullName: customer.fullName,
+          email: customer.email,
+          phone: customer.phone,
+          street: customer.street,
+          city: customer.city,
+          state: customer.state,
+          postcode: customer.postcode,
+          country: customer.country,
+        },
+        orderConfig: {
+          orderType: config.orderType,
+          quantity: config.quantity,
+          vinylPermanent: config.vinylPermanent,
+          vinylWidthCm: config.vinylWidthCm,
+          vinylHeightCm: config.vinylHeightCm,
+          vinylFinish: config.vinylFinish,
+          productId: config.productId,
+          productColor: config.productColor,
+          productSize: config.productSize,
+          printConfigs: config.printConfigs,
+        },
         designSvg: canvas.toSVG(),
+      });
+      const unverified = result.order.status === 'unverified';
+      notifyStudio({
+        tone: 'success',
+        title: result.duplicate ? 'Order already recorded' : 'Order placed',
+        detail: unverified
+          ? 'Saved locally without PayPal capture. Configure PAYPAL_CLIENT_ID/SECRET for live verification.'
+          : 'Payment verified. We will email you when the cut is ready.',
       });
       setTimeout(() => {
         onClose();
-      }, 2000);
+      }, 1500);
     } catch (error) {
       console.error('Order submission failed:', error);
-      notifyStudio({ tone: 'error', title: 'Order not submitted', detail: 'Try again in a moment.' });
+      notifyStudio({
+        tone: 'error',
+        title: 'Order not submitted',
+        detail: error instanceof Error ? error.message : 'Try again in a moment.',
+      });
     } finally {
       setIsProcessing(false);
     }
