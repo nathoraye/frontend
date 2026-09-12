@@ -1,16 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
-
-const ARTIFACT_DIR = '/opt/cursor/artifacts';
 
 test.use({
   viewport: { width: 1280, height: 800 },
-  video: 'on',
 });
 
 test('Product Preview → Buy Sticker → local complete order', async ({ page }) => {
-  mkdirSync(ARTIFACT_DIR, { recursive: true });
-
   await page.goto('/');
   await expect(page.getByText(/west vinyl studio/i)).toBeVisible();
 
@@ -33,7 +27,6 @@ test('Product Preview → Buy Sticker → local complete order', async ({ page }
 
   const localBtn = page.getByRole('button', { name: /complete order \(local\)/i });
   await expect(localBtn).toBeVisible();
-  await page.screenshot({ path: `${ARTIFACT_DIR}/paypal-checkout-step3-local.png`, fullPage: true });
 
   const createRespPromise = page.waitForResponse(
     (res) => res.url().includes('/api/paypal/create-order') && res.request().method() === 'POST',
