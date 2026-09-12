@@ -1,90 +1,64 @@
 import http from 'node:http';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { handleTraceRequest } from './api/trace.js';
+import { errorStatus, readJsonBody, sendJson } from './api/_lib/http.js';
+import {
+  handleCreatePayPalOrder,
+  handleListOrders,
+  handleSubmitOrder,
+} from './api/_lib/orderService.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const dataDir = path.join(__dirname, 'data');
-const ordersFile = path.join(dataDir, 'orders.json');
-
-async function ensureDataFile() {
-  await fs.mkdir(dataDir, { recursive: true });
-  try {
-    await fs.access(ordersFile);
-  } catch {
-    await fs.writeFile(ordersFile, '[]', 'utf8');
-  }
+// Local/dev convenience when PayPal secrets are absent. Vercel stays fail-closed.
+if (!process.env.PAYPAL_CLIENT_ID && process.env.ALLOW_UNVERIFIED_ORDERS == null) {
+  process.env.ALLOW_UNVERIFIED_ORDERS = '1';
 }
-
-async function readOrders() {
-  await ensureDataFile();
-  const raw = await fs.readFile(ordersFile, 'utf8');
-  return JSON.parse(raw);
-}
-
-async function writeOrders(orders) {
-  await ensureDataFile();
-  await fs.writeFile(ordersFile, JSON.stringify(orders, null, 2), 'utf8');
-}
-
-function sendJson(res, status, payload) {
-  res.writeHead(status, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(payload));
+if (process.env.ALLOW_UNVERIFIED_ORDERS === '1' && process.env.ALLOW_PUBLIC_ORDER_LIST == null) {
+  process.env.ALLOW_PUBLIC_ORDER_LIST = '1';
 }
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
 
-  if (req.method === 'GET' && url.pathname === '/api/health') {
-    return sendJson(res, 200, { ok: true, service: 'west-vinyl-orders' });
-  }
+  try {
+    if (req.method === 'OPTIONS') {
+      return sendJson(res, 204, {});
+    }
 
-  if (req.method === 'GET' && url.pathname === '/api/orders') {
-    const orders = await readOrders();
-    return sendJson(res, 200, { orders });
-  }
+    if (req.method === 'GET' && url.pathname === '/api/health') {
+      return sendJson(res, 200, { ok: true, service: 'west-vinyl-orders' });
+    }
 
-  if (req.method === 'GET' && url.pathname.startsWith('/api/orders/')) {
-    const orderId = url.pathname.split('/').pop();
-    const orders = await readOrders();
-    const order = orders.find((entry) => entry.id === orderId);
-    if (!order) return sendJson(res, 404, { error: 'Order not found' });
-    return sendJson(res, 200, { order });
-  }
+    if (url.pathname === '/api/trace') {
+      return handleTraceRequest(req, res);
+    }
 
-  if (url.pathname === '/api/trace') {
-    return handleTraceRequest(req, res);
-  }
+    if (req.method === 'POST' && url.pathname === '/api/paypal/create-order') {
+      const body = await readJsonBody(req);
+      return sendJson(res, 200, await handleCreatePayPalOrder(body));
+    }
 
-  if (req.method === 'POST' && url.pathname === '/api/orders') {
-    let body = '';
-    req.on('data', (chunk) => {
-      body += chunk.toString();
+    if (req.method === 'GET' && url.pathname === '/api/orders') {
+      return sendJson(res, 200, await handleListOrders(req));
+    }
+
+    if (req.method === 'GET' && url.pathname.startsWith('/api/orders/')) {
+      const payload = await handleListOrders(req);
+      const orderId = url.pathname.split('/').pop();
+      const order = payload.orders.find((entry) => entry.id === orderId);
+      if (!order) return sendJson(res, 404, { error: 'Order not found' });
+      return sendJson(res, 200, { order });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/orders') {
+      const body = await readJsonBody(req);
+      return sendJson(res, 201, await handleSubmitOrder(body));
+    }
+
+    return sendJson(res, 404, { error: 'Not found' });
+  } catch (error) {
+    return sendJson(res, errorStatus(error), {
+      error: error instanceof Error ? error.message : 'Request failed',
     });
-
-    req.on('end', async () => {
-      try {
-        const payload = JSON.parse(body || '{}');
-        const orders = await readOrders();
-        const order = {
-          id: `ord-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          createdAt: new Date().toISOString(),
-          ...payload,
-        };
-
-        orders.unshift(order);
-        await writeOrders(orders);
-        return sendJson(res, 201, { order, ordersCount: orders.length });
-      } catch (error) {
-        return sendJson(res, 400, { error: error instanceof Error ? error.message : 'Invalid order payload' });
-      }
-    });
-    return;
   }
-
-  return sendJson(res, 404, { error: 'Not found' });
 });
 
 server.listen(3001, () => {

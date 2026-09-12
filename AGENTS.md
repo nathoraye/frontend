@@ -8,7 +8,7 @@ A browser-based custom vinyl sticker and iron-on apparel design studio (React 19
 
 Running the product end-to-end locally requires **two** processes:
 
-1. **Order backend** — `node server.mjs` (listens on port `3001`, persists to `data/orders.json`). There is no npm script for this; it must be started directly. Endpoints: `GET /api/health`, `GET /api/orders`, `GET /api/orders/:id`, `POST /api/orders`.
+1. **Order backend** — `node server.mjs` (listens on port `3001`, persists to `data/orders.json`). There is no npm script for this; it must be started directly. Endpoints: `GET /api/health`, `POST /api/paypal/create-order`, `GET /api/orders`, `GET /api/orders/:id`, `POST /api/orders`. Without `PAYPAL_CLIENT_ID`/`SECRET`, local server auto-enables `ALLOW_UNVERIFIED_ORDERS` (and public list). Production should set PayPal secrets + `ORDERS_ADMIN_TOKEN` and leave those allow flags unset.
 2. **Vite dev server (frontend)** — `npm run dev -- --host 0.0.0.0 --port 5173`. The Vite config proxies `/api` → `http://localhost:3001`, so start the backend first for order/health calls to work. Default `npm run dev` can bind IPv6 localhost (`::1`) only, which makes `http://127.0.0.1:5173` fail.
 
 Cloud Agents auto-start both via `.cursor/environment.json` terminals (`order-backend`, `vite-dev`).
