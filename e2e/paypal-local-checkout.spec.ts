@@ -58,13 +58,16 @@ test('Product Preview → Buy Apparel inherits colour/size/placement', async ({ 
   await page.getByLabel('Garment size').selectOption('L');
   await page.getByRole('button', { name: /buy apparel/i }).click();
 
-  await expect(page.getByText(/review your apparel/i)).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText('T-Shirt')).toBeVisible();
-  await expect(page.getByText('L')).toBeVisible();
+  const checkout = page.getByTestId('order-checkout');
+  await expect(checkout.getByText(/review your apparel/i)).toBeVisible({ timeout: 10_000 });
+  await expect(checkout.getByText('T-Shirt', { exact: true })).toBeVisible();
+  await expect(checkout.getByText('Garment size', { exact: true })).toBeVisible();
+  await expect(checkout.locator('span.text-pink-400', { hasText: /^L$/ })).toBeVisible();
   // Placement / colour editors should not reappear in checkout
-  await expect(page.getByLabel('Product')).toHaveCount(0);
-  await expect(page.getByText(/print placement/i)).toHaveCount(0);
+  await expect(checkout.getByLabel('Product')).toHaveCount(0);
+  await expect(checkout.getByLabel('Garment size')).toHaveCount(0);
+  await expect(checkout.getByLabel('Print scale')).toHaveCount(0);
 
-  await page.getByRole('button', { name: /next/i }).click();
-  await expect(page.getByText(/shipping & payment/i)).toBeVisible();
+  await checkout.getByRole('button', { name: /next/i }).click();
+  await expect(checkout.getByText(/shipping & payment/i)).toBeVisible();
 });

@@ -604,7 +604,13 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+      data-testid="order-checkout"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Checkout"
+    >
       <div className="bg-gray-900 w-full max-w-2xl max-h-[90vh] rounded-lg shadow-2xl flex flex-col border border-gray-700">
         <div className="flex items-center justify-between p-6 border-b border-gray-700">
           <div className="flex gap-4">
