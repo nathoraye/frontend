@@ -12,7 +12,6 @@ test('Product Preview → Buy Sticker → local complete order', async ({ page }
   await expect(page.getByRole('button', { name: /buy sticker/i })).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: /buy sticker/i }).click();
 
-  // Slim checkout: sticker options → shipping (one Next)
   await expect(page.getByText(/sticker options/i)).toBeVisible({ timeout: 10_000 });
   await page.getByRole('button', { name: /next/i }).click();
 
@@ -29,7 +28,8 @@ test('Product Preview → Buy Sticker → local complete order', async ({ page }
   await expect(localBtn).toBeVisible();
 
   const createRespPromise = page.waitForResponse(
-    (res) => res.url().includes('/api/paypal/create-order') && res.request().method() === 'POST',
+    (res) =>
+      res.url().includes('/api/stripe/create-payment-intent') && res.request().method() === 'POST',
   );
   const submitRespPromise = page.waitForResponse(
     (res) => res.url().includes('/api/orders') && res.request().method() === 'POST',
@@ -63,7 +63,6 @@ test('Product Preview → Buy Apparel inherits colour/size/placement', async ({ 
   await expect(checkout.getByText('T-Shirt', { exact: true })).toBeVisible();
   await expect(checkout.getByText('Garment size', { exact: true })).toBeVisible();
   await expect(checkout.locator('span.text-pink-400', { hasText: /^L$/ })).toBeVisible();
-  // Placement / colour editors should not reappear in checkout
   await expect(checkout.getByLabel('Product')).toHaveCount(0);
   await expect(checkout.getByLabel('Garment size')).toHaveCount(0);
   await expect(checkout.getByLabel('Print scale')).toHaveCount(0);

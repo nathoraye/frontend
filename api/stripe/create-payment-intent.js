@@ -1,5 +1,5 @@
 import { errorStatus, readJsonBody, sendJson } from '../_lib/http.js';
-import { handleCreatePayPalOrder } from '../_lib/orderService.js';
+import { handleCreatePaymentIntent } from '../_lib/orderService.js';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -14,11 +14,11 @@ export default async function handler(req, res) {
 
   try {
     const body = await readJsonBody(req);
-    const payload = await handleCreatePayPalOrder(body);
+    const payload = await handleCreatePaymentIntent(body);
     sendJson(res, 200, payload);
   } catch (error) {
     sendJson(res, errorStatus(error), {
-      error: error instanceof Error ? error.message : 'Failed to create PayPal order',
+      error: error instanceof Error ? error.message : 'Failed to create payment intent',
     });
   }
 }

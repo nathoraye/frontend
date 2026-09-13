@@ -2,13 +2,13 @@ import http from 'node:http';
 import { handleTraceRequest } from './api/trace.js';
 import { errorStatus, readJsonBody, sendJson } from './api/_lib/http.js';
 import {
-  handleCreatePayPalOrder,
+  handleCreatePaymentIntent,
   handleListOrders,
   handleSubmitOrder,
 } from './api/_lib/orderService.js';
 
-// Local/dev convenience when PayPal secrets are absent. Vercel stays fail-closed.
-if (!process.env.PAYPAL_CLIENT_ID && process.env.ALLOW_UNVERIFIED_ORDERS == null) {
+// Local/dev convenience when Stripe secrets are absent. Vercel stays fail-closed.
+if (!process.env.STRIPE_SECRET_KEY && process.env.ALLOW_UNVERIFIED_ORDERS == null) {
   process.env.ALLOW_UNVERIFIED_ORDERS = '1';
 }
 if (process.env.ALLOW_UNVERIFIED_ORDERS === '1' && process.env.ALLOW_PUBLIC_ORDER_LIST == null) {
@@ -31,9 +31,13 @@ const server = http.createServer(async (req, res) => {
       return handleTraceRequest(req, res);
     }
 
-    if (req.method === 'POST' && url.pathname === '/api/paypal/create-order') {
+    if (
+      req.method === 'POST' &&
+      (url.pathname === '/api/stripe/create-payment-intent' ||
+        url.pathname === '/api/paypal/create-order')
+    ) {
       const body = await readJsonBody(req);
-      return sendJson(res, 200, await handleCreatePayPalOrder(body));
+      return sendJson(res, 200, await handleCreatePaymentIntent(body));
     }
 
     if (req.method === 'GET' && url.pathname === '/api/orders') {

@@ -1,4 +1,4 @@
-/** Shared AUD pricing for the checkout UI and PayPal create-order. */
+/** Shared AUD pricing for the checkout UI and Stripe PaymentIntent create. */
 
 export const UNIT_PRICES = Object.freeze({
   vinyl: 12.99,

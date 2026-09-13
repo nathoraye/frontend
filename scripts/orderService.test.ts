@@ -4,7 +4,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  handleCreatePayPalOrder,
+  handleCreatePaymentIntent,
   handleListOrders,
   handleSubmitOrder,
 } from '../api/_lib/orderService.js';
@@ -27,10 +27,9 @@ test('unverified local checkout creates and lists an order', async () => {
   process.env.ALLOW_PUBLIC_ORDER_LIST = '1';
   process.env.ORDER_STORE = 'file';
   process.env.ORDERS_FILE = file;
-  delete process.env.PAYPAL_CLIENT_ID;
-  delete process.env.PAYPAL_CLIENT_SECRET;
+  delete process.env.STRIPE_SECRET_KEY;
 
-  const created = await handleCreatePayPalOrder({
+  const created = await handleCreatePaymentIntent({
     orderConfig: { orderType: 'vinyl', quantity: 1 },
   });
   assert.ok(created.id.startsWith('LOCAL-'));
@@ -38,7 +37,7 @@ test('unverified local checkout creates and lists an order', async () => {
   assert.equal(created.amount, '18.98');
 
   const submitted = await handleSubmitOrder({
-    paypalOrderId: created.id,
+    paymentIntentId: created.id,
     customer,
     orderConfig: { orderType: 'vinyl', quantity: 1 },
     designSvg,
@@ -47,7 +46,7 @@ test('unverified local checkout creates and lists an order', async () => {
   assert.equal(submitted.ordersCount, 1);
 
   const again = await handleSubmitOrder({
-    paypalOrderId: created.id,
+    paymentIntentId: created.id,
     customer,
     orderConfig: { orderType: 'vinyl', quantity: 1 },
     designSvg,
@@ -75,10 +74,11 @@ test('order list is gated without admin token', async () => {
 
 test('submit rejects tiny design payloads', async () => {
   process.env.ALLOW_UNVERIFIED_ORDERS = '1';
+  delete process.env.STRIPE_SECRET_KEY;
   await assert.rejects(
     () =>
       handleSubmitOrder({
-        paypalOrderId: 'LOCAL-1',
+        paymentIntentId: 'LOCAL-1',
         customer,
         orderConfig: { orderType: 'vinyl', quantity: 1 },
         designSvg: '<svg/>',
