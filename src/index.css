@@ -1,8 +1,25 @@
 @import "tailwindcss";
 
-html,
-body {
+/*
+ * Phone browsers: lock the app to the dynamic viewport so the studio
+ * does not scroll under the URL bar / home indicator.
+ */
+html {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+body,
+#root {
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
   touch-action: manipulation;
+  margin: 0;
 }
 
 /* Fabric paints its own wrapper; keep it clear so the studio mat color shows through. */

@@ -60,8 +60,12 @@ export default function App() {
     typeof window === 'undefined' ? true : !window.matchMedia('(max-width: 1023px)').matches
   );
   const trackLineApiRef = useRef<TrackLineApi | null>(null);
-  const [showLeftPanel, setShowLeftPanel] = useState<boolean>(true);
-  const [isMobileLayout, setIsMobileLayout] = useState<boolean>(false);
+  const [showLeftPanel, setShowLeftPanel] = useState<boolean>(() =>
+    typeof window === 'undefined' ? true : !window.matchMedia('(max-width: 1023px)').matches
+  );
+  const [isMobileLayout, setIsMobileLayout] = useState<boolean>(() =>
+    typeof window === 'undefined' ? false : window.matchMedia('(max-width: 1023px)').matches
+  );
    
   const [activeObj, setActiveObj] = useState<fabric.Object | null>(null);
   const [brushColor, setBrushColor] = useState<string>('#FF1493'); 
@@ -374,7 +378,10 @@ export default function App() {
     const updateLayout = () => {
       const mobile = mediaQuery.matches;
       setIsMobileLayout(mobile);
-      if (mobile) setShowRightPanel(false);
+      if (mobile) {
+        setShowRightPanel(false);
+        setShowLeftPanel(false);
+      }
     };
     updateLayout();
     mediaQuery.addEventListener?.('change', updateLayout);
@@ -435,20 +442,23 @@ export default function App() {
   }, [handleUndo, handleRedo, canvas, saveHistorySnapshot, deleteSelected, isNodeEditing, exitNodeEdit, canEditActive, toggleNodeEdit, activeObj]);
 
   return (
-    <div className="fixed inset-0 flex flex-col font-sans select-none overflow-hidden bg-[#0f111a] text-slate-200">
-        <header className="min-h-14 border-b border-slate-800 bg-[#181a25] flex items-center justify-between gap-2 px-3 sm:px-4 z-20 shrink-0 shadow-sm overflow-x-auto">
-            <div className="flex items-center gap-4">
-              <span className="font-black tracking-widest uppercase text-sm whitespace-nowrap">West Vinyl Studio</span>
-              <div className="h-5 w-px bg-slate-800 mx-1"></div>
-              <div className="flex items-center gap-1 bg-slate-500/5 rounded-lg p-1">
-                <button onClick={() => handleUndo(canvas)} className="p-1.5 rounded-md transition-colors hover:bg-slate-700/50 text-slate-300" title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
-                <button onClick={() => handleRedo(canvas)} className="p-1.5 rounded-md transition-colors hover:bg-slate-700/50 text-slate-300" title="Redo (Ctrl+Y)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
-                <div className="h-4 w-px bg-slate-800 mx-1"></div>
-                <button onClick={() => {if(canvas){ canvas.clear(); void clearSavedCanvas(); saveHistorySnapshot(canvas, true);}}} className="p-1.5 rounded-md transition-colors hover:bg-red-500/10 hover:text-red-500 text-slate-400" title="Clear Mat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+    <div className="relative flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-[#0f111a] font-sans text-slate-200 select-none pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
+        <header className="z-20 flex min-h-12 shrink-0 items-center justify-between gap-2 overflow-x-auto border-b border-slate-800 bg-[#181a25] px-2 shadow-sm sm:min-h-14 sm:px-4">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+              <span className="truncate text-xs font-black tracking-widest uppercase sm:text-sm">
+                <span className="sm:hidden">WVS</span>
+                <span className="hidden sm:inline">West Vinyl Studio</span>
+              </span>
+              <div className="mx-1 hidden h-5 w-px bg-slate-800 sm:block"></div>
+              <div className="flex items-center gap-1 rounded-lg bg-slate-500/5 p-1">
+                <button onClick={() => handleUndo(canvas)} className="min-h-9 min-w-9 rounded-md p-1.5 text-slate-300 transition-colors hover:bg-slate-700/50 touch-manipulation" title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
+                <button onClick={() => handleRedo(canvas)} className="min-h-9 min-w-9 rounded-md p-1.5 text-slate-300 transition-colors hover:bg-slate-700/50 touch-manipulation" title="Redo (Ctrl+Y)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
+                <div className="mx-1 hidden h-4 w-px bg-slate-800 sm:block"></div>
+                <button onClick={() => {if(canvas){ canvas.clear(); void clearSavedCanvas(); saveHistorySnapshot(canvas, true);}}} className="min-h-9 min-w-9 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-500 touch-manipulation" title="Clear Mat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <CutReadyBadge
                 report={cutReport}
                 onClick={() => {
@@ -456,42 +466,61 @@ export default function App() {
                   setActiveTab('design');
                 }}
               />
-              <button disabled={isGenerating} onClick={handleAIGeneration} className="flex items-center gap-2 bg-[#181a25] border border-slate-700 text-white px-3 py-1.5 rounded-md text-[10px] font-bold hover:bg-slate-800 transition-colors uppercase tracking-wider h-8">{isGenerating ? 'Generating...' : 'Generate AI'}</button>
+              <button disabled={isGenerating} onClick={handleAIGeneration} className="flex h-8 items-center gap-2 rounded-md border border-slate-700 bg-[#181a25] px-2 py-1.5 text-[10px] font-bold tracking-wider text-white uppercase transition-colors hover:bg-slate-800 touch-manipulation sm:px-3">{isGenerating ? '…' : <><span className="sm:hidden">AI</span><span className="hidden sm:inline">Generate AI</span></>}</button>
 
-              <div className="flex items-center gap-1 bg-slate-500/5 rounded-lg p-1">
-                <button onClick={() => setViewMode('sticker')} className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'sticker' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}>2D Studio</button>
+              <div className="flex items-center gap-1 rounded-lg bg-slate-500/5 p-1">
+                <button onClick={() => setViewMode('sticker')} className={`h-7 rounded px-2 text-[10px] font-bold tracking-wider uppercase transition-colors touch-manipulation sm:h-6 ${viewMode === 'sticker' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}>2D</button>
                 <button
                   type="button"
                   onClick={() => {
                     applyDesignToProduct();
                     setViewMode('product');
                   }}
-                  className={`h-6 px-2 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${viewMode === 'product' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}
+                  className={`h-7 rounded px-2 text-[10px] font-bold tracking-wider uppercase transition-colors touch-manipulation sm:h-6 ${viewMode === 'product' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}
                 >
-                  Product Preview
+                  <span className="sm:hidden">Product</span>
+                  <span className="hidden sm:inline">Product Preview</span>
                 </button>
               </div>
 
-              <button type="button" onClick={(e) => { e.stopPropagation(); setShowRightPanel((prev) => !prev); }} className={`p-1.5 h-8 flex items-center justify-center rounded-md transition-colors hover:bg-slate-700/50 touch-manipulation ${!showRightPanel ? 'text-[#FF1493] bg-[#FF1493]/10' : 'text-slate-400'}`} title="Toggle Inspector Panel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); setShowRightPanel((prev) => !prev); }} className={`flex h-8 min-w-8 items-center justify-center rounded-md p-1.5 transition-colors hover:bg-slate-700/50 touch-manipulation ${!showRightPanel ? 'bg-[#FF1493]/10 text-[#FF1493]' : 'text-slate-400'}`} title="Toggle Inspector Panel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
             </div>
         </header>
         {!showLeftPanel && (
           <button
             type="button"
             onClick={() => setShowLeftPanel(true)}
-            className="fixed top-4 left-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-[#181a25]/95 text-slate-300 shadow-lg shadow-black/30 transition-transform hover:scale-110 hover:text-white hover:bg-slate-700 touch-manipulation pointer-events-auto"
+            className="absolute top-3 left-3 z-50 flex h-11 w-11 items-center justify-center rounded-lg border border-slate-700 bg-[#181a25]/95 text-slate-300 shadow-lg shadow-black/30 transition-transform hover:scale-110 hover:bg-slate-700 hover:text-white touch-manipulation pointer-events-auto sm:top-4 sm:left-4 sm:h-10 sm:w-10"
             aria-label="Open sidebar"
             title="Toggle Sidebar"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
           </button>
         )}
-        <div className="flex-1 flex overflow-hidden">
-            {showLeftPanel && (
-              <LeftDock tool={tool} setTool={setTool as any} addText={addText} addShape={addShape} fileInputRef={fileInputRef} handleImageUpload={handleInterceptUpload} borderCol="border-slate-800" bgPanel="bg-[#181a25]" setShowLeftPanel={setShowLeftPanel} />
+        <div className="relative flex min-h-0 flex-1 overflow-hidden">
+            {isMobileLayout ? (
+              <>
+                <div
+                  className={`absolute inset-0 z-30 bg-slate-950/55 backdrop-blur-[2px] transition-opacity duration-200 ${showLeftPanel ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
+                  onClick={() => setShowLeftPanel(false)}
+                />
+                <div
+                  className={`absolute inset-y-0 left-0 z-40 transform transition-transform duration-200 ease-out ${showLeftPanel ? 'pointer-events-auto translate-x-0' : 'pointer-events-none -translate-x-full'}`}
+                >
+                  <div className="h-full" onClick={(e) => e.stopPropagation()}>
+                    {showLeftPanel && (
+                      <LeftDock tool={tool} setTool={setTool as any} addText={addText} addShape={addShape} fileInputRef={fileInputRef} handleImageUpload={handleInterceptUpload} borderCol="border-slate-800" bgPanel="bg-[#181a25]" setShowLeftPanel={setShowLeftPanel} />
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              showLeftPanel && (
+                <LeftDock tool={tool} setTool={setTool as any} addText={addText} addShape={addShape} fileInputRef={fileInputRef} handleImageUpload={handleInterceptUpload} borderCol="border-slate-800" bgPanel="bg-[#181a25]" setShowLeftPanel={setShowLeftPanel} />
+              )
             )}
             <main
-              className="flex-1 relative min-w-0 touch-manipulation"
+              className="relative min-h-0 min-w-0 flex-1 touch-manipulation"
               ref={containerRef}
               style={{ backgroundColor: viewMode === 'sticker' ? CANVAS_BG : undefined }}
             >
@@ -534,7 +563,7 @@ export default function App() {
                         onPlacementChange={setProductPlacement}
                       />
                     </div>
-                    <div className="shrink-0 border-t border-slate-800 bg-[#181a25] p-3 flex flex-wrap items-center gap-3">
+                    <div className="flex max-h-[42%] shrink-0 flex-wrap items-center gap-2 overflow-y-auto border-t border-slate-800 bg-[#181a25] p-2 sm:max-h-none sm:gap-3 sm:p-3">
                       <select
                         id="preview-product"
                         aria-label="Product"
@@ -683,8 +712,8 @@ export default function App() {
             </main>
             {isMobileLayout ? (
               <>
-                <div className={`fixed inset-0 z-30 bg-slate-950/55 backdrop-blur-[2px] transition-opacity duration-200 ${showRightPanel ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={() => setShowRightPanel(false)} />
-                <div className={`fixed inset-y-0 right-0 z-40 w-[min(92vw,320px)] h-full transform transition-transform duration-200 ease-out ${showRightPanel ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'}`}>
+                <div className={`absolute inset-0 z-30 bg-slate-950/55 backdrop-blur-[2px] transition-opacity duration-200 ${showRightPanel ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={() => setShowRightPanel(false)} />
+                <div className={`absolute inset-y-0 right-0 z-40 h-full w-[min(92vw,320px)] transform transition-transform duration-200 ease-out ${showRightPanel ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'}`}>
                   <div className="h-full w-full" onClick={(e) => e.stopPropagation()}>
                     {showRightPanel && (
                       <RightInspector
@@ -702,7 +731,7 @@ export default function App() {
                   </div>
                 </div>
                 {!showRightPanel && (
-                  <button type="button" onClick={() => setShowRightPanel(true)} className="fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-[#181a25]/95 text-[#FF1493] shadow-lg shadow-black/30 transition-transform hover:scale-105 touch-manipulation" aria-label="Open inspector">
+                  <button type="button" onClick={() => setShowRightPanel(true)} className="absolute bottom-3 right-3 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-[#181a25]/95 text-[#FF1493] shadow-lg shadow-black/30 transition-transform hover:scale-105 touch-manipulation sm:bottom-4 sm:right-4" aria-label="Open inspector">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
                   </button>
                 )}
