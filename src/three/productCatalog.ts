@@ -67,3 +67,18 @@ export const PRODUCT_CATALOG: Record<ProductId, ProductDef> = {
 };
 
 export const PRODUCT_IDS = Object.keys(PRODUCT_CATALOG) as ProductId[];
+
+/** Garment sizes for apparel checkout (not print scale). */
+export const APPAREL_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL'] as const;
+export type ApparelSize = (typeof APPAREL_SIZES)[number];
+
+export const SIZED_PRODUCT_IDS: readonly ProductId[] = [
+  'tshirt',
+  'hoodie',
+  'sloppyJoe',
+  'babyClothes',
+];
+
+export function isSizedProduct(productId: ProductId): boolean {
+  return (SIZED_PRODUCT_IDS as readonly string[]).includes(productId);
+}
