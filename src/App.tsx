@@ -26,7 +26,13 @@ import { notifyStudio } from './utils/studioNotice';
 import { clearSavedCanvas } from './utils/canvasStore';
 import { useCanvasAutosave } from './hooks/useCanvasAutosave';
 import { PLACEMENT_SCALE_MAX, PLACEMENT_SCALE_MIN, type ProductPlacement } from './utils/apparelPlacement';
-import { PRODUCT_CATALOG, PRODUCT_IDS, type ProductId } from './three/productCatalog';
+import {
+  APPAREL_SIZES,
+  isSizedProduct,
+  PRODUCT_CATALOG,
+  PRODUCT_IDS,
+  type ProductId,
+} from './three/productCatalog';
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
 import { tracedSvgToObject } from './utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
@@ -94,6 +100,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('sticker');
   const [selectedProduct, setSelectedProduct] = useState<ProductId>('hoodie');
   const [productColor, setProductColor] = useState<string>(PRODUCT_CATALOG.hoodie.colorOptions[0]);
+  const [productSize, setProductSize] = useState<string>('M');
   const [activeProductView, setActiveProductView] = useState<string>('front');
   const [productPlacement, setProductPlacement] = useState<ProductPlacement>({ posX: 0, posY: 0, scale: 1, rotationDeg: 0 });
   const [designSnapshot, setDesignSnapshot] = useState<string | null>(null);
@@ -101,6 +108,7 @@ export default function App() {
   const handleSelectProduct = (id: ProductId) => {
     setSelectedProduct(id);
     setProductColor(PRODUCT_CATALOG[id].colorOptions[0]);
+    setProductSize(isSizedProduct(id) ? 'M' : '');
     setActiveProductView(PRODUCT_CATALOG[id].views[0].id);
     setProductPlacement({ posX: 0, posY: 0, scale: 1, rotationDeg: 0 });
   };
@@ -553,8 +561,25 @@ export default function App() {
 
                       <button onClick={applyDesignToProduct} className="h-8 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-black uppercase tracking-wider">Apply Design</button>
 
+                      {isSizedProduct(selectedProduct) && (
+                        <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Garment
+                          <select
+                            id="preview-garment-size"
+                            aria-label="Garment size"
+                            value={productSize}
+                            onChange={(e) => setProductSize(e.target.value)}
+                            className="bg-slate-800 text-slate-200 text-xs font-mono border border-slate-700 rounded px-2 py-1"
+                          >
+                            {APPAREL_SIZES.map((size) => (
+                              <option key={size} value={size}>{size}</option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+
                       <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Size
+                        Print scale
                         <input
                           type="range"
                           min={PLACEMENT_SCALE_MIN}
@@ -563,7 +588,7 @@ export default function App() {
                           value={productPlacement.scale}
                           onChange={(e) => setProductPlacement((prev) => ({ ...prev, scale: Number(e.target.value) }))}
                           className="w-28 accent-[#FF1493]"
-                          aria-label="Print size"
+                          aria-label="Print scale"
                         />
                         <span className="font-mono text-[#FF1493]">{Math.round(productPlacement.scale * 100)}%</span>
                       </label>
@@ -580,7 +605,7 @@ export default function App() {
                         <button onClick={() => setActiveOrderTab('vinyl')} className="h-8 px-3 bg-[#FF1493] hover:bg-[#ff4da6] text-black rounded text-[10px] font-black uppercase tracking-wider shadow-sm">Buy Sticker</button>
                         <button onClick={() => setActiveOrderTab('apparel')} className="h-8 px-3 bg-emerald-500 hover:bg-emerald-400 text-black rounded text-[10px] font-black uppercase tracking-wider">Buy Apparel</button>
                       </div>
-                      <p className="w-full text-[10px] font-mono text-slate-300">Drag the print anywhere on the garment. Pink corner squares scale. Green handle rotates. Size slider also scales.</p>
+                      <p className="w-full text-[10px] font-mono text-slate-300">Final edit before checkout: colour, garment size, and placement. Drag the print; pink corners scale; green handle rotates.</p>
                     </div>
                   </div>
                 )}
@@ -718,7 +743,22 @@ export default function App() {
 
         {/* --- INJECTED ROUTED STOREFRONT MODAL --- */}
         {activeOrderTab && canvas && (
-            <OrderModal canvas={canvas} initialTab={activeOrderTab} onClose={() => setActiveOrderTab(null)} />
+            <OrderModal
+              canvas={canvas}
+              initialTab={activeOrderTab}
+              preview={
+                activeOrderTab === 'apparel'
+                  ? {
+                      productId: selectedProduct,
+                      productColor,
+                      productSize: isSizedProduct(selectedProduct) ? productSize : undefined,
+                      activeView: activeProductView,
+                      placement: productPlacement,
+                    }
+                  : undefined
+              }
+              onClose={() => setActiveOrderTab(null)}
+            />
         )}
         <StudioNoticeHost />
     </div>
