@@ -14,6 +14,7 @@ import {
   sampleOpaquePixel,
 } from '../utils/pointerEvents';
 import { eraseMatchingVectorColors, keepMatchingVectorColors } from '../utils/wandVectorCleanup';
+import { tightPackWeldObject } from '../utils/weldImport';
 import { collectTrackPoints, createTrackLineShape } from '../utils/trackLineShape';
 import {
   DEFAULT_QUICK_MENU_HEIGHT,
@@ -342,6 +343,9 @@ export function useCanvasEvents(props: CanvasEventProps) {
                             evented: true,
                         });
                         keepMatchingVectorColors(cloned, clickedHex, p.current.wandTolerance, isColorMatch);
+                        tightPackWeldObject(cloned);
+                        cloned.set({ dirty: true, objectCaching: false });
+                        cloned.setCoords();
                         canvas.add(cloned);
                         canvas.setActiveObject(cloned);
                         canvas.requestRenderAll();
@@ -393,6 +397,9 @@ export function useCanvasEvents(props: CanvasEventProps) {
                                 if (typeof obj.getObjects === 'function') obj.getObjects().forEach(paint);
                             };
                             paint(traced);
+                            tightPackWeldObject(traced);
+                            traced.set({ dirty: true, objectCaching: false });
+                            traced.setCoords();
                             canvas.add(traced);
                             canvas.setActiveObject(traced);
                             canvas.requestRenderAll();
@@ -451,6 +458,9 @@ export function useCanvasEvents(props: CanvasEventProps) {
                         newImg.src = tempCanvas.toDataURL('image/png');
                     } else {
                         eraseMatchingVectorColors(target, clickedHex, p.current.wandTolerance, isColorMatch);
+                        tightPackWeldObject(target);
+                        target.set({ dirty: true, objectCaching: false });
+                        target.setCoords();
 
                         if (target.type !== 'group' && target.type !== 'activeSelection' && !target._objects) {
                             if ((!target.fill || target.fill === '' || target.fill === 'transparent') && (!target.stroke || target.stroke === '' || target.stroke === 'transparent')) {

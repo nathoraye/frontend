@@ -1,7 +1,7 @@
 import * as fabric from 'fabric';
-import { isBackgroundFill, isBlackFill, isFullFrameShape, normalizeFill } from './traceFills';
+import { isBackgroundFill, isBlackFill, isFullFrameShape, normalizeFill } from './traceFills.ts';
 
-export { isBackgroundFill, isBlackFill, isFullFrameShape, normalizeFill } from './traceFills';
+export { isBackgroundFill, isBlackFill, isFullFrameShape, normalizeFill } from './traceFills.ts';
 
 type FabricAny = fabric.Object & {
   fill?: unknown;
@@ -11,6 +11,30 @@ type FabricAny = fabric.Object & {
   scaleX?: number;
   scaleY?: number;
   type?: string;
+  left?: number;
+  top?: number;
+  getBoundingRect?: (absolute?: boolean) => {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+  setCoords?: () => void;
+};
+
+export type SvgFrame = { width: number; height: number };
+
+export type InkBounds = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+export type LoadedTrace = {
+  objects: fabric.Object[];
+  frame: SvgFrame;
+  ink: InkBounds;
 };
 
 export function filterTracedObjects(
@@ -29,16 +53,72 @@ export function filterTracedObjects(
   });
 }
 
+/** Union bbox of SVG-space objects before Fabric regroups them. */
+export function measureInkBounds(objects: fabric.Object[]): InkBounds {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  for (const raw of objects) {
+    const obj = raw as FabricAny;
+    obj.setCoords?.();
+    const rect =
+      typeof obj.getBoundingRect === 'function'
+        ? obj.getBoundingRect(true)
+        : {
+            left: Number(obj.left || 0),
+            top: Number(obj.top || 0),
+            width: Math.max(1, Number(obj.width || 1) * Number(obj.scaleX || 1)),
+            height: Math.max(1, Number(obj.height || 1) * Number(obj.scaleY || 1)),
+          };
+    minX = Math.min(minX, rect.left);
+    minY = Math.min(minY, rect.top);
+    maxX = Math.max(maxX, rect.left + rect.width);
+    maxY = Math.max(maxY, rect.top + rect.height);
+  }
+
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
+    return { left: 0, top: 0, width: 1, height: 1 };
+  }
+
+  return {
+    left: minX,
+    top: minY,
+    width: Math.max(1, maxX - minX),
+    height: Math.max(1, maxY - minY),
+  };
+}
+
 export async function loadTracedObjects(
   svgString: string,
   keepOnlyBlack = false,
   keepFullFrame = false,
-): Promise<fabric.Object[]> {
-  const result = await (fabric as { loadSVGFromString: (svg: string) => Promise<{ objects?: fabric.Object[]; options?: { width?: number; height?: number } }> }).loadSVGFromString(svgString);
-  const objects = (result.objects || []).filter(Boolean);
+): Promise<LoadedTrace> {
+  const result = await (
+    fabric as {
+      loadSVGFromString: (svg: string) => Promise<{
+        objects?: fabric.Object[];
+        options?: { width?: number; height?: number };
+      }>;
+    }
+  ).loadSVGFromString(svgString);
+  const loaded = (result.objects || []).filter(Boolean) as fabric.Object[];
   const svgWidth = Number(result.options?.width || 0);
   const svgHeight = Number(result.options?.height || 0);
-  return filterTracedObjects(objects, svgWidth, svgHeight, keepOnlyBlack, keepFullFrame);
+  const objects = filterTracedObjects(
+    loaded,
+    svgWidth,
+    svgHeight,
+    keepOnlyBlack,
+    keepFullFrame,
+  );
+  const ink = measureInkBounds(objects.length ? objects : loaded);
+  const frame: SvgFrame = {
+    width: Math.max(1, svgWidth || ink.width),
+    height: Math.max(1, svgHeight || ink.height),
+  };
+  return { objects, frame, ink };
 }
 
 const CONTROL_STYLE = {
@@ -122,23 +202,74 @@ export function groupStackedTracedObjects(objects: fabric.Object[]): fabric.Obje
   return stack;
 }
 
-/** Match the traced group to the source image's on-canvas size and pose. */
+/**
+ * Pure placement math: scale the SVG *viewBox* onto the source display size,
+ * then park the tight ink group so its SVG-space centre lands correctly.
+ * Stretching by ink-bbox size (old behaviour) blew small cutouts up to the
+ * full photo and left the selection handles huge/wrong.
+ */
+export function computePlaceOverSourceTransform(input: {
+  sourceCenter: { x: number; y: number };
+  sourceScaledWidth: number;
+  sourceScaledHeight: number;
+  sourceAngleDeg?: number;
+  frame: SvgFrame;
+  ink: InkBounds;
+  placedScaleX?: number;
+  placedScaleY?: number;
+}): { left: number; top: number; scaleX: number; scaleY: number; angle: number } {
+  const fw = Math.max(1, input.frame.width);
+  const fh = Math.max(1, input.frame.height);
+  const sw = Math.max(1, input.sourceScaledWidth);
+  const sh = Math.max(1, input.sourceScaledHeight);
+  const scaleX = (input.placedScaleX || 1) * (sw / fw);
+  const scaleY = (input.placedScaleY || 1) * (sh / fh);
+
+  const inkCx = input.ink.left + input.ink.width / 2;
+  const inkCy = input.ink.top + input.ink.height / 2;
+  const localOffsetX = (inkCx - fw / 2) * (sw / fw);
+  const localOffsetY = (inkCy - fh / 2) * (sh / fh);
+
+  const angle = input.sourceAngleDeg || 0;
+  const rad = (angle * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const rotatedX = localOffsetX * cos - localOffsetY * sin;
+  const rotatedY = localOffsetX * sin + localOffsetY * cos;
+
+  return {
+    left: input.sourceCenter.x + rotatedX,
+    top: input.sourceCenter.y + rotatedY,
+    scaleX,
+    scaleY,
+    angle,
+  };
+}
+
+/** Match the traced group to the source image using the SVG viewBox frame. */
 export function placeOverSource(
   placed: fabric.Object,
   source: fabric.Object,
+  frame: SvgFrame,
+  ink: InkBounds,
 ): void {
-  const center = source.getCenterPoint();
-  const sw = Math.max(1, source.getScaledWidth());
-  const sh = Math.max(1, source.getScaledHeight());
-  const pw = Math.max(1, placed.getScaledWidth());
-  const ph = Math.max(1, placed.getScaledHeight());
+  const transform = computePlaceOverSourceTransform({
+    sourceCenter: source.getCenterPoint(),
+    sourceScaledWidth: source.getScaledWidth(),
+    sourceScaledHeight: source.getScaledHeight(),
+    sourceAngleDeg: source.angle || 0,
+    frame,
+    ink,
+    placedScaleX: placed.scaleX || 1,
+    placedScaleY: placed.scaleY || 1,
+  });
   placed.set({
     ...CONTROL_STYLE,
-    left: center.x,
-    top: center.y,
-    scaleX: (placed.scaleX || 1) * (sw / pw),
-    scaleY: (placed.scaleY || 1) * (sh / ph),
-    angle: source.angle || 0,
+    left: transform.left,
+    top: transform.top,
+    scaleX: transform.scaleX,
+    scaleY: transform.scaleY,
+    angle: transform.angle,
   });
   placed.setCoords();
 }
@@ -150,12 +281,12 @@ export async function tracedSvgToObject(
     fill?: string;
     source?: fabric.Object;
     hierarchical?: 'cutout' | 'stacked';
-    /** @deprecated Traces are fitted to the source's on-canvas size. */
+    /** @deprecated Traces are fitted to the source's on-canvas size via viewBox. */
     scaleDivisor?: number;
   },
 ): Promise<fabric.Object | null> {
   const stacked = options?.hierarchical === 'stacked';
-  const objects = await loadTracedObjects(
+  const { objects, frame, ink } = await loadTracedObjects(
     svgString,
     options?.keepOnlyBlack ?? false,
     stacked,
@@ -165,7 +296,7 @@ export async function tracedSvgToObject(
     : groupTracedObjects(objects, options?.fill != null ? { fill: options.fill } : undefined);
   if (!grouped) return null;
   if (options?.source) {
-    placeOverSource(grouped, options.source);
+    placeOverSource(grouped, options.source, frame, ink);
   }
   return grouped;
 }
@@ -182,7 +313,7 @@ export async function placeTracedSvg(
   svgString: string,
   canvas: fabric.Canvas,
 ): Promise<fabric.Object | null> {
-  const objects = await loadTracedObjects(svgString);
+  const { objects } = await loadTracedObjects(svgString);
   const importedGroup = groupTracedObjects(objects);
   if (!importedGroup) return null;
 

@@ -53,6 +53,7 @@ interface RightInspectorProps {
   toggleNodeEdit?: () => void;
   handleUngroup?: () => void;
   saveHistorySnapshot: (canvas: fabric.Canvas, immediate?: boolean) => void;
+  updateUIFromSelection?: () => void;
   cutReport: CutReadyReport;
   borderCol: string;
   bgPanel: string;
@@ -69,7 +70,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
     opacity, wandTolerance, setWandTolerance, wandMode, setWandMode, eraserMode, setEraserMode, textCurve, charSpacing, setCharSpacing,
     lineHeight, setLineHeight, isTracing, offsetSize, setOffsetSize, handleCreateOffset,
     performBoolean, handlePropChange, alignObject, applyTextCurve, explodeText, 
-    handleVectorTrace, handleStackedVectorTrace, isNodeEditing, canNodeEdit, toggleNodeEdit, handleUngroup, saveHistorySnapshot, cutReport, borderCol, bgPanel,
+    handleVectorTrace, handleStackedVectorTrace, isNodeEditing, canNodeEdit, toggleNodeEdit, handleUngroup, saveHistorySnapshot, updateUIFromSelection, cutReport, borderCol, bgPanel,
     isDark, textMuted, textMain, btnHover
   } = props;
 
@@ -351,8 +352,9 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
             {canvasObjects.length === 0 && <div className={`text-center mt-10 ${textMuted} text-xs italic opacity-50`}>Canvas is empty</div>}
             {[...canvasObjects].reverse().map((obj, i) => {
               const isSelected = activeObj === obj;
+              const label = (obj as fabric.Object & { name?: string }).name || obj.type || 'obj';
               return (
-                <div key={i} onClick={() => { canvas?.setActiveObject(obj); canvas?.requestRenderAll(); setTool('select'); }} className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer border transition-colors ${isSelected ? 'bg-blue-500/10 border-blue-500/50' : `border-transparent ${isDark?'hover:bg-slate-800':'hover:bg-slate-100'}`}`}>
+                <div key={`${label}-${canvasObjects.length - 1 - i}`} onClick={() => { canvas?.setActiveObject(obj); canvas?.requestRenderAll(); setTool('select'); updateUIFromSelection?.(); }} className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer border transition-colors ${isSelected ? 'bg-blue-500/10 border-blue-500/50' : `border-transparent ${isDark?'hover:bg-slate-800':'hover:bg-slate-100'}`}`}>
                   <div className="flex items-center gap-2 overflow-hidden">
                     <button onClick={(e) => { e.stopPropagation(); obj.set('visible', !obj.visible); canvas?.requestRenderAll(); saveHistorySnapshot(canvas!, true); }} className={`p-1.5 hover:bg-slate-700/50 rounded ${obj.visible ? textMain : 'text-red-400'}`}>
                       {obj.visible ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>}
@@ -365,12 +367,14 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
                       const orderedCanvas = canvas as unknown as { bringObjectForward?: (obj: fabric.Object) => void };
                       orderedCanvas.bringObjectForward?.(obj);
                       saveHistorySnapshot(canvas!, true);
+                      updateUIFromSelection?.();
                     }} className={`p-1.5 rounded-md ${btnHover}`}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m18 15-6-6-6 6"/></svg></button>
                     <button onClick={(e) => {
                       e.stopPropagation();
                       const orderedCanvas = canvas as unknown as { sendObjectBackwards?: (obj: fabric.Object) => void };
                       orderedCanvas.sendObjectBackwards?.(obj);
                       saveHistorySnapshot(canvas!, true);
+                      updateUIFromSelection?.();
                     }} className={`p-1.5 rounded-md ${btnHover}`}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6-6-6"/></svg></button>
                   </div>
                 </div>

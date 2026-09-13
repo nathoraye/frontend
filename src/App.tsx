@@ -35,6 +35,7 @@ import {
 } from './three/productCatalog';
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
 import { tracedSvgToObject } from './utils/placeTracedSvg';
+import { tightPackWeldObject } from './utils/weldImport';
 import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
 import { imageDataToPngDataUrl } from './utils/imageDataPng';
 
@@ -297,6 +298,9 @@ export default function App() {
               traced.set({ left: 600, top: 600, originX: 'center', originY: 'center', scaleX: scale, scaleY: scale });
               traced.setCoords();
           }
+          tightPackWeldObject(traced);
+          traced.set({ dirty: true, objectCaching: false });
+          traced.setCoords();
           canvas.add(traced);
           canvas.setActiveObject(traced);
           eraserTargetRef.current = traced;
@@ -725,7 +729,7 @@ export default function App() {
                         lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
                         performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} handleStackedVectorTrace={handleStackedVectorTrace}
                         isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)} handleUngroup={handleUngroup}
-                        saveHistorySnapshot={saveHistorySnapshot} cutReport={cutReport} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
+                        saveHistorySnapshot={saveHistorySnapshot} updateUIFromSelection={updateUIFromSelection} cutReport={cutReport} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
                       />
                     )}
                   </div>
@@ -746,7 +750,7 @@ export default function App() {
                 lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
                 performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} handleStackedVectorTrace={handleStackedVectorTrace}
                 isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)} handleUngroup={handleUngroup}
-                saveHistorySnapshot={saveHistorySnapshot} cutReport={cutReport} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
+                saveHistorySnapshot={saveHistorySnapshot} updateUIFromSelection={updateUIFromSelection} cutReport={cutReport} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
               />
             ) : null}
         </div>
