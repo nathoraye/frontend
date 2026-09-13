@@ -706,19 +706,25 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+      className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/75 p-0 sm:items-center sm:p-4"
       data-testid="order-checkout"
       role="dialog"
       aria-modal="true"
       aria-label="Checkout"
+      style={{
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+      }}
     >
-      <div className="bg-gray-900 w-full max-w-2xl max-h-[90vh] rounded-lg shadow-2xl flex flex-col border border-gray-700">
-        <div className="flex items-center justify-between p-6 border-b border-gray-700">
+      <div className="flex h-[100dvh] max-h-[100dvh] w-full max-w-2xl flex-col rounded-none border-0 border-gray-700 bg-gray-900 shadow-2xl sm:h-auto sm:max-h-[min(90vh,100dvh)] sm:rounded-lg sm:border">
+        <div className="flex items-center justify-between border-b border-gray-700 p-4 sm:p-6">
           <div className="flex gap-4">
             {[1, 2].map((s) => (
               <div
                 key={s}
-                className={`w-8 h-8 rounded-full flex items-center justify-center font-mono text-sm transition ${
+                className={`flex h-8 w-8 items-center justify-center rounded-full font-mono text-sm transition ${
                   s === step
                     ? 'bg-pink-500 text-gray-900'
                     : s < step
@@ -730,12 +736,12 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
               </div>
             ))}
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-200 text-2xl">
+          <button onClick={onClose} className="min-h-11 min-w-11 text-2xl text-gray-400 hover:text-gray-200 touch-manipulation">
             ×
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
           {step === 1 &&
             (isApparel ? (
               <StepApparelReview
@@ -760,11 +766,11 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
           )}
         </div>
 
-        <div className="flex items-center justify-between p-6 border-t border-gray-700 bg-gray-950">
+        <div className="flex items-center justify-between gap-2 border-t border-gray-700 bg-gray-950 p-4 sm:p-6">
           <button
             onClick={() => setStep(1)}
             disabled={step === 1}
-            className="px-6 py-2 font-mono text-sm bg-gray-800 text-gray-300 border border-gray-700 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="min-h-11 rounded border border-gray-700 bg-gray-800 px-4 py-2 font-mono text-sm text-gray-300 transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation sm:px-6"
           >
             ← Back
           </button>
@@ -774,7 +780,7 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
           {step < 2 ? (
             <button
               onClick={() => setStep(2)}
-              className="px-6 py-2 font-mono text-sm bg-pink-500 text-gray-900 rounded hover:bg-pink-600 transition"
+              className="min-h-11 rounded bg-pink-500 px-4 py-2 font-mono text-sm text-gray-900 transition hover:bg-pink-600 touch-manipulation sm:px-6"
             >
               Next →
             </button>
