@@ -71,9 +71,16 @@ export async function saveOrders(orders) {
   return mode() === 'blob' ? writeBlob(orders) : writeFile(orders);
 }
 
+function paymentKey(order) {
+  return order?.paymentIntentId || order?.paypalOrderId || null;
+}
+
 export async function appendOrder(order) {
   const orders = await listOrders();
-  const existing = orders.find((o) => o.paypalOrderId && o.paypalOrderId === order.paypalOrderId);
+  const key = paymentKey(order);
+  const existing = key
+    ? orders.find((o) => paymentKey(o) && paymentKey(o) === key)
+    : undefined;
   if (existing) return { order: existing, ordersCount: orders.length, duplicate: true };
   orders.unshift(order);
   await saveOrders(orders);

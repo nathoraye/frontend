@@ -1,10 +1,18 @@
-import { calculateOrderTotal, clampQuantity, moneyString, ORDER_CURRENCY, PERMANENT_SURCHARGE, SHIPPING_COST, UNIT_PRICES } from './orderPricing.js';
+import {
+  calculateOrderTotal,
+  clampQuantity,
+  moneyString,
+  ORDER_CURRENCY,
+  PERMANENT_SURCHARGE,
+  SHIPPING_COST,
+  UNIT_PRICES,
+} from './orderPricing.js';
 import {
   allowUnverifiedOrders,
-  createPayPalOrder,
-  paypalConfigured,
-  verifyAndCapturePayPalOrder,
-} from './paypal.js';
+  createPaymentIntent,
+  stripeConfigured,
+  verifyPaymentIntent,
+} from './stripe.js';
 import { appendOrder, listOrders, publicOrderView } from './orderStore.js';
 
 export function adminAuthorized(req) {
@@ -42,35 +50,41 @@ export function normalizeOrderConfig(orderConfig = {}) {
   };
 }
 
-export async function handleCreatePayPalOrder(payload = {}) {
+/** Create a Stripe PaymentIntent (or local unverified stub) for the trusted price. */
+export async function handleCreatePaymentIntent(payload = {}) {
   const orderConfig = normalizeOrderConfig(payload.orderConfig || {});
   const amount = calculateOrderTotal(orderConfig);
 
-  if (!paypalConfigured()) {
+  if (!stripeConfigured()) {
     if (!allowUnverifiedOrders()) {
       throw Object.assign(
-        new Error('PayPal is not configured. Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET.'),
+        new Error('Stripe is not configured. Set STRIPE_SECRET_KEY.'),
         { status: 503 },
       );
     }
     return {
       id: `LOCAL-${Date.now()}`,
-      status: 'CREATED',
+      clientSecret: null,
+      status: 'requires_payment_method',
       amount: moneyString(amount),
       currency: ORDER_CURRENCY,
       unverified: true,
     };
   }
 
-  const paypalOrder = await createPayPalOrder({
+  const intent = await createPaymentIntent({
     amount,
     description: `West Vinyl Studio - ${orderConfig.orderType}`,
-    referenceId: `WVS-${orderConfig.orderType}-${Date.now()}`,
+    metadata: {
+      orderType: String(orderConfig.orderType || 'vinyl'),
+      quantity: String(orderConfig.quantity || 1),
+    },
   });
 
   return {
-    id: paypalOrder.id,
-    status: paypalOrder.status,
+    id: intent.id,
+    clientSecret: intent.client_secret,
+    status: intent.status,
     amount: moneyString(amount),
     currency: ORDER_CURRENCY,
   };
@@ -87,14 +101,15 @@ export async function handleSubmitOrder(payload = {}) {
     throw Object.assign(new Error('designSvg is too large'), { status: 413 });
   }
 
+  const paymentIntentId = payload.paymentIntentId;
   const expectedAmount = calculateOrderTotal(orderConfig);
   let payment;
-  if (paypalConfigured()) {
-    payment = await verifyAndCapturePayPalOrder(payload.paypalOrderId, expectedAmount);
+  if (stripeConfigured()) {
+    payment = await verifyPaymentIntent(paymentIntentId, expectedAmount);
   } else if (allowUnverifiedOrders()) {
     payment = {
-      paypalOrderId: payload.paypalOrderId || `LOCAL-${Date.now()}`,
-      captureId: null,
+      paymentIntentId: paymentIntentId || `LOCAL-${Date.now()}`,
+      chargeId: null,
       payerEmail: null,
       amount: expectedAmount,
       currency: ORDER_CURRENCY,
@@ -102,7 +117,7 @@ export async function handleSubmitOrder(payload = {}) {
     };
   } else {
     throw Object.assign(
-      new Error('PayPal is not configured. Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET.'),
+      new Error('Stripe is not configured. Set STRIPE_SECRET_KEY.'),
       { status: 503 },
     );
   }
@@ -110,9 +125,9 @@ export async function handleSubmitOrder(payload = {}) {
   const order = {
     id: `ord-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     createdAt: new Date().toISOString(),
-    status: payment.status === 'COMPLETED' ? 'paid' : 'unverified',
-    paypalOrderId: payment.paypalOrderId,
-    captureId: payment.captureId,
+    status: payment.status === 'SUCCEEDED' ? 'paid' : 'unverified',
+    paymentIntentId: payment.paymentIntentId,
+    chargeId: payment.chargeId,
     payerEmail: payment.payerEmail,
     amount: payment.amount,
     currency: payment.currency,
@@ -138,7 +153,7 @@ export async function handleListOrders(req) {
     orders: orders.map((entry) => ({
       ...publicOrderView(entry),
       customerEmail: entry.customer?.email,
-      paypalOrderId: entry.paypalOrderId,
+      paymentIntentId: entry.paymentIntentId || entry.paypalOrderId || null,
     })),
   };
 }

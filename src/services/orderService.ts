@@ -12,7 +12,7 @@ export interface OrderCustomer {
 }
 
 export interface OrderSubmissionPayload {
-  paypalOrderId: string;
+  paymentIntentId: string;
   customer: OrderCustomer;
   orderConfig: Record<string, unknown>;
   designSvg: string;
@@ -31,8 +31,9 @@ export interface OrderSubmissionResult {
   duplicate?: boolean;
 }
 
-export interface CreatePayPalOrderResult {
+export interface CreatePaymentIntentResult {
   id: string;
+  clientSecret?: string | null;
   status?: string;
   amount?: string;
   currency?: string;
@@ -49,20 +50,20 @@ async function readError(response: Response): Promise<string> {
   return (await response.text()) || `Request failed (${response.status})`;
 }
 
-/** Ask the server to create a PayPal order for the trusted price of orderConfig. */
-export async function createPayPalCheckout(
+/** Ask the server to create a Stripe PaymentIntent for the trusted price of orderConfig. */
+export async function createPaymentIntentCheckout(
   orderConfig: Record<string, unknown>,
-): Promise<CreatePayPalOrderResult> {
-  const response = await fetch(`${API_BASE_URL}/api/paypal/create-order`, {
+): Promise<CreatePaymentIntentResult> {
+  const response = await fetch(`${API_BASE_URL}/api/stripe/create-payment-intent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ orderConfig }),
   });
   if (!response.ok) throw new Error(await readError(response));
-  return response.json() as Promise<CreatePayPalOrderResult>;
+  return response.json() as Promise<CreatePaymentIntentResult>;
 }
 
-/** Persist an order after PayPal approval. The server verifies/captures payment. */
+/** Persist an order after Stripe payment succeeds (or local unverified checkout). */
 export async function submitOrder(payload: OrderSubmissionPayload): Promise<OrderSubmissionResult> {
   const response = await fetch(`${API_BASE_URL}/api/orders`, {
     method: 'POST',

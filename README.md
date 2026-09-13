@@ -13,7 +13,7 @@ Copy `.env.example` to `.env` and fill in your credentials before running:
 
 ```bash
 cp .env.example .env
-# edit .env and set VITE_PAYPAL_CLIENT_ID
+# edit .env and set VITE_STRIPE_PUBLISHABLE_KEY
 ```
 
 ## Build
@@ -102,5 +102,5 @@ Content (bubblewrap generates the exact fingerprint for you):
 - Vector trace worker: `src/workers/tracerWorker.ts` — imported via Vite `?worker` syntax, bundled offline using the `imagetracerjs` npm package (no CDN dependency).
 - Export pipeline: `src/utils/exportPipeline.ts` — SVGO optimisation + DOMPurify sanitisation.
 - Geometry validation: `src/utils/geometryValidation.ts` — validates cut paths including full Bezier C/Q/S/T/A support.
-- Checkout: `src/components/OrderModal.tsx` — 3-step flow with `react-hook-form` validation and PayPal Smart Buttons. Fulfillment Hook stub at `onFulfillment()` is ready to wire to a backend.
+- Checkout: `src/components/OrderModal.tsx` — 3-step flow with `react-hook-form` validation and Stripe Payment Element. Fulfillment Hook stub at `onFulfillment()` is ready to wire to a backend.
 

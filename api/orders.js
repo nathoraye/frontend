@@ -1,5 +1,9 @@
 import { errorStatus, readJsonBody, sendJson } from './_lib/http.js';
-import { handleCreatePayPalOrder, handleListOrders, handleSubmitOrder } from './_lib/orderService.js';
+import {
+  handleCreatePaymentIntent,
+  handleListOrders,
+  handleSubmitOrder,
+} from './_lib/orderService.js';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -16,9 +20,8 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = await readJsonBody(req);
-      // Back-compat: older clients may POST only a PayPal create intent.
-      if (body?.action === 'create-paypal-order') {
-        const payload = await handleCreatePayPalOrder(body);
+      if (body?.action === 'create-payment-intent') {
+        const payload = await handleCreatePaymentIntent(body);
         sendJson(res, 200, payload);
         return;
       }
