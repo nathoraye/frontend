@@ -20,8 +20,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = await readJsonBody(req);
-      // Back-compat aliases for older clients / tests
-      if (body?.action === 'create-payment-intent' || body?.action === 'create-paypal-order') {
+      if (body?.action === 'create-payment-intent') {
         const payload = await handleCreatePaymentIntent(body);
         sendJson(res, 200, payload);
         return;

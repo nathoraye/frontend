@@ -31,11 +31,7 @@ const server = http.createServer(async (req, res) => {
       return handleTraceRequest(req, res);
     }
 
-    if (
-      req.method === 'POST' &&
-      (url.pathname === '/api/stripe/create-payment-intent' ||
-        url.pathname === '/api/paypal/create-order')
-    ) {
+    if (req.method === 'POST' && url.pathname === '/api/stripe/create-payment-intent') {
       const body = await readJsonBody(req);
       return sendJson(res, 200, await handleCreatePaymentIntent(body));
     }

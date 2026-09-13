@@ -63,9 +63,6 @@ export async function createPaymentIntentCheckout(
   return response.json() as Promise<CreatePaymentIntentResult>;
 }
 
-/** @deprecated Use createPaymentIntentCheckout */
-export const createPayPalCheckout = createPaymentIntentCheckout;
-
 /** Persist an order after Stripe payment succeeds (or local unverified checkout). */
 export async function submitOrder(payload: OrderSubmissionPayload): Promise<OrderSubmissionResult> {
   const response = await fetch(`${API_BASE_URL}/api/orders`, {

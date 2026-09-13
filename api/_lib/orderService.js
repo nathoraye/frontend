@@ -90,9 +90,6 @@ export async function handleCreatePaymentIntent(payload = {}) {
   };
 }
 
-/** @deprecated Use handleCreatePaymentIntent */
-export const handleCreatePayPalOrder = handleCreatePaymentIntent;
-
 export async function handleSubmitOrder(payload = {}) {
   const customer = normalizeCustomer(payload.customer);
   const orderConfig = normalizeOrderConfig(payload.orderConfig || {});
@@ -104,7 +101,7 @@ export async function handleSubmitOrder(payload = {}) {
     throw Object.assign(new Error('designSvg is too large'), { status: 413 });
   }
 
-  const paymentIntentId = payload.paymentIntentId || payload.paypalOrderId;
+  const paymentIntentId = payload.paymentIntentId;
   const expectedAmount = calculateOrderTotal(orderConfig);
   let payment;
   if (stripeConfigured()) {
@@ -156,7 +153,7 @@ export async function handleListOrders(req) {
     orders: orders.map((entry) => ({
       ...publicOrderView(entry),
       customerEmail: entry.customer?.email,
-      paymentIntentId: entry.paymentIntentId || entry.paypalOrderId,
+      paymentIntentId: entry.paymentIntentId || entry.paypalOrderId || null,
     })),
   };
 }
