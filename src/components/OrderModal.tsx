@@ -369,7 +369,7 @@ function StepShippingPayment({
         }}
         className="space-y-4"
       >
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 pb-28">
           <input
             {...register('fullName', { required: 'Full name required' })}
             placeholder="Full Name"

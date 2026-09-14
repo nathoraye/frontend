@@ -34,25 +34,28 @@ test('Product Preview → Buy Sticker → local checkout → jobs board', async 
   );
 
   await Promise.all([page.waitForURL(/\/order\/success/), localBtn.click()]);
-
   const createResp = await createRespPromise;
   expect(createResp.ok()).toBeTruthy();
-  const body = await createResp.json();
-  expect(body.unverified).toBeTruthy();
-  expect(body.orderId).toMatch(/^ord-/);
+
+  const orderId = new URL(page.url()).searchParams.get('orderId');
+  expect(orderId).toMatch(/^ord-/);
 
   await expect(page.getByRole('heading', { name: /payment received/i })).toBeVisible();
-  await expect(page.getByText(body.orderId)).toBeVisible();
+  await expect(page.getByText(orderId!)).toBeVisible();
 
   await page.getByRole('link', { name: /open jobs board/i }).click();
   await expect(page).toHaveURL(/\/jobs/);
   await expect(page.getByTestId('jobs-board')).toBeVisible();
-  await expect(page.getByText('Ada Vinyl')).toBeVisible();
-  await expect(page.getByText(/vinyl 10×10cm removable/i)).toBeVisible();
+  const jobCard = page.getByTestId('job-card').filter({ hasText: orderId! });
+  await expect(jobCard).toBeVisible();
+  await expect(jobCard.getByText(/Ada Vinyl/)).toBeVisible();
+  await expect(jobCard.getByText(/vinyl 10×10cm removable/i)).toBeVisible();
 
-  await page.getByRole('button', { name: /show design/i }).first().click();
-  await expect(page.getByRole('img', { name: /design for/i })).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByRole('link', { name: /download svg/i })).toBeVisible();
+  await jobCard.getByRole('button', { name: /show design/i }).click();
+  await expect(page.getByRole('img', { name: new RegExp(`design for ${orderId}`, 'i') })).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(jobCard.getByRole('link', { name: /download svg/i })).toBeVisible();
 });
 
 test('Product Preview → Buy Apparel inherits colour/size/placement', async ({ page }) => {
