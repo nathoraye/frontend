@@ -1,9 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
-import { loadStripe, type Stripe } from '@stripe/stripe-js';
 import * as fabric from 'fabric';
-import { createPaymentIntentCheckout, submitOrder } from '../services/orderService';
+import { createCheckoutSession, fetchCheckoutHealth } from '../services/orderService';
 import { notifyStudio } from '../utils/studioNotice';
 import { snapshotDesignAsDataURL } from '../utils/designSnapshot';
 import {
@@ -302,69 +300,13 @@ function StepApparelReview({
   );
 }
 
-function StripePayForm({
-  disabled,
-  onPaid,
-}: {
-  disabled: boolean;
-  onPaid: (paymentIntentId: string) => Promise<void>;
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handlePay = async () => {
-    if (!stripe || !elements) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const result = await stripe.confirmPayment({
-        elements,
-        redirect: 'if_required',
-      });
-      if (result.error) {
-        setError(result.error.message || 'Payment failed');
-        return;
-      }
-      const intentId = result.paymentIntent?.id;
-      if (!intentId) {
-        setError('Payment did not complete');
-        return;
-      }
-      await onPaid(intentId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment failed');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="rounded border border-gray-700 bg-gray-950 p-3">
-        <PaymentElement options={{ layout: 'tabs' }} />
-      </div>
-      {error && <p className="text-xs font-mono text-red-400">{error}</p>}
-      <button
-        type="button"
-        disabled={disabled || submitting || !stripe || !elements}
-        onClick={() => void handlePay()}
-        className="w-full px-4 py-3 font-mono text-sm bg-pink-500 text-gray-900 rounded hover:bg-pink-600 transition disabled:opacity-50"
-      >
-        {submitting ? 'Processing…' : 'Pay with Stripe'}
-      </button>
-    </div>
-  );
-}
-
 function StepShippingPayment({
   config,
   onConfirm,
   isProcessing,
 }: {
   config: OrderConfig;
-  onConfirm: (customer: CustomerFormValues, paymentIntentId: string) => Promise<void>;
+  onConfirm: (customer: CustomerFormValues) => Promise<void>;
   isProcessing: boolean;
 }) {
   const {
@@ -377,62 +319,21 @@ function StepShippingPayment({
   const unitPrice =
     UNIT_PRICES[config.orderType] +
     (config.orderType === 'vinyl' && config.vinylPermanent ? PERMANENT_SURCHARGE : 0);
-  const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
-  const localCheckout =
-    !stripePublishableKey ||
-    stripePublishableKey === 'test' ||
-    stripePublishableKey.includes('your_stripe');
+  const [stripeReady, setStripeReady] = useState<boolean | null>(null);
 
-  const [stripePromise] = useState<Promise<Stripe | null> | null>(() =>
-    localCheckout ? null : loadStripe(stripePublishableKey!),
-  );
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [intentError, setIntentError] = useState<string | null>(null);
-  const [preparingIntent, setPreparingIntent] = useState(false);
-
-  const checkoutOrderConfig = {
-    orderType: config.orderType,
-    quantity: config.quantity,
-    vinylPermanent: config.vinylPermanent,
-    vinylWidthCm: config.vinylWidthCm,
-    vinylHeightCm: config.vinylHeightCm,
-    productId: config.productId,
-    productColor: config.productColor,
-    productSize: config.productSize,
-  };
-
-  const preparePaymentIntent = async () => {
-    if (clientSecret || preparingIntent || localCheckout) return;
-    setPreparingIntent(true);
-    setIntentError(null);
-    try {
-      const created = await createPaymentIntentCheckout(checkoutOrderConfig);
-      if (!created.clientSecret) {
-        throw new Error('Stripe did not return a client secret');
-      }
-      setClientSecret(created.clientSecret);
-    } catch (error) {
-      console.error('Failed to create payment intent:', error);
-      setIntentError(error instanceof Error ? error.message : 'Could not start Stripe checkout');
-    } finally {
-      setPreparingIntent(false);
-    }
-  };
-
-
-  const handleLocalCheckout = async () => {
-    try {
-      const created = await createPaymentIntentCheckout(checkoutOrderConfig);
-      await onConfirm(getValues(), created.id);
-    } catch (error) {
-      console.error('Local checkout failed:', error);
-      notifyStudio({
-        tone: 'error',
-        title: 'Order not submitted',
-        detail: error instanceof Error ? error.message : 'Try again in a moment.',
+  useEffect(() => {
+    let cancelled = false;
+    void fetchCheckoutHealth()
+      .then((health) => {
+        if (!cancelled) setStripeReady(Boolean(health.checkout?.stripe));
+      })
+      .catch(() => {
+        if (!cancelled) setStripeReady(false);
       });
-    }
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -543,68 +444,32 @@ function StepShippingPayment({
           {!isValid || isProcessing ? (
             <div className="p-3 bg-red-900 bg-opacity-20 border border-red-700 rounded text-red-400 text-sm font-mono">
               {isProcessing
-                ? 'Submitting order…'
+                ? stripeReady === false
+                  ? 'Saving job…'
+                  : 'Redirecting to Stripe Checkout…'
                 : 'Please fill in all required fields to proceed to payment.'}
             </div>
-          ) : localCheckout ? (
+          ) : (
             <div className="space-y-2">
-              <p className="text-xs font-mono text-amber-400">
-                Stripe publishable key not set — using local unverified checkout.
-              </p>
+              {stripeReady === false ? (
+                <p className="text-xs font-mono text-amber-400">
+                  Stripe secret key not set — saving an unverified local job so you can still open
+                  it on the Jobs board.
+                </p>
+              ) : (
+                <p className="text-xs font-mono text-gray-400">
+                  You will be redirected to Stripe Checkout to pay. The vinyl/apparel job is saved
+                  first so it still shows up after payment.
+                </p>
+              )}
               <button
                 type="button"
-                onClick={() => void handleLocalCheckout()}
+                onClick={() => void onConfirm(getValues())}
                 className="w-full px-4 py-3 font-mono text-sm bg-pink-500 text-gray-900 rounded hover:bg-pink-600 transition"
               >
-                Complete order (local)
+                {stripeReady === false ? 'Complete order (local)' : 'Pay with Stripe'}
               </button>
             </div>
-          ) : intentError ? (
-            <div className="space-y-2">
-              <p className="text-xs font-mono text-red-400">{intentError}</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setIntentError(null);
-                  void preparePaymentIntent();
-                }}
-                className="w-full px-4 py-2 font-mono text-sm border border-pink-500 text-pink-400 rounded"
-              >
-                Retry Stripe setup
-              </button>
-            </div>
-          ) : !clientSecret || !stripePromise ? (
-            <div className="space-y-2">
-              <p className="text-xs font-mono text-gray-400">
-                Shipping looks good — continue to enter card details.
-              </p>
-              <button
-                type="button"
-                disabled={preparingIntent}
-                onClick={() => void preparePaymentIntent()}
-                className="w-full px-4 py-3 font-mono text-sm bg-pink-500 text-gray-900 rounded hover:bg-pink-600 transition disabled:opacity-50"
-              >
-                {preparingIntent ? 'Preparing…' : 'Continue to payment'}
-              </button>
-            </div>
-          ) : (
-            <Elements
-              stripe={stripePromise}
-              options={{
-                clientSecret,
-                appearance: {
-                  theme: 'night',
-                  variables: { colorPrimary: '#ec4899' },
-                },
-              }}
-            >
-              <StripePayForm
-                disabled={isProcessing}
-                onPaid={async (paymentIntentId) => {
-                  await onConfirm(getValues(), paymentIntentId);
-                }}
-              />
-            </Elements>
           )}
         </div>
       </form>
@@ -654,11 +519,10 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
     }
   }, [canvas]);
 
-  const handleConfirm = async (customer: CustomerFormValues, paymentIntentId: string) => {
+  const handleConfirm = async (customer: CustomerFormValues) => {
     setIsProcessing(true);
     try {
-      const result = await submitOrder({
-        paymentIntentId,
+      const result = await createCheckoutSession({
         customer: {
           fullName: customer.fullName,
           email: customer.email,
@@ -682,24 +546,19 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
           printConfigs: config.printConfigs,
         },
         designSvg: canvas.toSVG(),
+        origin: window.location.origin,
       });
-      const unverified = result.order.status === 'unverified';
-      notifyStudio({
-        tone: 'success',
-        title: result.duplicate ? 'Order already recorded' : 'Order placed',
-        detail: unverified
-          ? 'Saved locally without Stripe capture. Configure STRIPE_SECRET_KEY and VITE_STRIPE_PUBLISHABLE_KEY for live payments.'
-          : 'Payment verified. We will email you when the cut is ready.',
-      });
-      setTimeout(() => onClose(), 1500);
+      if (!result.url) {
+        throw new Error('Checkout did not return a redirect URL');
+      }
+      window.location.assign(result.url);
     } catch (error) {
-      console.error('Order submission failed:', error);
+      console.error('Checkout session failed:', error);
       notifyStudio({
         tone: 'error',
-        title: 'Order not submitted',
+        title: 'Checkout not started',
         detail: error instanceof Error ? error.message : 'Try again in a moment.',
       });
-    } finally {
       setIsProcessing(false);
     }
   };

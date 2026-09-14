@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   calculateOrderTotal,
   clampQuantity,
+  jobSummary,
   moneyString,
   ORDER_CURRENCY,
 } from '../api/_lib/orderPricing.js';
@@ -19,4 +20,21 @@ test('vinyl and product totals include shipping', () => {
   assert.equal(calculateOrderTotal({ orderType: 'vinyl', quantity: 1, vinylPermanent: true }), 24.98);
   assert.equal(calculateOrderTotal({ orderType: 'product', quantity: 2 }), 55.97);
   assert.equal(moneyString(18.98), '18.98');
+});
+
+test('jobSummary describes vinyl and apparel jobs', () => {
+  assert.equal(
+    jobSummary({ orderType: 'vinyl', quantity: 2, vinylWidthCm: 8, vinylHeightCm: 6 }),
+    'vinyl 8×6cm removable ×2',
+  );
+  assert.equal(
+    jobSummary({
+      orderType: 'product',
+      quantity: 1,
+      productId: 'tshirt',
+      productSize: 'L',
+      productColor: '#ffffff',
+    }),
+    'tshirt · L · #ffffff ×1',
+  );
 });

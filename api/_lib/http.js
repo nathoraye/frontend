@@ -15,15 +15,22 @@ export function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
+export async function readRawBody(req) {
+  if (Buffer.isBuffer(req.body)) return req.body;
+  if (typeof req.body === 'string') return Buffer.from(req.body);
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  return Buffer.concat(chunks);
+}
+
 export async function readJsonBody(req) {
   if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
     return req.body;
   }
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  const raw = Buffer.concat(chunks).toString('utf8');
-  if (!raw) return {};
-  return JSON.parse(raw);
+  const raw = await readRawBody(req);
+  const text = raw.toString('utf8');
+  if (!text) return {};
+  return JSON.parse(text);
 }
 
 export function errorStatus(error) {

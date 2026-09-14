@@ -4,7 +4,7 @@ test.use({
   viewport: { width: 1280, height: 800 },
 });
 
-test('Product Preview → Buy Sticker → local complete order', async ({ page }) => {
+test('Product Preview → Buy Sticker → local checkout → jobs board', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText(/west vinyl studio/i)).toBeVisible();
 
@@ -25,26 +25,34 @@ test('Product Preview → Buy Sticker → local complete order', async ({ page }
   await page.getByLabel('Country').selectOption('Australia');
 
   const localBtn = page.getByRole('button', { name: /complete order \(local\)/i });
-  await expect(localBtn).toBeVisible();
+  await expect(localBtn).toBeVisible({ timeout: 10_000 });
 
   const createRespPromise = page.waitForResponse(
     (res) =>
-      res.url().includes('/api/stripe/create-payment-intent') && res.request().method() === 'POST',
-  );
-  const submitRespPromise = page.waitForResponse(
-    (res) => res.url().includes('/api/orders') && res.request().method() === 'POST',
+      res.url().includes('/api/stripe/create-checkout-session') &&
+      res.request().method() === 'POST',
   );
 
-  await localBtn.click();
+  await Promise.all([page.waitForURL(/\/order\/success/), localBtn.click()]);
 
   const createResp = await createRespPromise;
   expect(createResp.ok()).toBeTruthy();
-  const submitResp = await submitRespPromise;
-  expect(submitResp.ok()).toBeTruthy();
-  const body = await submitResp.json();
-  expect(body.order?.status).toMatch(/unverified|paid/);
+  const body = await createResp.json();
+  expect(body.unverified).toBeTruthy();
+  expect(body.orderId).toMatch(/^ord-/);
 
-  await expect(page.getByTestId('studio-notice')).toContainText(/order/i, { timeout: 5_000 });
+  await expect(page.getByRole('heading', { name: /payment received/i })).toBeVisible();
+  await expect(page.getByText(body.orderId)).toBeVisible();
+
+  await page.getByRole('link', { name: /open jobs board/i }).click();
+  await expect(page).toHaveURL(/\/jobs/);
+  await expect(page.getByTestId('jobs-board')).toBeVisible();
+  await expect(page.getByText('Ada Vinyl')).toBeVisible();
+  await expect(page.getByText(/vinyl 10×10cm removable/i)).toBeVisible();
+
+  await page.getByRole('button', { name: /show design/i }).first().click();
+  await expect(page.getByRole('img', { name: /design for/i })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('link', { name: /download svg/i })).toBeVisible();
 });
 
 test('Product Preview → Buy Apparel inherits colour/size/placement', async ({ page }) => {
@@ -69,4 +77,14 @@ test('Product Preview → Buy Apparel inherits colour/size/placement', async ({ 
 
   await checkout.getByRole('button', { name: /next/i }).click();
   await expect(checkout.getByText(/shipping & payment/i)).toBeVisible();
+});
+
+test('Jobs board route and cancel page render', async ({ page }) => {
+  await page.goto('/jobs');
+  await expect(page.getByTestId('jobs-board')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /jobs board/i })).toBeVisible();
+
+  await page.goto('/order/cancel?orderId=ord-demo');
+  await expect(page.getByRole('heading', { name: /checkout cancelled/i })).toBeVisible();
+  await expect(page.getByText('ord-demo')).toBeVisible();
 });

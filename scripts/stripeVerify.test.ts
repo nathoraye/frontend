@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { toStripeAmount, verifyPaymentIntent } from '../api/_lib/stripe.js';
+import Stripe from 'stripe';
+import { constructWebhookEvent, toStripeAmount, verifyPaymentIntent } from '../api/_lib/stripe.js';
 
 test('toStripeAmount converts AUD dollars to cents', () => {
   assert.equal(toStripeAmount(18.98), 1898);
@@ -50,4 +51,25 @@ test('verifyPaymentIntent accepts matching succeeded intent', async () => {
   assert.equal(result.amount, 18.98);
   assert.equal(result.chargeId, 'ch_2');
   assert.equal(result.payerEmail, 'buyer@example.com');
+});
+
+test('constructWebhookEvent verifies a Stripe-signed payload', () => {
+  const secret = 'whsec_test_checkout';
+  process.env.STRIPE_WEBHOOK_SECRET = secret;
+  process.env.STRIPE_SECRET_KEY = 'sk_test_dummy';
+  const payload = JSON.stringify({
+    id: 'evt_test',
+    type: 'checkout.session.completed',
+    data: { object: { id: 'cs_test' } },
+  });
+  const stripe = new Stripe('sk_test_dummy');
+  const signature = stripe.webhooks.generateTestHeaderString({ payload, secret });
+  const event = constructWebhookEvent(payload, signature);
+  assert.equal(event.type, 'checkout.session.completed');
+  assert.equal(event.data.object.id, 'cs_test');
+
+  assert.throws(
+    () => constructWebhookEvent(payload, 't=1,v1=bad'),
+    (err) => err.status === 400,
+  );
 });

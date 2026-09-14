@@ -1,5 +1,6 @@
 import { errorStatus, readJsonBody, sendJson } from './_lib/http.js';
 import {
+  handleCreateCheckoutSession,
   handleCreatePaymentIntent,
   handleListOrders,
   handleSubmitOrder,
@@ -20,6 +21,11 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = await readJsonBody(req);
+      if (body?.action === 'create-checkout-session') {
+        const payload = await handleCreateCheckoutSession(body, req);
+        sendJson(res, 200, payload);
+        return;
+      }
       if (body?.action === 'create-payment-intent') {
         const payload = await handleCreatePaymentIntent(body);
         sendJson(res, 200, payload);
