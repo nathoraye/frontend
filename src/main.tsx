@@ -13,7 +13,7 @@ registerSW({ immediate: true })
 
 const path = window.location.pathname.replace(/\/$/, '') || '/'
 const Page =
-  path === '/jobs'
+  path === '/admin/orders' || path === '/jobs'
     ? JobsBoard
     : path === '/order/success'
       ? OrderSuccessPage

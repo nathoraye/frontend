@@ -69,7 +69,7 @@ export function OrderSuccessPage() {
             Back to studio
           </a>
           <a
-            href="/jobs"
+            href="/admin/orders"
             className="inline-flex min-h-11 items-center justify-center rounded border border-slate-600 px-4 font-mono text-sm text-slate-200 hover:bg-slate-800"
           >
             Open Jobs board

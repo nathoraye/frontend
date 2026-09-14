@@ -44,7 +44,7 @@ test('Product Preview → Buy Sticker → local checkout → jobs board', async 
   await expect(page.getByText(orderId!)).toBeVisible();
 
   await page.getByRole('link', { name: /open jobs board/i }).click();
-  await expect(page).toHaveURL(/\/jobs/);
+  await expect(page).toHaveURL(/\/admin\/orders/);
   await expect(page.getByTestId('jobs-board')).toBeVisible();
   const jobCard = page.getByTestId('job-card').filter({ hasText: orderId! });
   await expect(jobCard).toBeVisible();
@@ -82,10 +82,14 @@ test('Product Preview → Buy Apparel inherits colour/size/placement', async ({ 
   await expect(checkout.getByText(/shipping & payment/i)).toBeVisible();
 });
 
-test('Jobs board route and cancel page render', async ({ page }) => {
+test('Orders board routes and cancel page render', async ({ page }) => {
+  await page.goto('/admin/orders');
+  await expect(page.getByTestId('jobs-board')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^orders$/i })).toBeVisible();
+  await expect(page.getByText(/ORDERS_ADMIN_TOKEN/i)).toBeVisible();
+
   await page.goto('/jobs');
   await expect(page.getByTestId('jobs-board')).toBeVisible();
-  await expect(page.getByRole('heading', { name: /jobs board/i })).toBeVisible();
 
   await page.goto('/order/cancel?orderId=ord-demo');
   await expect(page.getByRole('heading', { name: /checkout cancelled/i })).toBeVisible();

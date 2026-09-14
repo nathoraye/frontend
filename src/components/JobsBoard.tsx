@@ -8,6 +8,31 @@ import { describeOrderJob, moneyString } from '../utils/orderPricing';
 
 const TOKEN_KEY = 'wvs-orders-admin-token';
 
+function readTokenFromLocation() {
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = params.get('token')?.trim();
+  if (fromQuery) {
+    sessionStorage.setItem(TOKEN_KEY, fromQuery);
+    params.delete('token');
+    const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, '', next);
+    return fromQuery;
+  }
+  return sessionStorage.getItem(TOKEN_KEY) || '';
+}
+
+function describeStore(store?: string) {
+  if (!store) return '';
+  if (store.startsWith('vercel-blob:')) {
+    return `Vercel Blob (${store.slice('vercel-blob:'.length)}) — shared production store`;
+  }
+  if (store.startsWith('file:')) {
+    const file = store.replace(/^file:/, '');
+    return `Local file ${file} — used by server.mjs when BLOB_READ_WRITE_TOKEN is unset`;
+  }
+  return store;
+}
+
 function statusClass(status?: string) {
   if (status === 'paid') return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
   if (status === 'unverified') return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
@@ -27,7 +52,7 @@ function svgPreviewUrl(svg: string) {
 }
 
 export function JobsBoard() {
-  const [token, setToken] = useState(() => sessionStorage.getItem(TOKEN_KEY) || '');
+  const [token, setToken] = useState(() => readTokenFromLocation());
   const [tokenInput, setTokenInput] = useState(token);
   const [orders, setOrders] = useState<FulfillmentOrder[]>([]);
   const [store, setStore] = useState<string>('');
@@ -97,10 +122,11 @@ export function JobsBoard() {
             <p className="text-xs font-black tracking-widest text-pink-400 uppercase">
               West Vinyl Studio
             </p>
-            <h1 className="text-2xl font-mono text-pink-500">Jobs board</h1>
+            <h1 className="text-2xl font-mono text-pink-500">Orders</h1>
             <p className="mt-1 max-w-xl text-sm text-slate-400">
-              Paid and local vinyl/apparel jobs to cut. This is the in-app fulfillment view —
-              Stripe Dashboard shows the payment, not the artwork.
+              Internal board for paid vinyl/apparel jobs. Open{' '}
+              <code className="text-pink-300">/admin/orders</code> after Stripe pays — jobs are
+              stored on the server (webhook), not only in the browser.
             </p>
           </div>
           <a
@@ -119,12 +145,12 @@ export function JobsBoard() {
           }}
         >
           <label className="flex-1 space-y-1 font-mono text-xs text-slate-400">
-            <span>ORDERS_ADMIN_TOKEN</span>
+            <span>ORDERS_ADMIN_TOKEN (Vercel env → paste here)</span>
             <input
               type="password"
               value={tokenInput}
               onChange={(event) => setTokenInput(event.target.value)}
-              placeholder="Required on Vercel; local list may be open"
+              placeholder="Required on Vercel production; local list is open without Stripe"
               className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
             />
           </label>
@@ -132,20 +158,35 @@ export function JobsBoard() {
             type="submit"
             className="min-h-11 rounded bg-pink-500 px-4 font-mono text-sm text-gray-900 hover:bg-pink-600"
           >
-            Load jobs
+            Load orders
           </button>
         </form>
 
-        {store ? (
-          <p className="font-mono text-xs text-slate-500">
-            Store: {store} · {paidCount} makeable job{paidCount === 1 ? '' : 's'}
+        <div className="space-y-1 font-mono text-xs text-slate-500">
+          {store ? (
+            <p>
+              Store: {describeStore(store)} · {paidCount} makeable job{paidCount === 1 ? '' : 's'}
+            </p>
+          ) : null}
+          <p>
+            Production URL: <code className="text-slate-400">/admin/orders</code> (alias{' '}
+            <code className="text-slate-400">/jobs</code>). Token also accepted as{' '}
+            <code className="text-slate-400">?token=</code>.
           </p>
-        ) : null}
+        </div>
 
         {loading ? (
           <p className="font-mono text-sm text-slate-400">Loading jobs…</p>
         ) : error ? (
-          <p className="font-mono text-sm text-red-400">{error}</p>
+          <div className="space-y-1">
+            <p className="font-mono text-sm text-red-400">{error}</p>
+            {/unauthor/i.test(error) ? (
+              <p className="font-mono text-xs text-amber-400">
+                Paste <code>ORDERS_ADMIN_TOKEN</code> from the Vercel project env and click Load
+                orders.
+              </p>
+            ) : null}
+          </div>
         ) : orders.length === 0 ? (
           <p className="font-mono text-sm text-slate-400">No jobs yet.</p>
         ) : (
@@ -195,8 +236,13 @@ export function JobsBoard() {
                         ${moneyString(Number(order.amount || 0))} {order.currency || 'AUD'}
                       </div>
                       <div className="text-xs text-slate-500">
-                        {new Date(order.createdAt).toLocaleString()}
+                        Created {new Date(order.createdAt).toLocaleString()}
                       </div>
+                      {order.paidAt ? (
+                        <div className="text-xs text-emerald-400/80">
+                          Paid {new Date(order.paidAt).toLocaleString()}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">

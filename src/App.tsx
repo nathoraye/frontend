@@ -466,7 +466,7 @@ export default function App() {
                   setActiveTab('design');
                 }}
               />
-              <a href="/jobs" className="flex h-8 items-center rounded-md border border-slate-700 bg-[#181a25] px-2 py-1.5 text-[10px] font-bold tracking-wider text-slate-200 uppercase transition-colors hover:bg-slate-800 touch-manipulation sm:px-3">Jobs</a>
+              <a href="/admin/orders" className="flex h-8 items-center rounded-md border border-slate-700 bg-[#181a25] px-2 py-1.5 text-[10px] font-bold tracking-wider text-slate-200 uppercase transition-colors hover:bg-slate-800 touch-manipulation sm:px-3">Orders</a>
               <button disabled={isGenerating} onClick={handleAIGeneration} className="flex h-8 items-center gap-2 rounded-md border border-slate-700 bg-[#181a25] px-2 py-1.5 text-[10px] font-bold tracking-wider text-white uppercase transition-colors hover:bg-slate-800 touch-manipulation sm:px-3">{isGenerating ? '…' : <><span className="sm:hidden">AI</span><span className="hidden sm:inline">Generate AI</span></>}</button>
 
               <div className="flex items-center gap-1 rounded-lg bg-slate-500/5 p-1">
