@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   getFulfillmentOrder,
   listFulfillmentOrders,
@@ -51,6 +51,72 @@ function svgPreviewUrl(svg: string) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
+function JobDesignPanel({ orderId, token }: { orderId: string; token: string }) {
+  const [detail, setDetail] = useState<FulfillmentOrder | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getFulfillmentOrder(orderId, token || undefined)
+      .then((result) => {
+        if (!cancelled) {
+          setDetail(result.order);
+          setDetailError(null);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setDetail(null);
+          setDetailError(err instanceof Error ? err.message : 'Could not load design');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId, token]);
+
+  if (detailError) {
+    return (
+      <div className="mt-4 space-y-3 border-t border-slate-800 pt-4">
+        <p className="font-mono text-xs text-red-400">{detailError}</p>
+      </div>
+    );
+  }
+
+  if (!detail) {
+    return (
+      <div className="mt-4 space-y-3 border-t border-slate-800 pt-4">
+        <p className="font-mono text-xs text-slate-400">Loading artwork…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 space-y-3 border-t border-slate-800 pt-4">
+      <div className="rounded border border-slate-700 bg-white p-3">
+        {detail.designSvg ? (
+          <img
+            src={svgPreviewUrl(detail.designSvg)}
+            alt={`Design for ${orderId}`}
+            className="mx-auto max-h-80 w-full object-contain"
+          />
+        ) : (
+          <p className="font-mono text-xs text-slate-500">No SVG stored.</p>
+        )}
+      </div>
+      {detail.designSvg ? (
+        <a
+          href={svgPreviewUrl(detail.designSvg)}
+          download={`${orderId}.svg`}
+          className="inline-flex min-h-10 items-center rounded bg-pink-500 px-3 font-mono text-xs text-gray-900 hover:bg-pink-600"
+        >
+          Download SVG
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
 export function JobsBoard() {
   const [token, setToken] = useState(() => readTokenFromLocation());
   const [tokenInput, setTokenInput] = useState(token);
@@ -59,54 +125,37 @@ export function JobsBoard() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<FulfillmentOrder | null>(null);
-  const [detailError, setDetailError] = useState<string | null>(null);
-
-  const loadList = useCallback(async (adminToken: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await listFulfillmentOrders(adminToken || undefined);
-      setOrders(result.orders);
-      setStore(result.store || '');
-    } catch (err) {
-      setOrders([]);
-      setError(err instanceof Error ? err.message : 'Could not load jobs');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [listEpoch, setListEpoch] = useState(0);
 
   useEffect(() => {
-    void loadList(token);
-  }, [loadList, token]);
-
-  useEffect(() => {
-    if (!openId) {
-      setDetail(null);
-      setDetailError(null);
-      return;
-    }
     let cancelled = false;
-    setDetail(null);
-    setDetailError(null);
-    void getFulfillmentOrder(openId, token || undefined)
+    void listFulfillmentOrders(token || undefined)
       .then((result) => {
-        if (!cancelled) setDetail(result.order);
+        if (cancelled) return;
+        setOrders(result.orders);
+        setStore(result.store || '');
+        setError(null);
       })
       .catch((err: unknown) => {
-        if (!cancelled) {
-          setDetailError(err instanceof Error ? err.message : 'Could not load design');
-        }
+        if (cancelled) return;
+        setOrders([]);
+        setError(err instanceof Error ? err.message : 'Could not load jobs');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [openId, token]);
+  }, [token, listEpoch]);
 
   const saveToken = () => {
-    sessionStorage.setItem(TOKEN_KEY, tokenInput.trim());
-    setToken(tokenInput.trim());
+    const next = tokenInput.trim();
+    sessionStorage.setItem(TOKEN_KEY, next);
+    setLoading(true);
+    setError(null);
+    setToken(next);
+    setListEpoch((n) => n + 1);
   };
 
   const paidCount = useMemo(
@@ -264,38 +313,7 @@ export function JobsBoard() {
                       </a>
                     ) : null}
                   </div>
-                  {open ? (
-                    <div className="mt-4 space-y-3 border-t border-slate-800 pt-4">
-                      {detailError ? (
-                        <p className="font-mono text-xs text-red-400">{detailError}</p>
-                      ) : !detail ? (
-                        <p className="font-mono text-xs text-slate-400">Loading artwork…</p>
-                      ) : (
-                        <>
-                          <div className="rounded border border-slate-700 bg-white p-3">
-                            {detail.designSvg ? (
-                              <img
-                                src={svgPreviewUrl(detail.designSvg)}
-                                alt={`Design for ${order.id}`}
-                                className="mx-auto max-h-80 w-full object-contain"
-                              />
-                            ) : (
-                              <p className="font-mono text-xs text-slate-500">No SVG stored.</p>
-                            )}
-                          </div>
-                          {detail.designSvg ? (
-                            <a
-                              href={svgPreviewUrl(detail.designSvg)}
-                              download={`${order.id}.svg`}
-                              className="inline-flex min-h-10 items-center rounded bg-pink-500 px-3 font-mono text-xs text-gray-900 hover:bg-pink-600"
-                            >
-                              Download SVG
-                            </a>
-                          ) : null}
-                        </>
-                      )}
-                    </div>
-                  ) : null}
+                  {open ? <JobDesignPanel key={`${order.id}:${token}`} orderId={order.id} token={token} /> : null}
                 </li>
               );
             })}
