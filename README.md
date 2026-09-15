@@ -13,7 +13,7 @@ Copy `.env.example` to `.env` and fill in your credentials before running:
 
 ```bash
 cp .env.example .env
-# edit .env and set VITE_STRIPE_PUBLISHABLE_KEY
+# edit .env and set STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET for paid Checkout
 ```
 
 ## Build
@@ -102,5 +102,49 @@ Content (bubblewrap generates the exact fingerprint for you):
 - Vector trace worker: `src/workers/tracerWorker.ts` — imported via Vite `?worker` syntax, bundled offline using the `imagetracerjs` npm package (no CDN dependency).
 - Export pipeline: `src/utils/exportPipeline.ts` — SVGO optimisation + DOMPurify sanitisation.
 - Geometry validation: `src/utils/geometryValidation.ts` — validates cut paths including full Bezier C/Q/S/T/A support.
-- Checkout: `src/components/OrderModal.tsx` — 3-step flow with `react-hook-form` validation and Stripe Payment Element. Fulfillment Hook stub at `onFulfillment()` is ready to wire to a backend.
+- Checkout: `src/components/OrderModal.tsx` — 2-step flow (product review → shipping) that creates a Stripe Checkout Session and redirects. Local unverified jobs are saved when `STRIPE_SECRET_KEY` is unset.
+- After payment: open **`/admin/orders`** (alias `/jobs`) to see the paid vinyl/apparel job (design SVG, size/finish or garment, customer, download). Paste `ORDERS_ADMIN_TOKEN` from Vercel env. Stripe Dashboard shows the payment only. There is no Appwrite collection. Production orders live in Vercel Blob `west-vinyl-orders.json` when `BLOB_READ_WRITE_TOKEN` is set; local `server.mjs` uses `data/orders.json`.
+
+---
+
+## Stripe Checkout and fulfillment
+
+Checkout is a **Stripe Checkout Session** (`mode: payment`) for one-time custom merchandise. The server prices the order, stores the customer + `designSvg` as a `pending` job, then redirects to Stripe. `checkout.session.completed` (and the success-page session retrieve) mark the job `paid`.
+
+### Where to look after a payment
+
+| Place | What you see |
+| --- | --- |
+| **`/admin/orders` (primary; alias `/jobs`)** | What to make: vinyl size/finish or apparel product/colour/size, customer address, design preview, SVG download. Gate with `ORDERS_ADMIN_TOKEN` on Vercel. |
+| **Stripe Dashboard → Payments / Checkout Sessions** | Money movement, receipt email, `metadata.orderId`. Not the cut file. |
+| **Vercel Blob `west-vinyl-orders.json`** | Durable store when `BLOB_READ_WRITE_TOKEN` is set on project `frontendwvs`. |
+| **`data/orders.json`** | Local/dev store used by `server.mjs`. |
+| **Email** | Stripe can send the customer a receipt if enabled in the Dashboard. There is no separate “cut this job” email yet. |
+| **Appwrite** | Not used. |
+
+### Vercel / test-mode env (project `frontendwvs`, team `westvinylstudio`)
+
+Set on the Vercel project (Preview + Production). Do not commit secrets.
+
+- `STRIPE_SECRET_KEY` — test-mode `sk_test_…` or a restricted key until go-live
+- `STRIPE_WEBHOOK_SECRET` — endpoint `https://<deployment>/api/stripe/webhook` listening for `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.expired`, `checkout.session.async_payment_failed`
+- `ORDERS_ADMIN_TOKEN` — paste this on `/admin/orders` to load production jobs
+- `BLOB_READ_WRITE_TOKEN` — recommended so serverless instances share one order file
+- `PUBLIC_APP_URL` — optional canonical origin for success/cancel URLs
+- Leave `ALLOW_UNVERIFIED_ORDERS` and `ALLOW_PUBLIC_ORDER_LIST` unset in production
+
+### Manual test (test mode)
+
+1. Start `node server.mjs` and `npm run dev -- --host 0.0.0.0 --port 5173`.
+2. Without Stripe keys: Product Preview → Buy Sticker → shipping → **Complete order (local)** → `/order/success` → **Open Jobs board**. Confirm the design and `unverified` status.
+3. With test keys: `stripe listen --forward-to localhost:3001/api/stripe/webhook`, set `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`, pay with `4242 4242 4242 4242`. You land on `/order/success`, then `/admin/orders` shows `paid` plus the SVG.
+4. Cancel from Stripe Checkout and confirm `/order/cancel` (pending job is not paid).
+5. On Vercel, open `/admin/orders`, enter `ORDERS_ADMIN_TOKEN`, and confirm the same job. Cross-check Stripe Dashboard using `metadata.orderId`.
+
+### Exact access steps (Nathan)
+
+1. **URL:** `https://<your-deployment>/admin/orders` (also `/jobs`). Studio header **Orders** opens this page.
+2. **Token:** Vercel project `frontendwvs` → Settings → Environment Variables → `ORDERS_ADMIN_TOKEN`. Paste it in the box (or `?token=`). Local `server.mjs` without Stripe leaves the list open.
+3. **Where the rows live:** Vercel Blob `west-vinyl-orders.json` when `BLOB_READ_WRITE_TOKEN` is set; otherwise local `data/orders.json`. The board prints the active store at the top.
+4. **How a paid row gets there:** checkout `POST /api/stripe/create-checkout-session` writes the job + SVG on the server first; Stripe `POST /api/stripe/webhook` (`checkout.session.completed`) marks it `paid`. Not a browser-only POST after pay.
 

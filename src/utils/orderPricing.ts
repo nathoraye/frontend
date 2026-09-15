@@ -34,3 +34,22 @@ export function calculateOrderTotal(config: OrderPricingConfig = {}): number {
 export function moneyString(value: number): string {
   return roundMoney(value).toFixed(2);
 }
+
+/** Short production label for the jobs board and checkout UI. */
+export function describeOrderJob(config: Record<string, unknown> | null | undefined): string {
+  if (!config) return 'Custom job';
+  const orderType = config.orderType === 'product' ? 'product' : 'vinyl';
+  const qty = clampQuantity(typeof config.quantity === 'number' ? config.quantity : Number(config.quantity));
+  if (orderType === 'product') {
+    const parts = [config.productId, config.productSize, config.productColor].filter(
+      (part) => typeof part === 'string' && part,
+    );
+    return `${parts.join(' · ') || 'apparel'} ×${qty}`;
+  }
+  const w = typeof config.vinylWidthCm === 'number' ? config.vinylWidthCm : 10;
+  const h = typeof config.vinylHeightCm === 'number' ? config.vinylHeightCm : 10;
+  const finish = config.vinylPermanent
+    ? `permanent ${typeof config.vinylFinish === 'string' ? config.vinylFinish : 'matte'}`
+    : 'removable';
+  return `vinyl ${w}×${h}cm ${finish} ×${qty}`;
+}

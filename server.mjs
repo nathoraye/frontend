@@ -1,9 +1,14 @@
 import http from 'node:http';
 import { handleTraceRequest } from './api/trace.js';
-import { errorStatus, readJsonBody, sendJson } from './api/_lib/http.js';
+import { errorStatus, readJsonBody, readRawBody, sendJson } from './api/_lib/http.js';
 import {
+  handleCreateCheckoutSession,
   handleCreatePaymentIntent,
+  handleGetOrder,
+  handleHealth,
   handleListOrders,
+  handleSessionStatus,
+  handleStripeWebhookRequest,
   handleSubmitOrder,
 } from './api/_lib/orderService.js';
 
@@ -24,11 +29,32 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/api/health') {
-      return sendJson(res, 200, { ok: true, service: 'west-vinyl-orders' });
+      return sendJson(res, 200, handleHealth());
     }
 
     if (url.pathname === '/api/trace') {
       return handleTraceRequest(req, res);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/stripe/webhook') {
+      const rawBody = await readRawBody(req);
+      return sendJson(res, 200, await handleStripeWebhookRequest(req, rawBody));
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/stripe/create-checkout-session') {
+      const body = await readJsonBody(req);
+      return sendJson(res, 200, await handleCreateCheckoutSession(body, req));
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/stripe/session-status') {
+      return sendJson(
+        res,
+        200,
+        await handleSessionStatus({
+          session_id: url.searchParams.get('session_id'),
+          orderId: url.searchParams.get('orderId'),
+        }),
+      );
     }
 
     if (req.method === 'POST' && url.pathname === '/api/stripe/create-payment-intent') {
@@ -41,11 +67,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname.startsWith('/api/orders/')) {
-      const payload = await handleListOrders(req);
       const orderId = url.pathname.split('/').pop();
-      const order = payload.orders.find((entry) => entry.id === orderId);
-      if (!order) return sendJson(res, 404, { error: 'Order not found' });
-      return sendJson(res, 200, { order });
+      return sendJson(res, 200, await handleGetOrder(req, orderId));
     }
 
     if (req.method === 'POST' && url.pathname === '/api/orders') {

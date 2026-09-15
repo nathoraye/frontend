@@ -63,6 +63,10 @@ async function writeBlob(orders) {
   });
 }
 
+export function orderStoreLocation() {
+  return mode() === 'blob' ? `vercel-blob:${BLOB_NAME}` : `file:${filePath()}`;
+}
+
 export async function listOrders() {
   return mode() === 'blob' ? readBlob() : readFile();
 }
@@ -72,7 +76,18 @@ export async function saveOrders(orders) {
 }
 
 function paymentKey(order) {
-  return order?.paymentIntentId || order?.paypalOrderId || null;
+  return order?.paymentIntentId || order?.checkoutSessionId || order?.paypalOrderId || null;
+}
+
+export async function getOrderById(id) {
+  if (!id) return null;
+  const orders = await listOrders();
+  return orders.find((entry) => entry.id === id) || null;
+}
+
+export async function findOrder(predicate) {
+  const orders = await listOrders();
+  return orders.find(predicate) || null;
 }
 
 export async function appendOrder(order) {
@@ -87,6 +102,16 @@ export async function appendOrder(order) {
   return { order, ordersCount: orders.length, duplicate: false };
 }
 
+export async function updateOrder(id, patch) {
+  const orders = await listOrders();
+  const idx = orders.findIndex((entry) => entry.id === id);
+  if (idx === -1) return null;
+  const next = { ...orders[idx], ...patch, id: orders[idx].id };
+  orders[idx] = next;
+  await saveOrders(orders);
+  return next;
+}
+
 export function publicOrderView(order) {
   if (!order) return null;
   return {
@@ -96,5 +121,42 @@ export function publicOrderView(order) {
     amount: order.amount,
     currency: order.currency,
     orderType: order.orderConfig?.orderType,
+  };
+}
+
+/** Jobs-board payload: product + customer, no cut SVG (fetch /api/orders/:id for that). */
+export function fulfillmentOrderView(order, { includeDesign = false } = {}) {
+  if (!order) return null;
+  return {
+    id: order.id,
+    createdAt: order.createdAt,
+    paidAt: order.paidAt || null,
+    status: order.status,
+    amount: order.amount,
+    currency: order.currency,
+    orderType: order.orderConfig?.orderType || 'vinyl',
+    customer: order.customer || null,
+    orderConfig: order.orderConfig || null,
+    checkoutSessionId: order.checkoutSessionId || null,
+    paymentIntentId: order.paymentIntentId || order.paypalOrderId || null,
+    chargeId: order.chargeId || null,
+    payerEmail: order.payerEmail || null,
+    hasDesign: Boolean(order.designSvg),
+    ...(includeDesign ? { designSvg: order.designSvg || '' } : {}),
+  };
+}
+
+export function publicConfirmation(order) {
+  if (!order) return null;
+  return {
+    orderId: order.id,
+    status: order.status,
+    amount: order.amount,
+    currency: order.currency,
+    orderType: order.orderConfig?.orderType || 'vinyl',
+    email: order.customer?.email || order.payerEmail || null,
+    createdAt: order.createdAt,
+    paidAt: order.paidAt || null,
+    unverified: order.status === 'unverified',
   };
 }
