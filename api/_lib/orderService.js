@@ -10,6 +10,7 @@ import {
 } from './orderPricing.js';
 import {
   allowUnverifiedOrders,
+  assertStripeSecretUsable,
   constructWebhookEvent,
   createCheckoutSession,
   createPaymentIntent,
@@ -143,20 +144,22 @@ export async function handleCreatePaymentIntent(payload = {}) {
   const amount = calculateOrderTotal(orderConfig);
 
   if (!stripeConfigured()) {
-    if (!allowUnverifiedOrders()) {
-      throw Object.assign(
-        new Error('Stripe is not configured. Set STRIPE_SECRET_KEY.'),
-        { status: 503 },
-      );
+    if (allowUnverifiedOrders()) {
+      return {
+        id: `LOCAL-${Date.now()}`,
+        clientSecret: null,
+        status: 'requires_payment_method',
+        amount: moneyString(amount),
+        currency: ORDER_CURRENCY,
+        unverified: true,
+      };
     }
-    return {
-      id: `LOCAL-${Date.now()}`,
-      clientSecret: null,
-      status: 'requires_payment_method',
-      amount: moneyString(amount),
-      currency: ORDER_CURRENCY,
-      unverified: true,
-    };
+    // Present-but-wrong prefixes (e.g. whsec_) get a specific 503 from getStripe().
+    assertStripeSecretUsable();
+    throw Object.assign(
+      new Error('Stripe is not configured. Set STRIPE_SECRET_KEY.'),
+      { status: 503 },
+    );
   }
 
   const intent = await createPaymentIntent({
@@ -188,28 +191,30 @@ export async function handleCreateCheckoutSession(payload = {}, req = {}, stripe
   const amount = calculateOrderTotal(orderConfig);
 
   if (!stripeConfigured()) {
-    if (!allowUnverifiedOrders()) {
-      throw Object.assign(
-        new Error('Stripe is not configured. Set STRIPE_SECRET_KEY.'),
-        { status: 503 },
-      );
+    if (allowUnverifiedOrders()) {
+      const order = buildPendingOrder({
+        customer,
+        orderConfig,
+        designSvg,
+        status: 'unverified',
+        extra: { paymentIntentId: `LOCAL-${Date.now()}` },
+      });
+      const saved = await appendOrder(order);
+      return {
+        url: `${origin}/order/success?orderId=${encodeURIComponent(saved.order.id)}&local=1`,
+        sessionId: null,
+        orderId: saved.order.id,
+        amount: moneyString(amount),
+        currency: ORDER_CURRENCY,
+        unverified: true,
+      };
     }
-    const order = buildPendingOrder({
-      customer,
-      orderConfig,
-      designSvg,
-      status: 'unverified',
-      extra: { paymentIntentId: `LOCAL-${Date.now()}` },
-    });
-    const saved = await appendOrder(order);
-    return {
-      url: `${origin}/order/success?orderId=${encodeURIComponent(saved.order.id)}&local=1`,
-      sessionId: null,
-      orderId: saved.order.id,
-      amount: moneyString(amount),
-      currency: ORDER_CURRENCY,
-      unverified: true,
-    };
+    // Present-but-wrong prefixes (e.g. whsec_) get a specific 503 from getStripe().
+    assertStripeSecretUsable();
+    throw Object.assign(
+      new Error('Stripe is not configured. Set STRIPE_SECRET_KEY.'),
+      { status: 503 },
+    );
   }
 
   const order = buildPendingOrder({
