@@ -162,7 +162,7 @@ test('trimmed env loader is used by health and Stripe clients without logging se
 
     const joined = warns.join('\n');
     assert.match(joined, /STRIPE_SECRET_KEY had surrounding whitespace \(length 15 -> 13\)/);
-    assert.match(joined, /STRIPE_WEBHOOK_SECRET had surrounding whitespace \(length 21 -> 20\)/);
+    assert.match(joined, /STRIPE_WEBHOOK_SECRET had surrounding whitespace \(length 20 -> 19\)/);
     assert.equal(joined.includes('sk_test_dummy'), false);
     assert.equal(joined.includes('whsec_test_checkout'), false);
 
