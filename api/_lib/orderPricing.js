@@ -16,6 +16,45 @@ export function unitPriceForConfig(config = {}) {
   );
 }
 
+/** Stripe AUD minimum is 50¢. Cap smoke totals so a typo cannot charge thousands. */
+const SMOKE_MIN_CENTS = 50;
+const SMOKE_MAX_CENTS = 100_000;
+
+/**
+ * Temporary server-only Checkout total override in cents.
+ * Unset/empty → retail pricing. `100` → A$1.00. Client amount/unitAmount are ignored.
+ * @param {string | undefined} raw
+ * @returns {number | null}
+ */
+export function smokeCheckoutAmountCents(raw = process.env.SMOKE_CHECKOUT_AMOUNT_CENTS) {
+  if (raw == null) return null;
+  const trimmed = String(raw).trim();
+  if (trimmed === '') return null;
+  if (!/^\d+$/.test(trimmed)) {
+    throw Object.assign(
+      new Error('SMOKE_CHECKOUT_AMOUNT_CENTS must be an integer number of cents (e.g. 100 for A$1.00).'),
+      { status: 503 },
+    );
+  }
+  const cents = Number.parseInt(trimmed, 10);
+  if (cents < SMOKE_MIN_CENTS || cents > SMOKE_MAX_CENTS) {
+    throw Object.assign(
+      new Error(
+        `SMOKE_CHECKOUT_AMOUNT_CENTS must be between ${SMOKE_MIN_CENTS} and ${SMOKE_MAX_CENTS} (got ${cents}).`,
+      ),
+      { status: 503 },
+    );
+  }
+  return cents;
+}
+
+/** Retail total, or the smoke-test override in dollars when SMOKE_CHECKOUT_AMOUNT_CENTS is set. */
+export function checkoutChargeAmount(config = {}) {
+  const cents = smokeCheckoutAmountCents();
+  if (cents != null) return roundMoney(cents / 100);
+  return calculateOrderTotal(config);
+}
+
 /**
  * @param {{ orderType?: string, vinylPermanent?: boolean, quantity?: number }} config
  */

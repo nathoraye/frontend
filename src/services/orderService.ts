@@ -62,6 +62,8 @@ export interface CheckoutHealth {
   checkout?: {
     stripe?: boolean;
     unverifiedAllowed?: boolean;
+    smokeAmountCents?: number | null;
+    smokeAmountInvalid?: boolean;
   };
   ordersStore?: string;
 }
