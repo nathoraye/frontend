@@ -11,8 +11,29 @@ import {
 let stripeClient = null;
 let stripeClientKey = null;
 
+const trimmedEnvWarned = new Set();
+
+/**
+ * Read a process.env value with surrounding whitespace stripped.
+ * Never logs the value. Warns once (name + lengths only) when trimming changes length.
+ * @param {string} name
+ * @returns {string | undefined}
+ */
+export function readTrimmedEnv(name) {
+  const raw = process.env[name];
+  if (raw == null) return undefined;
+  const trimmed = String(raw).trim();
+  if (raw.length !== trimmed.length && !trimmedEnvWarned.has(name)) {
+    trimmedEnvWarned.add(name);
+    console.warn(
+      `[env] ${name} had surrounding whitespace (length ${raw.length} -> ${trimmed.length}); using trimmed value`,
+    );
+  }
+  return trimmed;
+}
+
 /** Non-secret classification of STRIPE_SECRET_KEY for health/diagnostics. */
-export function stripeSecretKeyShape(raw = process.env.STRIPE_SECRET_KEY) {
+export function stripeSecretKeyShape(raw = readTrimmedEnv('STRIPE_SECRET_KEY')) {
   if (raw == null || raw === '') {
     return { present: false, prefix: 'missing', length: 0, trimmedLength: 0, hasWhitespace: false };
   }
@@ -47,7 +68,7 @@ export function stripeConfigured() {
 }
 
 export function webhookSecretConfigured() {
-  return Boolean(process.env.STRIPE_WEBHOOK_SECRET?.trim());
+  return Boolean(readTrimmedEnv('STRIPE_WEBHOOK_SECRET'));
 }
 
 export function allowUnverifiedOrders() {
@@ -67,8 +88,7 @@ function createFetchStripeClient(apiKey) {
  * No-op when the key is missing (caller may allow unverified local orders).
  */
 export function assertStripeSecretUsable() {
-  const raw = process.env.STRIPE_SECRET_KEY;
-  if (!raw || !raw.trim()) return;
+  if (!readTrimmedEnv('STRIPE_SECRET_KEY')) return;
   getStripe();
 }
 
@@ -78,10 +98,9 @@ export function assertStripeSecretUsable() {
  * and surface as StripeConnectionError ("connection to Stripe… retried 2 times").
  */
 export function getStripe() {
-  const raw = process.env.STRIPE_SECRET_KEY;
-  if (!raw || !raw.trim()) throw new Error('Stripe secret key is not configured');
-  const key = raw.trim();
-  const shape = stripeSecretKeyShape(raw);
+  const key = readTrimmedEnv('STRIPE_SECRET_KEY');
+  if (!key) throw new Error('Stripe secret key is not configured');
+  const shape = stripeSecretKeyShape(key);
   if (shape.prefix === 'whsec') {
     throw Object.assign(
       new Error(
@@ -255,7 +274,7 @@ export async function retrieveCheckoutSession(sessionId, stripeClientOverride = 
 }
 
 export function constructWebhookEvent(rawBody, signature, stripeClientOverride = null) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const secret = readTrimmedEnv('STRIPE_WEBHOOK_SECRET');
   if (!secret) {
     throw Object.assign(new Error('STRIPE_WEBHOOK_SECRET is not configured'), { status: 503 });
   }

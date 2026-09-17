@@ -59,6 +59,8 @@ export function handleHealth() {
       smokeAmountCents,
       smokeAmountInvalid,
       // Non-secret key shape only — never includes the key value.
+      // Uses the same trimmed loader as the Stripe SDK, so whitespace in Vercel
+      // env no longer affects runtime or these metrics after deploy.
       stripeKey: {
         prefix: keyShape.prefix,
         length: keyShape.length,

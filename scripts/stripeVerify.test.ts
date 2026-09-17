@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import Stripe from 'stripe';
+import { handleHealth } from '../api/_lib/orderService.js';
 import {
   constructWebhookEvent,
   getStripe,
+  readTrimmedEnv,
   stripeConfigured,
   stripeSecretKeyShape,
   toStripeAmount,
@@ -138,4 +140,64 @@ test('getStripe rejects whsec prefix with a specific 503', () => {
   );
   if (prev === undefined) delete process.env.STRIPE_SECRET_KEY;
   else process.env.STRIPE_SECRET_KEY = prev;
+});
+
+test('trimmed env loader is used by health and Stripe clients without logging secrets', () => {
+  const prevSecret = process.env.STRIPE_SECRET_KEY;
+  const prevWebhook = process.env.STRIPE_WEBHOOK_SECRET;
+  const warns = [];
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    warns.push(args.map(String).join(' '));
+  };
+
+  try {
+    process.env.STRIPE_SECRET_KEY = ' sk_test_dummy\n';
+    process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_checkout ';
+
+    const key = readTrimmedEnv('STRIPE_SECRET_KEY');
+    const webhook = readTrimmedEnv('STRIPE_WEBHOOK_SECRET');
+    assert.equal(key, 'sk_test_dummy');
+    assert.equal(webhook, 'whsec_test_checkout');
+
+    const joined = warns.join('\n');
+    assert.match(joined, /STRIPE_SECRET_KEY had surrounding whitespace \(length 15 -> 13\)/);
+    assert.match(joined, /STRIPE_WEBHOOK_SECRET had surrounding whitespace \(length 21 -> 20\)/);
+    assert.equal(joined.includes('sk_test_dummy'), false);
+    assert.equal(joined.includes('whsec_test_checkout'), false);
+
+    const shape = stripeSecretKeyShape();
+    assert.equal(shape.prefix, 'sk_test');
+    assert.equal(shape.hasWhitespace, false);
+    assert.equal(shape.length, shape.trimmedLength);
+    assert.equal(shape.length, 'sk_test_dummy'.length);
+    assert.equal(stripeConfigured(), true);
+
+    const health = handleHealth();
+    assert.equal(health.checkout.stripe, true);
+    assert.equal(health.checkout.stripeKey.hasWhitespace, false);
+    assert.equal(health.checkout.stripeKey.length, health.checkout.stripeKey.trimmedLength);
+    assert.equal(health.checkout.stripeKey.prefix, 'sk_test');
+
+    assert.ok(getStripe());
+
+    const payload = JSON.stringify({
+      id: 'evt_trim',
+      type: 'checkout.session.completed',
+      data: { object: { id: 'cs_trim' } },
+    });
+    const stripe = new Stripe('sk_test_dummy');
+    const signature = stripe.webhooks.generateTestHeaderString({
+      payload,
+      secret: 'whsec_test_checkout',
+    });
+    const event = constructWebhookEvent(payload, signature);
+    assert.equal(event.data.object.id, 'cs_trim');
+  } finally {
+    console.warn = originalWarn;
+    if (prevSecret === undefined) delete process.env.STRIPE_SECRET_KEY;
+    else process.env.STRIPE_SECRET_KEY = prevSecret;
+    if (prevWebhook === undefined) delete process.env.STRIPE_WEBHOOK_SECRET;
+    else process.env.STRIPE_WEBHOOK_SECRET = prevWebhook;
+  }
 });
