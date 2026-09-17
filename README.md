@@ -132,6 +132,7 @@ Set on the Vercel project (Preview + Production). Do not commit secrets.
 - `BLOB_READ_WRITE_TOKEN` — recommended so serverless instances share one order file
 - `PUBLIC_APP_URL` — optional canonical origin for success/cancel URLs
 - Leave `ALLOW_UNVERIFIED_ORDERS` and `ALLOW_PUBLIC_ORDER_LIST` unset in production
+- `SMOKE_CHECKOUT_AMOUNT_CENTS` — **temporary live smoke test only**. Set to `100` on Production to charge **A$1.00** for new Checkout Sessions (single line item). Retail vinyl remains A$18.98 in code. **Remove/unset the variable and redeploy** to restore A$18.98. Client `amount` / `unitAmount` fields are ignored. `GET /api/health` reports `checkout.smokeAmountCents`.
 
 ### Manual test (test mode)
 

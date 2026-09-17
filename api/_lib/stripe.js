@@ -4,6 +4,7 @@ import {
   moneyString,
   ORDER_CURRENCY,
   SHIPPING_COST,
+  smokeCheckoutAmountCents,
   unitPriceForConfig,
 } from './orderPricing.js';
 
@@ -175,6 +176,43 @@ export async function createCheckoutSession(
     orderType === 'product'
       ? `Custom ${String(orderConfig.productId || 'apparel')}`
       : 'Custom vinyl sticker';
+  const smokeCents = smokeCheckoutAmountCents();
+  const lineItems =
+    smokeCents != null
+      ? [
+          {
+            quantity: 1,
+            price_data: {
+              currency: ORDER_CURRENCY.toLowerCase(),
+              unit_amount: smokeCents,
+              product_data: {
+                name: productName,
+                description: jobSummary(orderConfig).slice(0, 500),
+              },
+            },
+          },
+        ]
+      : [
+          {
+            quantity,
+            price_data: {
+              currency: ORDER_CURRENCY.toLowerCase(),
+              unit_amount: toStripeAmount(unit),
+              product_data: {
+                name: productName,
+                description: jobSummary(orderConfig).slice(0, 500),
+              },
+            },
+          },
+          {
+            quantity: 1,
+            price_data: {
+              currency: ORDER_CURRENCY.toLowerCase(),
+              unit_amount: toStripeAmount(SHIPPING_COST),
+              product_data: { name: 'Shipping' },
+            },
+          },
+        ];
 
   try {
     return await stripe.checkout.sessions.create({
@@ -183,31 +221,12 @@ export async function createCheckoutSession(
       client_reference_id: orderId,
       success_url: successUrl,
       cancel_url: cancelUrl,
-      line_items: [
-        {
-          quantity,
-          price_data: {
-            currency: ORDER_CURRENCY.toLowerCase(),
-            unit_amount: toStripeAmount(unit),
-            product_data: {
-              name: productName,
-              description: jobSummary(orderConfig).slice(0, 500),
-            },
-          },
-        },
-        {
-          quantity: 1,
-          price_data: {
-            currency: ORDER_CURRENCY.toLowerCase(),
-            unit_amount: toStripeAmount(SHIPPING_COST),
-            product_data: { name: 'Shipping' },
-          },
-        },
-      ],
+      line_items: lineItems,
       metadata: {
         orderId,
         orderType,
         quantity: String(quantity),
+        ...(smokeCents != null ? { smokeCheckoutAmountCents: String(smokeCents) } : {}),
         ...metadata,
       },
       payment_intent_data: {

@@ -9,6 +9,7 @@ import {
   handleCreateCheckoutSession,
   handleCreatePaymentIntent,
   handleGetOrder,
+  handleHealth,
   handleListOrders,
   handleSessionStatus,
   handleStripeEvent,
@@ -86,6 +87,7 @@ test('checkout session persists an unverified job and success status', async () 
   process.env.ORDERS_FILE = file;
   delete process.env.STRIPE_SECRET_KEY;
   delete process.env.PUBLIC_APP_URL;
+  delete process.env.SMOKE_CHECKOUT_AMOUNT_CENTS;
 
   const created = await handleCreateCheckoutSession(
     {
@@ -123,6 +125,7 @@ test('webhook fulfill marks a pending job paid and is idempotent', async () => {
   process.env.ORDER_STORE = 'file';
   process.env.ORDERS_FILE = file;
   delete process.env.STRIPE_SECRET_KEY;
+  delete process.env.SMOKE_CHECKOUT_AMOUNT_CENTS;
 
   const created = await handleCreateCheckoutSession({
     customer,
@@ -204,6 +207,7 @@ test('createCheckoutSession uses mocked Stripe when configured', async () => {
   process.env.ORDER_STORE = 'file';
   process.env.ORDERS_FILE = file;
   delete process.env.ALLOW_UNVERIFIED_ORDERS;
+  delete process.env.SMOKE_CHECKOUT_AMOUNT_CENTS;
 
   const fakeStripe = {
     checkout: {
@@ -227,6 +231,8 @@ test('createCheckoutSession uses mocked Stripe when configured', async () => {
       orderConfig: { orderType: 'vinyl', quantity: 1 },
       designSvg,
       origin: 'https://frontendwvs-westvinylstudio.vercel.app',
+      amount: 1,
+      unitAmount: 100,
     },
     { headers: {} },
     fakeStripe,
@@ -234,14 +240,92 @@ test('createCheckoutSession uses mocked Stripe when configured', async () => {
   assert.equal(created.url, 'https://checkout.stripe.com/c/pay/cs_test_live');
   assert.equal(created.sessionId, 'cs_test_live');
   assert.equal(created.unverified, undefined);
+  assert.equal(created.amount, '18.98');
 
   process.env.ALLOW_PUBLIC_ORDER_LIST = '1';
   const listed = await handleListOrders({ headers: {} });
   assert.equal(listed.orders[0].status, 'pending');
   assert.equal(listed.orders[0].checkoutSessionId, 'cs_test_live');
+  assert.equal(listed.orders[0].amount, 18.98);
 
   delete process.env.STRIPE_SECRET_KEY;
   await fs.unlink(file).catch(() => {});
+});
+
+test('SMOKE_CHECKOUT_AMOUNT_CENTS=100 charges A$1.00 and webhook still fulfills', async () => {
+  const file = path.join(os.tmpdir(), `wvs-stripe-smoke-${Date.now()}.json`);
+  const prevSmoke = process.env.SMOKE_CHECKOUT_AMOUNT_CENTS;
+  const prevKey = process.env.STRIPE_SECRET_KEY;
+  process.env.STRIPE_SECRET_KEY = 'sk_test_dummy';
+  process.env.SMOKE_CHECKOUT_AMOUNT_CENTS = '100';
+  process.env.ORDER_STORE = 'file';
+  process.env.ORDERS_FILE = file;
+  process.env.ALLOW_PUBLIC_ORDER_LIST = '1';
+  delete process.env.ALLOW_UNVERIFIED_ORDERS;
+
+  try {
+    const fakeStripe = {
+      checkout: {
+        sessions: {
+          async create(params) {
+            assert.equal(params.line_items.length, 1);
+            assert.equal(params.line_items[0].quantity, 1);
+            assert.equal(params.line_items[0].price_data.unit_amount, 100);
+            assert.equal(params.line_items[0].price_data.currency, 'aud');
+            assert.equal(params.metadata.orderId, params.client_reference_id);
+            assert.equal(params.metadata.smokeCheckoutAmountCents, '100');
+            assert.equal(params.payment_intent_data.metadata.orderId, params.client_reference_id);
+            return { id: 'cs_test_smoke', url: 'https://checkout.stripe.com/c/pay/cs_test_smoke' };
+          },
+        },
+      },
+    };
+
+    const created = await handleCreateCheckoutSession(
+      {
+        customer,
+        orderConfig: { orderType: 'vinyl', quantity: 2, vinylPermanent: true },
+        designSvg,
+        origin: 'https://frontendwvs-westvinylstudio.vercel.app',
+        amount: 1898,
+        unitAmount: 1898,
+      },
+      { headers: {} },
+      fakeStripe,
+    );
+    assert.equal(created.amount, '1.00');
+    assert.equal(created.sessionId, 'cs_test_smoke');
+
+    const health = handleHealth();
+    assert.equal(health.checkout.smokeAmountCents, 100);
+    assert.equal(health.checkout.smokeAmountInvalid, false);
+
+    const session = {
+      id: 'cs_test_smoke',
+      payment_status: 'paid',
+      amount_total: 100,
+      currency: 'aud',
+      metadata: { orderId: created.orderId },
+      payment_intent: { id: 'pi_smoke_1', latest_charge: 'ch_smoke_1' },
+      customer_details: { email: 'ada@example.com' },
+    };
+    const first = await fulfillCheckoutSession(session);
+    assert.equal(first.order.status, 'paid');
+    assert.equal(first.order.amount, 1);
+    assert.equal(first.order.paymentIntentId, 'pi_smoke_1');
+    assert.equal(first.duplicate, false);
+
+    await assert.rejects(
+      () => fulfillCheckoutSession({ ...session, amount_total: 1898 }),
+      (err) => err.status === 402,
+    );
+  } finally {
+    if (prevKey === undefined) delete process.env.STRIPE_SECRET_KEY;
+    else process.env.STRIPE_SECRET_KEY = prevKey;
+    if (prevSmoke === undefined) delete process.env.SMOKE_CHECKOUT_AMOUNT_CENTS;
+    else process.env.SMOKE_CHECKOUT_AMOUNT_CENTS = prevSmoke;
+    await fs.unlink(file).catch(() => {});
+  }
 });
 
 test('submit rejects tiny design payloads', async () => {

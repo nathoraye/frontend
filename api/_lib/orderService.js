@@ -1,11 +1,13 @@
 import {
   calculateOrderTotal,
+  checkoutChargeAmount,
   clampQuantity,
   jobSummary,
   moneyString,
   ORDER_CURRENCY,
   PERMANENT_SURCHARGE,
   SHIPPING_COST,
+  smokeCheckoutAmountCents,
   UNIT_PRICES,
 } from './orderPricing.js';
 import {
@@ -40,12 +42,22 @@ export function adminAuthorized(req) {
 
 export function handleHealth() {
   const keyShape = stripeSecretKeyShape();
+  let smokeAmountCents = null;
+  let smokeAmountInvalid = false;
+  try {
+    smokeAmountCents = smokeCheckoutAmountCents();
+  } catch {
+    smokeAmountInvalid = true;
+  }
   return {
     ok: true,
     service: 'west-vinyl-orders',
     checkout: {
       stripe: stripeConfigured(),
       unverifiedAllowed: allowUnverifiedOrders(),
+      // Temporary live smoke-test total. Unset → retail (e.g. A$18.98 vinyl).
+      smokeAmountCents,
+      smokeAmountInvalid,
       // Non-secret key shape only — never includes the key value.
       stripeKey: {
         prefix: keyShape.prefix,
@@ -120,7 +132,7 @@ export function checkoutReturnOrigin(req = {}, payload = {}) {
 }
 
 function buildPendingOrder({ customer, orderConfig, designSvg, status, extra = {} }) {
-  const amount = calculateOrderTotal(orderConfig);
+  const amount = extra.amount ?? checkoutChargeAmount(orderConfig);
   return {
     id: newOrderId(),
     createdAt: new Date().toISOString(),
@@ -188,7 +200,7 @@ export async function handleCreateCheckoutSession(payload = {}, req = {}, stripe
   const orderConfig = normalizeOrderConfig(payload.orderConfig || {});
   const designSvg = requireDesignSvg(payload.designSvg);
   const origin = checkoutReturnOrigin(req, payload);
-  const amount = calculateOrderTotal(orderConfig);
+  const amount = checkoutChargeAmount(orderConfig);
 
   if (!stripeConfigured()) {
     if (allowUnverifiedOrders()) {
@@ -197,7 +209,7 @@ export async function handleCreateCheckoutSession(payload = {}, req = {}, stripe
         orderConfig,
         designSvg,
         status: 'unverified',
-        extra: { paymentIntentId: `LOCAL-${Date.now()}` },
+        extra: { amount, paymentIntentId: `LOCAL-${Date.now()}` },
       });
       const saved = await appendOrder(order);
       return {
@@ -222,6 +234,7 @@ export async function handleCreateCheckoutSession(payload = {}, req = {}, stripe
     orderConfig,
     designSvg,
     status: 'pending',
+    extra: { amount },
   });
   await appendOrder(order);
 
@@ -449,11 +462,13 @@ export async function handleGetOrder(req, orderId) {
 
 export {
   calculateOrderTotal,
+  checkoutChargeAmount,
   clampQuantity,
   jobSummary,
   moneyString,
   ORDER_CURRENCY,
   PERMANENT_SURCHARGE,
   SHIPPING_COST,
+  smokeCheckoutAmountCents,
   UNIT_PRICES,
 };
