@@ -40,13 +40,11 @@ async function writeFile(orders) {
 async function readBlob() {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   if (!token) throw new Error('BLOB_READ_WRITE_TOKEN is required for blob order storage');
-  const { list } = await import('@vercel/blob');
-  const { blobs } = await list({ prefix: BLOB_NAME, token, limit: 1 });
-  const hit = blobs.find((b) => b.pathname === BLOB_NAME) || blobs[0];
-  if (!hit) return [];
-  const response = await fetch(hit.url);
-  if (!response.ok) throw new Error(`Failed to read orders blob (${response.status})`);
-  const text = await response.text();
+  // Store is private — bare fetch(url) returns 403. Use authenticated get().
+  const { get } = await import('@vercel/blob');
+  const result = await get(BLOB_NAME, { access: 'private', token, useCache: false });
+  if (!result?.stream) return [];
+  const text = await new Response(result.stream).text();
   return text ? JSON.parse(text) : [];
 }
 
