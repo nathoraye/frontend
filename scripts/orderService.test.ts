@@ -79,6 +79,21 @@ test('order list is gated without admin token', async () => {
   assert.ok(Array.isArray(listed.orders));
 });
 
+test('admin token match trims env and Bearer whitespace', async () => {
+  process.env.ALLOW_PUBLIC_ORDER_LIST = '0';
+  process.env.ORDERS_ADMIN_TOKEN = 'secret-admin\n';
+  const listed = await handleListOrders({ headers: { authorization: 'Bearer secret-admin' } });
+  assert.ok(Array.isArray(listed.orders));
+  const listedPadded = await handleListOrders({
+    headers: { authorization: 'Bearer  secret-admin  ' },
+  });
+  assert.ok(Array.isArray(listedPadded.orders));
+  await assert.rejects(
+    () => handleListOrders({ headers: { authorization: 'Bearer wrong' } }),
+    (err) => err.status === 401,
+  );
+});
+
 test('checkout session persists an unverified job and success status', async () => {
   const file = path.join(os.tmpdir(), `wvs-checkout-${Date.now()}.json`);
   process.env.ALLOW_UNVERIFIED_ORDERS = '1';
