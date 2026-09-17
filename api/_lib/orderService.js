@@ -32,10 +32,14 @@ import {
 } from './orderStore.js';
 
 export function adminAuthorized(req) {
-  const token = process.env.ORDERS_ADMIN_TOKEN;
+  const token = String(process.env.ORDERS_ADMIN_TOKEN || '').trim();
   if (!token) return false;
-  const header = req.headers?.authorization || req.headers?.Authorization || '';
-  return header === `Bearer ${token}`;
+  const header = String(req.headers?.authorization || req.headers?.Authorization || '');
+  const prefix = 'Bearer ';
+  if (!header.startsWith(prefix)) return false;
+  // Trim both sides: Vercel/.env values often include a trailing newline, and the
+  // jobs board already trims pasted / ?token= values before sending Bearer.
+  return header.slice(prefix.length).trim() === token;
 }
 
 export function handleHealth() {
