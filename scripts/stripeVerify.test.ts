@@ -1,11 +1,50 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import Stripe from 'stripe';
-import { constructWebhookEvent, toStripeAmount, verifyPaymentIntent } from '../api/_lib/stripe.js';
+import {
+  constructWebhookEvent,
+  stripeConfigured,
+  stripeSecretKeyShape,
+  toStripeAmount,
+  verifyPaymentIntent,
+} from '../api/_lib/stripe.js';
 
 test('toStripeAmount converts AUD dollars to cents', () => {
   assert.equal(toStripeAmount(18.98), 1898);
   assert.equal(toStripeAmount('12.99'), 1299);
+});
+
+test('stripeSecretKeyShape classifies prefixes without exposing secrets', () => {
+  assert.deepEqual(stripeSecretKeyShape(''), {
+    present: false,
+    prefix: 'missing',
+    length: 0,
+    trimmedLength: 0,
+    hasWhitespace: false,
+  });
+  assert.equal(stripeSecretKeyShape('sk_live_abc').prefix, 'sk_live');
+  assert.equal(stripeSecretKeyShape('  sk_test_abc\n').prefix, 'sk_test');
+  assert.equal(stripeSecretKeyShape('  sk_test_abc\n').hasWhitespace, true);
+  assert.equal(stripeSecretKeyShape('rk_live_abc').prefix, 'rk_live');
+  assert.equal(stripeSecretKeyShape('whsec_abc').prefix, 'whsec');
+  assert.equal(stripeSecretKeyShape('pk_live_abc').prefix, 'pk');
+  assert.equal(stripeSecretKeyShape('not-a-key').prefix, 'other');
+});
+
+test('stripeConfigured rejects webhook, publishable, and other key shapes', () => {
+  const prev = process.env.STRIPE_SECRET_KEY;
+  process.env.STRIPE_SECRET_KEY = 'whsec_oops';
+  assert.equal(stripeConfigured(), false);
+  process.env.STRIPE_SECRET_KEY = 'pk_live_oops';
+  assert.equal(stripeConfigured(), false);
+  process.env.STRIPE_SECRET_KEY = 'garbage';
+  assert.equal(stripeConfigured(), false);
+  process.env.STRIPE_SECRET_KEY = 'sk_live_ok';
+  assert.equal(stripeConfigured(), true);
+  process.env.STRIPE_SECRET_KEY = 'rk_test_ok';
+  assert.equal(stripeConfigured(), true);
+  if (prev === undefined) delete process.env.STRIPE_SECRET_KEY;
+  else process.env.STRIPE_SECRET_KEY = prev;
 });
 
 test('verifyPaymentIntent rejects amount mismatch', async () => {

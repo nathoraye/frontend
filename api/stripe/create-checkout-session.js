@@ -1,5 +1,6 @@
 import { errorStatus, readJsonBody, sendJson } from '../_lib/http.js';
 import { handleCreateCheckoutSession } from '../_lib/orderService.js';
+import { logStripeFailure, stripeErrorPayload } from '../_lib/stripeErrors.js';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -17,8 +18,11 @@ export default async function handler(req, res) {
     const payload = await handleCreateCheckoutSession(body, req);
     sendJson(res, 200, payload);
   } catch (error) {
-    sendJson(res, errorStatus(error), {
-      error: error instanceof Error ? error.message : 'Failed to create checkout session',
-    });
+    logStripeFailure('create-checkout-session', error);
+    sendJson(
+      res,
+      errorStatus(error),
+      stripeErrorPayload(error, 'Failed to create checkout session'),
+    );
   }
 }

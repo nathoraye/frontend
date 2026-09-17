@@ -8,27 +8,113 @@ import {
 } from './orderPricing.js';
 
 let stripeClient = null;
+let stripeClientKey = null;
+
+/** Non-secret classification of STRIPE_SECRET_KEY for health/diagnostics. */
+export function stripeSecretKeyShape(raw = process.env.STRIPE_SECRET_KEY) {
+  if (raw == null || raw === '') {
+    return { present: false, prefix: 'missing', length: 0, trimmedLength: 0, hasWhitespace: false };
+  }
+  const hasWhitespace = /\s/.test(raw);
+  const trimmed = raw.trim();
+  let prefix = 'other';
+  if (trimmed.startsWith('sk_live_')) prefix = 'sk_live';
+  else if (trimmed.startsWith('sk_test_')) prefix = 'sk_test';
+  else if (trimmed.startsWith('rk_live_')) prefix = 'rk_live';
+  else if (trimmed.startsWith('rk_test_')) prefix = 'rk_test';
+  else if (trimmed.startsWith('whsec_')) prefix = 'whsec';
+  else if (trimmed.startsWith('pk_')) prefix = 'pk';
+  return {
+    present: true,
+    prefix,
+    length: raw.length,
+    trimmedLength: trimmed.length,
+    hasWhitespace,
+  };
+}
 
 export function stripeConfigured() {
-  return Boolean(process.env.STRIPE_SECRET_KEY);
+  const shape = stripeSecretKeyShape();
+  return (
+    shape.present &&
+    shape.trimmedLength > 0 &&
+    (shape.prefix === 'sk_live' ||
+      shape.prefix === 'sk_test' ||
+      shape.prefix === 'rk_live' ||
+      shape.prefix === 'rk_test')
+  );
 }
 
 export function webhookSecretConfigured() {
-  return Boolean(process.env.STRIPE_WEBHOOK_SECRET);
+  return Boolean(process.env.STRIPE_WEBHOOK_SECRET?.trim());
 }
 
 export function allowUnverifiedOrders() {
   return process.env.ALLOW_UNVERIFIED_ORDERS === '1';
 }
 
+/**
+ * Resolve and validate the secret key. Never log the returned value.
+ * Uses fetch HTTP client — Node keepAlive agents break on Vercel serverless freezes
+ * and surface as StripeConnectionError ("connection to Stripe… retried 2 times").
+ */
 export function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error('Stripe secret key is not configured');
-  if (!stripeClient || stripeClient._apiKey !== key) {
-    stripeClient = new Stripe(key);
-    stripeClient._apiKey = key;
+  const raw = process.env.STRIPE_SECRET_KEY;
+  if (!raw || !raw.trim()) throw new Error('Stripe secret key is not configured');
+  const key = raw.trim();
+  const shape = stripeSecretKeyShape(raw);
+  if (shape.prefix === 'whsec') {
+    throw Object.assign(
+      new Error(
+        'STRIPE_SECRET_KEY looks like a webhook signing secret (whsec_…). Use the Secret key (sk_live_/sk_test_) or a restricted key (rk_…).',
+      ),
+      { status: 503 },
+    );
+  }
+  if (shape.prefix === 'pk') {
+    throw Object.assign(
+      new Error('STRIPE_SECRET_KEY looks like a publishable key (pk_…). Use the Secret key instead.'),
+      { status: 503 },
+    );
+  }
+  if (shape.prefix === 'other') {
+    throw Object.assign(
+      new Error(
+        'STRIPE_SECRET_KEY has an unexpected prefix. Expected sk_live_, sk_test_, rk_live_, or rk_test_.',
+      ),
+      { status: 503 },
+    );
+  }
+
+  if (!stripeClient || stripeClientKey !== key) {
+    stripeClient = new Stripe(key, {
+      httpClient: Stripe.createFetchHttpClient(),
+      maxNetworkRetries: 2,
+      timeout: 20000,
+    });
+    stripeClientKey = key;
   }
   return stripeClient;
+}
+
+/** Attach safe Stripe/network diagnostics onto thrown errors (no secrets). */
+export function annotateStripeError(error) {
+  if (!error || typeof error !== 'object') return error;
+  const detail = error.detail;
+  const networkCode =
+    detail?.code || detail?.cause?.code || (typeof detail?.errno === 'string' ? detail.errno : null);
+  const networkMessage =
+    typeof detail?.message === 'string'
+      ? detail.message.slice(0, 200)
+      : typeof detail?.cause?.message === 'string'
+        ? detail.cause.message.slice(0, 200)
+        : null;
+  error.stripeType = error.type || error.constructor?.name || null;
+  error.networkCode = networkCode;
+  error.networkMessage = networkMessage;
+  if (!error.status && error.type === 'StripeConnectionError') error.status = 502;
+  if (!error.status && error.type === 'StripeAuthenticationError') error.status = 502;
+  return error;
 }
 
 /** Convert AUD dollars to Stripe's smallest currency unit (cents). */
@@ -38,13 +124,17 @@ export function toStripeAmount(amount) {
 
 export async function createPaymentIntent({ amount, description, metadata = {} }) {
   const stripe = getStripe();
-  return stripe.paymentIntents.create({
-    amount: toStripeAmount(amount),
-    currency: ORDER_CURRENCY.toLowerCase(),
-    automatic_payment_methods: { enabled: true },
-    description: description || 'West Vinyl Studio order',
-    metadata,
-  });
+  try {
+    return await stripe.paymentIntents.create({
+      amount: toStripeAmount(amount),
+      currency: ORDER_CURRENCY.toLowerCase(),
+      automatic_payment_methods: { enabled: true },
+      description: description || 'West Vinyl Studio order',
+      metadata,
+    });
+  } catch (error) {
+    throw annotateStripeError(error);
+  }
 }
 
 /**
@@ -64,47 +154,51 @@ export async function createCheckoutSession(
       ? `Custom ${String(orderConfig.productId || 'apparel')}`
       : 'Custom vinyl sticker';
 
-  return stripe.checkout.sessions.create({
-    mode: 'payment',
-    customer_email: customerEmail,
-    client_reference_id: orderId,
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    line_items: [
-      {
-        quantity,
-        price_data: {
-          currency: ORDER_CURRENCY.toLowerCase(),
-          unit_amount: toStripeAmount(unit),
-          product_data: {
-            name: productName,
-            description: jobSummary(orderConfig).slice(0, 500),
+  try {
+    return await stripe.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: customerEmail,
+      client_reference_id: orderId,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      line_items: [
+        {
+          quantity,
+          price_data: {
+            currency: ORDER_CURRENCY.toLowerCase(),
+            unit_amount: toStripeAmount(unit),
+            product_data: {
+              name: productName,
+              description: jobSummary(orderConfig).slice(0, 500),
+            },
           },
         },
-      },
-      {
-        quantity: 1,
-        price_data: {
-          currency: ORDER_CURRENCY.toLowerCase(),
-          unit_amount: toStripeAmount(SHIPPING_COST),
-          product_data: { name: 'Shipping' },
+        {
+          quantity: 1,
+          price_data: {
+            currency: ORDER_CURRENCY.toLowerCase(),
+            unit_amount: toStripeAmount(SHIPPING_COST),
+            product_data: { name: 'Shipping' },
+          },
         },
-      },
-    ],
-    metadata: {
-      orderId,
-      orderType,
-      quantity: String(quantity),
-      ...metadata,
-    },
-    payment_intent_data: {
-      description: `West Vinyl Studio - ${orderType}`,
+      ],
       metadata: {
         orderId,
         orderType,
+        quantity: String(quantity),
+        ...metadata,
       },
-    },
-  });
+      payment_intent_data: {
+        description: `West Vinyl Studio - ${orderType}`,
+        metadata: {
+          orderId,
+          orderType,
+        },
+      },
+    });
+  } catch (error) {
+    throw annotateStripeError(error);
+  }
 }
 
 export async function retrieveCheckoutSession(sessionId, stripeClientOverride = null) {
@@ -112,7 +206,11 @@ export async function retrieveCheckoutSession(sessionId, stripeClientOverride = 
     throw Object.assign(new Error('Missing Checkout Session id'), { status: 400 });
   }
   const stripe = stripeClientOverride || getStripe();
-  return stripe.checkout.sessions.retrieve(sessionId, { expand: ['payment_intent'] });
+  try {
+    return await stripe.checkout.sessions.retrieve(sessionId, { expand: ['payment_intent'] });
+  } catch (error) {
+    throw annotateStripeError(error);
+  }
 }
 
 export function constructWebhookEvent(rawBody, signature, stripeClientOverride = null) {
@@ -142,7 +240,12 @@ export async function verifyPaymentIntent(paymentIntentId, expectedAmount, strip
   }
 
   const stripe = stripeClientOverride || getStripe();
-  const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  let intent;
+  try {
+    intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  } catch (error) {
+    throw annotateStripeError(error);
+  }
 
   if (intent.status !== 'succeeded') {
     throw Object.assign(

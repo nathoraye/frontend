@@ -15,6 +15,7 @@ import {
   createPaymentIntent,
   retrieveCheckoutSession,
   stripeConfigured,
+  stripeSecretKeyShape,
   toStripeAmount,
   verifyPaymentIntent,
 } from './stripe.js';
@@ -37,12 +38,20 @@ export function adminAuthorized(req) {
 }
 
 export function handleHealth() {
+  const keyShape = stripeSecretKeyShape();
   return {
     ok: true,
     service: 'west-vinyl-orders',
     checkout: {
       stripe: stripeConfigured(),
       unverifiedAllowed: allowUnverifiedOrders(),
+      // Non-secret key shape only — never includes the key value.
+      stripeKey: {
+        prefix: keyShape.prefix,
+        length: keyShape.length,
+        trimmedLength: keyShape.trimmedLength,
+        hasWhitespace: keyShape.hasWhitespace,
+      },
     },
     ordersStore: orderStoreLocation(),
   };
