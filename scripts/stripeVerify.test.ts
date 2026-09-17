@@ -3,6 +3,7 @@ import test from 'node:test';
 import Stripe from 'stripe';
 import {
   constructWebhookEvent,
+  getStripe,
   stripeConfigured,
   stripeSecretKeyShape,
   toStripeAmount,
@@ -111,4 +112,30 @@ test('constructWebhookEvent verifies a Stripe-signed payload', () => {
     () => constructWebhookEvent(payload, 't=1,v1=bad'),
     (err) => err.status === 400,
   );
+});
+
+test('constructWebhookEvent works when STRIPE_SECRET_KEY is a webhook secret', () => {
+  const secret = 'whsec_test_checkout';
+  process.env.STRIPE_WEBHOOK_SECRET = secret;
+  process.env.STRIPE_SECRET_KEY = 'whsec_misplaced_as_api_key';
+  const payload = JSON.stringify({
+    id: 'evt_test2',
+    type: 'checkout.session.completed',
+    data: { object: { id: 'cs_test2' } },
+  });
+  const stripe = new Stripe('sk_test_dummy');
+  const signature = stripe.webhooks.generateTestHeaderString({ payload, secret });
+  const event = constructWebhookEvent(payload, signature);
+  assert.equal(event.type, 'checkout.session.completed');
+});
+
+test('getStripe rejects whsec prefix with a specific 503', () => {
+  const prev = process.env.STRIPE_SECRET_KEY;
+  process.env.STRIPE_SECRET_KEY = 'whsec_oops';
+  assert.throws(
+    () => getStripe(),
+    (err) => err.status === 503 && /webhook signing secret/.test(err.message),
+  );
+  if (prev === undefined) delete process.env.STRIPE_SECRET_KEY;
+  else process.env.STRIPE_SECRET_KEY = prev;
 });

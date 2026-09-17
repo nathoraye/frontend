@@ -53,6 +53,24 @@ export function allowUnverifiedOrders() {
   return process.env.ALLOW_UNVERIFIED_ORDERS === '1';
 }
 
+function createFetchStripeClient(apiKey) {
+  return new Stripe(apiKey, {
+    httpClient: Stripe.createFetchHttpClient(),
+    maxNetworkRetries: 2,
+    timeout: 20000,
+  });
+}
+
+/**
+ * Throw a specific 503 when STRIPE_SECRET_KEY is present but not a usable secret/restricted key.
+ * No-op when the key is missing (caller may allow unverified local orders).
+ */
+export function assertStripeSecretUsable() {
+  const raw = process.env.STRIPE_SECRET_KEY;
+  if (!raw || !raw.trim()) return;
+  getStripe();
+}
+
 /**
  * Resolve and validate the secret key. Never log the returned value.
  * Uses fetch HTTP client — Node keepAlive agents break on Vercel serverless freezes
@@ -87,14 +105,18 @@ export function getStripe() {
   }
 
   if (!stripeClient || stripeClientKey !== key) {
-    stripeClient = new Stripe(key, {
-      httpClient: Stripe.createFetchHttpClient(),
-      maxNetworkRetries: 2,
-      timeout: 20000,
-    });
+    stripeClient = createFetchStripeClient(key);
     stripeClientKey = key;
   }
   return stripeClient;
+}
+
+/**
+ * Stripe client for local webhook signature verification only.
+ * Does not require a valid STRIPE_SECRET_KEY — constructEvent never calls the API.
+ */
+export function getStripeForWebhooks() {
+  return createFetchStripeClient('sk_test_webhook_verify_only');
 }
 
 /** Attach safe Stripe/network diagnostics onto thrown errors (no secrets). */
@@ -221,7 +243,8 @@ export function constructWebhookEvent(rawBody, signature, stripeClientOverride =
   if (!signature) {
     throw Object.assign(new Error('Missing Stripe-Signature header'), { status: 400 });
   }
-  const stripe = stripeClientOverride || getStripe();
+  // Signature verify is local crypto — do not require a valid API secret key.
+  const stripe = stripeClientOverride || getStripeForWebhooks();
   try {
     return stripe.webhooks.constructEvent(rawBody, signature, secret);
   } catch {
