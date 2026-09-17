@@ -11,9 +11,10 @@ import {
   handleStripeWebhookRequest,
   handleSubmitOrder,
 } from './api/_lib/orderService.js';
+import { readTrimmedEnv } from './api/_lib/stripe.js';
 
 // Local/dev convenience when Stripe secrets are absent. Vercel stays fail-closed.
-if (!process.env.STRIPE_SECRET_KEY && process.env.ALLOW_UNVERIFIED_ORDERS == null) {
+if (!readTrimmedEnv('STRIPE_SECRET_KEY') && process.env.ALLOW_UNVERIFIED_ORDERS == null) {
   process.env.ALLOW_UNVERIFIED_ORDERS = '1';
 }
 if (process.env.ALLOW_UNVERIFIED_ORDERS === '1' && process.env.ALLOW_PUBLIC_ORDER_LIST == null) {
