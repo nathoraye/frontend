@@ -42,8 +42,9 @@ test('Product Preview → Buy Sticker → local checkout → jobs board', async 
 
   await expect(page.getByRole('heading', { name: /payment received/i })).toBeVisible();
   await expect(page.getByText(orderId!)).toBeVisible();
+  await expect(page.getByRole('link', { name: /open jobs board/i })).toHaveCount(0);
 
-  await page.getByRole('link', { name: /open jobs board/i }).click();
+  await page.goto('/admin/orders');
   await expect(page).toHaveURL(/\/admin\/orders/);
   await expect(page.getByTestId('jobs-board')).toBeVisible();
   const jobCard = page.getByTestId('job-card').filter({ hasText: orderId! });
