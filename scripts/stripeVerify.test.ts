@@ -142,7 +142,7 @@ test('getStripe rejects whsec prefix with a specific 503', () => {
   else process.env.STRIPE_SECRET_KEY = prev;
 });
 
-test('trimmed env loader is used by health and Stripe clients without logging secrets', () => {
+test('trimmed env loader is used by health and Stripe clients without logging secrets', async () => {
   const prevSecret = process.env.STRIPE_SECRET_KEY;
   const prevWebhook = process.env.STRIPE_WEBHOOK_SECRET;
   const warns = [];
@@ -173,11 +173,13 @@ test('trimmed env loader is used by health and Stripe clients without logging se
     assert.equal(shape.length, 'sk_test_dummy'.length);
     assert.equal(stripeConfigured(), true);
 
-    const health = handleHealth();
+    const health = await handleHealth();
     assert.equal(health.checkout.stripe, true);
     assert.equal(health.checkout.stripeKey.hasWhitespace, false);
     assert.equal(health.checkout.stripeKey.length, health.checkout.stripeKey.trimmedLength);
     assert.equal(health.checkout.stripeKey.prefix, 'sk_test');
+    assert.equal(health.blob.ok, true);
+    assert.equal(health.blob.configured, false);
 
     assert.ok(getStripe());
 

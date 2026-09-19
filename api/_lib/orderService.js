@@ -27,7 +27,9 @@ import {
   fulfillmentOrderView,
   getOrderById,
   listOrders,
+  orderStoreAuthMode,
   orderStoreLocation,
+  probeOrderStore,
   publicConfirmation,
   publicOrderView,
   updateOrder,
@@ -44,7 +46,7 @@ export function adminAuthorized(req) {
   return header.slice(prefix.length).trim() === token;
 }
 
-export function handleHealth() {
+export async function handleHealth() {
   const keyShape = stripeSecretKeyShape();
   let smokeAmountCents = null;
   let smokeAmountInvalid = false;
@@ -53,8 +55,9 @@ export function handleHealth() {
   } catch {
     smokeAmountInvalid = true;
   }
+  const storeProbe = await probeOrderStore();
   return {
-    ok: true,
+    ok: storeProbe.ok,
     service: 'west-vinyl-orders',
     checkout: {
       stripe: stripeConfigured(),
@@ -73,6 +76,13 @@ export function handleHealth() {
       },
     },
     ordersStore: orderStoreLocation(),
+    // Non-secret blob diagnostics — never includes token values.
+    blob: {
+      configured: storeProbe.mode === 'blob',
+      auth: orderStoreAuthMode(),
+      ok: storeProbe.ok,
+      ...(storeProbe.error ? { error: storeProbe.error } : {}),
+    },
   };
 }
 

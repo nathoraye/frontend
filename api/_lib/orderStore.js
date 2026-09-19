@@ -9,12 +9,37 @@ const BLOB_NAME = 'west-vinyl-orders.json';
 function mode() {
   if (process.env.ORDER_STORE === 'blob') return 'blob';
   if (process.env.ORDER_STORE === 'file') return 'file';
-  if (process.env.BLOB_READ_WRITE_TOKEN) return 'blob';
+  // Prefer store id (OIDC on Vercel) over the legacy RW token. A stale/expired
+  // BLOB_READ_WRITE_TOKEN on a deployment must not be required for blob mode.
+  if (process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN) return 'blob';
   return 'file';
 }
 
 function filePath() {
   return process.env.ORDERS_FILE || defaultFile;
+}
+
+/**
+ * Auth options for @vercel/blob.
+ *
+ * Important: never pass an explicit `token` when `BLOB_STORE_ID` is set.
+ * resolveBlobAuth prefers options.token over OIDC, so an expired
+ * BLOB_READ_WRITE_TOKEN would force 403s even though VERCEL_OIDC_TOKEN works.
+ * With store id only, the SDK uses OIDC on Vercel, then falls back to the RW
+ * token from env when OIDC is unavailable (local tooling).
+ */
+function blobAuthOptions() {
+  const storeId = String(process.env.BLOB_STORE_ID || '').trim();
+  if (storeId) return { storeId };
+  const token = String(process.env.BLOB_READ_WRITE_TOKEN || '').trim();
+  if (token) return { token };
+  throw new Error('BLOB_STORE_ID or BLOB_READ_WRITE_TOKEN is required for blob order storage');
+}
+
+function blobAuthLabel() {
+  if (String(process.env.BLOB_STORE_ID || '').trim()) return 'oidc-or-store-id';
+  if (String(process.env.BLOB_READ_WRITE_TOKEN || '').trim()) return 'read-write-token';
+  return 'none';
 }
 
 async function ensureFile() {
@@ -38,31 +63,56 @@ async function writeFile(orders) {
 }
 
 async function readBlob() {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) throw new Error('BLOB_READ_WRITE_TOKEN is required for blob order storage');
+  const auth = blobAuthOptions();
   // Store is private — bare fetch(url) returns 403. Use authenticated get().
   const { get } = await import('@vercel/blob');
-  const result = await get(BLOB_NAME, { access: 'private', token, useCache: false });
+  const result = await get(BLOB_NAME, { access: 'private', useCache: false, ...auth });
   if (!result?.stream) return [];
   const text = await new Response(result.stream).text();
   return text ? JSON.parse(text) : [];
 }
 
 async function writeBlob(orders) {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) throw new Error('BLOB_READ_WRITE_TOKEN is required for blob order storage');
+  const auth = blobAuthOptions();
   const { put } = await import('@vercel/blob');
   await put(BLOB_NAME, JSON.stringify(orders, null, 2), {
     access: 'private',
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: 'application/json',
-    token,
+    ...auth,
   });
 }
 
 export function orderStoreLocation() {
   return mode() === 'blob' ? `vercel-blob:${BLOB_NAME}` : `file:${filePath()}`;
+}
+
+export function orderStoreAuthMode() {
+  return mode() === 'blob' ? blobAuthLabel() : 'file';
+}
+
+/** Lightweight read probe for /api/health — does not mutate the store. */
+export async function probeOrderStore() {
+  if (mode() !== 'blob') {
+    try {
+      await listOrders();
+      return { ok: true, mode: 'file', auth: 'file' };
+    } catch (err) {
+      return { ok: false, mode: 'file', auth: 'file', error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+  try {
+    await readBlob();
+    return { ok: true, mode: 'blob', auth: blobAuthLabel() };
+  } catch (err) {
+    return {
+      ok: false,
+      mode: 'blob',
+      auth: blobAuthLabel(),
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
 }
 
 export async function listOrders() {
