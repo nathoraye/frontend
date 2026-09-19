@@ -15,5 +15,6 @@ export default async function handler(req, res) {
     return;
   }
 
-  res.status(200).json(handleHealth());
+  const health = await handleHealth();
+  res.status(health.ok ? 200 : 503).json(health);
 }

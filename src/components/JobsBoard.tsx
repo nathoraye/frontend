@@ -28,7 +28,7 @@ function describeStore(store?: string) {
   }
   if (store.startsWith('file:')) {
     const file = store.replace(/^file:/, '');
-    return `Local file ${file} — used by server.mjs when BLOB_READ_WRITE_TOKEN is unset`;
+    return `Local file ${file} — used by server.mjs when Blob store id / token is unset`;
   }
   return store;
 }

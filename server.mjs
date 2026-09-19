@@ -30,7 +30,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/api/health') {
-      return sendJson(res, 200, handleHealth());
+      const health = await handleHealth();
+      return sendJson(res, health.ok ? 200 : 503, health);
     }
 
     if (url.pathname === '/api/trace') {

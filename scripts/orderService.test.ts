@@ -311,9 +311,10 @@ test('SMOKE_CHECKOUT_AMOUNT_CENTS=100 charges A$1.00 and webhook still fulfills'
     assert.equal(created.amount, '1.00');
     assert.equal(created.sessionId, 'cs_test_smoke');
 
-    const health = handleHealth();
+    const health = await handleHealth();
     assert.equal(health.checkout.smokeAmountCents, 100);
     assert.equal(health.checkout.smokeAmountInvalid, false);
+    assert.equal(health.blob.ok, true);
 
     const session = {
       id: 'cs_test_smoke',
