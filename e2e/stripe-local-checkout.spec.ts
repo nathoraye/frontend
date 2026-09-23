@@ -57,6 +57,13 @@ test('Product Preview → Buy Sticker → local checkout → jobs board', async 
     timeout: 10_000,
   });
   await expect(jobCard.getByRole('link', { name: /download svg/i })).toBeVisible();
+
+  await jobCard.getByRole('button', { name: /mark shipped/i }).click();
+  await expect(jobCard).toHaveCount(0);
+  await page.getByRole('button', { name: /^shipped \(/i }).click();
+  const shippedCard = page.getByTestId('job-card').filter({ hasText: orderId! });
+  await expect(shippedCard).toBeVisible();
+  await expect(shippedCard.getByText(/^shipped$/i)).toBeVisible();
 });
 
 test('Product Preview → Buy Apparel inherits colour/size/placement', async ({ page }) => {
@@ -95,4 +102,13 @@ test('Orders board routes and cancel page render', async ({ page }) => {
   await page.goto('/order/cancel?orderId=ord-demo');
   await expect(page.getByRole('heading', { name: /checkout cancelled/i })).toBeVisible();
   await expect(page.getByText('ord-demo')).toBeVisible();
+
+  await page.goto('/policies');
+  await expect(page.getByRole('heading', { name: /^policies$/i })).toBeVisible();
+  await page.getByRole('link', { name: /^privacy$/i }).click();
+  await expect(page.getByRole('heading', { name: /^privacy$/i })).toBeVisible();
+  await expect(page.getByText(/nathanriant@gmail.com/i)).toBeVisible();
+  await page.goto('/terms');
+  await expect(page.getByRole('heading', { name: /terms, shipping and returns/i })).toBeVisible();
+  await expect(page.getByText(/A\$18\.98/)).toBeVisible();
 });

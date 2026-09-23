@@ -240,6 +240,21 @@ export async function createCheckoutSession(
       client_reference_id: orderId,
       success_url: successUrl,
       cancel_url: cancelUrl,
+      // Customer-facing Checkout name. Account business_profile.name is still
+      // "West Vinyl co" in the Dashboard; this overrides the hosted pay page.
+      // Button color is dark enough for Stripe's white-label contrast check.
+      branding_settings: {
+        display_name: 'West Vinyl Studio',
+        button_color: '#7A1040',
+        background_color: '#ffffff',
+        border_style: 'rounded',
+      },
+      custom_text: {
+        submit: {
+          message:
+            'Custom vinyl and iron-on orders are made after payment. Questions: nathanriant@gmail.com',
+        },
+      },
       line_items: lineItems,
       metadata: {
         orderId,

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   getFulfillmentOrder,
   listFulfillmentOrders,
+  setFulfillmentStatus,
   type FulfillmentOrder,
 } from '../services/orderService';
 import { describeOrderJob, moneyString } from '../utils/orderPricing';
@@ -37,7 +38,21 @@ function statusClass(status?: string) {
   if (status === 'paid') return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
   if (status === 'unverified') return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
   if (status === 'cancelled') return 'bg-slate-500/20 text-slate-300 border-slate-500/40';
+  if (status === 'shipped') return 'bg-violet-500/20 text-violet-300 border-violet-500/40';
+  if (status === 'making') return 'bg-orange-500/20 text-orange-300 border-orange-500/40';
   return 'bg-sky-500/20 text-sky-300 border-sky-500/40';
+}
+
+type JobFilter = 'make' | 'shipped' | 'all';
+
+function shopStatus(order: FulfillmentOrder) {
+  if (order.status !== 'paid' && order.status !== 'unverified') return order.status || 'unknown';
+  return order.fulfillmentStatus || 'new';
+}
+
+function isToMake(order: FulfillmentOrder) {
+  const shop = shopStatus(order);
+  return (order.status === 'paid' || order.status === 'unverified') && shop !== 'shipped';
 }
 
 function stripeDashboardHref(paymentIntentId?: string | null) {
@@ -123,9 +138,12 @@ export function JobsBoard() {
   const [orders, setOrders] = useState<FulfillmentOrder[]>([]);
   const [store, setStore] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   const [listEpoch, setListEpoch] = useState(0);
+  const [filter, setFilter] = useState<JobFilter>('make');
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -158,10 +176,27 @@ export function JobsBoard() {
     setListEpoch((n) => n + 1);
   };
 
-  const paidCount = useMemo(
-    () => orders.filter((order) => order.status === 'paid' || order.status === 'unverified').length,
+  const toMake = useMemo(() => orders.filter(isToMake), [orders]);
+  const shipped = useMemo(
+    () => orders.filter((order) => shopStatus(order) === 'shipped'),
     [orders],
   );
+  const visible = filter === 'make' ? toMake : filter === 'shipped' ? shipped : orders;
+
+  const markJob = async (orderId: string, fulfillmentStatus: 'new' | 'making' | 'shipped') => {
+    setUpdatingId(orderId);
+    setActionError(null);
+    try {
+      const result = await setFulfillmentStatus(orderId, fulfillmentStatus, token || undefined);
+      setOrders((current) =>
+        current.map((order) => (order.id === orderId ? { ...order, ...result.order } : order)),
+      );
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Could not update job');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   return (
     <div className="min-h-[100dvh] bg-[#0f111a] px-4 py-6 text-slate-200" data-testid="jobs-board">
@@ -173,9 +208,8 @@ export function JobsBoard() {
             </p>
             <h1 className="text-2xl font-mono text-pink-500">Orders</h1>
             <p className="mt-1 max-w-xl text-sm text-slate-400">
-              Internal board for paid vinyl/apparel jobs. Open{' '}
-              <code className="text-pink-300">/admin/orders</code> after Stripe pays — jobs are
-              stored on the server (webhook), not only in the browser.
+              Paid vinyl and apparel jobs land here after Stripe. The queue starts on To make.
+              Pending checkouts stay under All until they are paid or expire.
             </p>
           </div>
           <a
@@ -214,15 +248,39 @@ export function JobsBoard() {
         <div className="space-y-1 font-mono text-xs text-slate-500">
           {store ? (
             <p>
-              Store: {describeStore(store)} · {paidCount} makeable job{paidCount === 1 ? '' : 's'}
+              Store: {describeStore(store)} · {toMake.length} to make · {shipped.length} shipped
             </p>
           ) : null}
+          <div className="flex flex-wrap gap-2 pt-2">
+            {(
+              [
+                ['make', `To make (${toMake.length})`],
+                ['shipped', `Shipped (${shipped.length})`],
+                ['all', `All (${orders.length})`],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setFilter(id)}
+                className={`min-h-9 rounded border px-3 font-mono text-xs ${
+                  filter === id
+                    ? 'border-pink-500 bg-pink-500/10 text-pink-300'
+                    : 'border-slate-700 text-slate-400 hover:bg-slate-800'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <p>
             Production URL: <code className="text-slate-400">/admin/orders</code> (alias{' '}
             <code className="text-slate-400">/jobs</code>). Token also accepted as{' '}
             <code className="text-slate-400">?token=</code>.
           </p>
         </div>
+
+        {actionError ? <p className="font-mono text-sm text-red-400">{actionError}</p> : null}
 
         {loading ? (
           <p className="font-mono text-sm text-slate-400">Loading jobs…</p>
@@ -236,11 +294,13 @@ export function JobsBoard() {
               </p>
             ) : null}
           </div>
-        ) : orders.length === 0 ? (
-          <p className="font-mono text-sm text-slate-400">No jobs yet.</p>
+        ) : visible.length === 0 ? (
+          <p className="font-mono text-sm text-slate-400">
+            {filter === 'make' ? 'Nothing to make right now.' : 'No jobs in this view.'}
+          </p>
         ) : (
           <ul className="space-y-3">
-            {orders.map((order) => {
+            {visible.map((order) => {
               const open = openId === order.id;
               const dashboard = stripeDashboardHref(order.paymentIntentId);
               return (
@@ -257,6 +317,13 @@ export function JobsBoard() {
                         >
                           {order.status || 'unknown'}
                         </span>
+                        {order.status === 'paid' || order.status === 'unverified' ? (
+                          <span
+                            className={`rounded border px-2 py-0.5 font-mono text-[10px] uppercase ${statusClass(shopStatus(order))}`}
+                          >
+                            {shopStatus(order)}
+                          </span>
+                        ) : null}
                         <span className="font-mono text-sm text-pink-400">
                           {describeOrderJob(order.orderConfig)}
                         </span>
@@ -302,6 +369,36 @@ export function JobsBoard() {
                     >
                       {open ? 'Hide design' : 'Show design'}
                     </button>
+                    {isToMake(order) && shopStatus(order) === 'new' ? (
+                      <button
+                        type="button"
+                        disabled={updatingId === order.id}
+                        onClick={() => void markJob(order.id, 'making')}
+                        className="min-h-10 rounded border border-orange-500 px-3 font-mono text-xs text-orange-300 hover:bg-orange-500/10 disabled:opacity-50"
+                      >
+                        Start making
+                      </button>
+                    ) : null}
+                    {isToMake(order) ? (
+                      <button
+                        type="button"
+                        disabled={updatingId === order.id}
+                        onClick={() => void markJob(order.id, 'shipped')}
+                        className="min-h-10 rounded border border-violet-500 px-3 font-mono text-xs text-violet-300 hover:bg-violet-500/10 disabled:opacity-50"
+                      >
+                        Mark shipped
+                      </button>
+                    ) : null}
+                    {shopStatus(order) === 'shipped' ? (
+                      <button
+                        type="button"
+                        disabled={updatingId === order.id}
+                        onClick={() => void markJob(order.id, 'new')}
+                        className="min-h-10 rounded border border-slate-600 px-3 font-mono text-xs hover:bg-slate-800 disabled:opacity-50"
+                      >
+                        Reopen
+                      </button>
+                    ) : null}
                     {dashboard ? (
                       <a
                         href={dashboard}

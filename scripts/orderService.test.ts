@@ -12,6 +12,7 @@ import {
   handleHealth,
   handleListOrders,
   handleSessionStatus,
+  handleSetFulfillment,
   handleStripeEvent,
   handleSubmitOrder,
 } from '../api/_lib/orderService.js';
@@ -227,10 +228,14 @@ test('createCheckoutSession uses mocked Stripe when configured', async () => {
   const fakeStripe = {
     checkout: {
       sessions: {
-        async create(params) {
+          async create(params) {
           assert.equal(params.mode, 'payment');
           assert.equal(params.customer_email, 'ada@example.com');
           assert.ok(!('payment_method_types' in params));
+          assert.equal(params.branding_settings.display_name, 'West Vinyl Studio');
+          assert.equal(params.branding_settings.button_color, '#7A1040');
+          assert.match(params.success_url, /\/order\/success\?session_id=\{CHECKOUT_SESSION_ID\}$/);
+          assert.match(params.cancel_url, /\/order\/cancel\?orderId=/);
           assert.equal(params.line_items.length, 2);
           assert.equal(params.line_items[0].price_data.unit_amount, 1299);
           assert.equal(params.line_items[1].price_data.unit_amount, 599);
@@ -340,6 +345,76 @@ test('SMOKE_CHECKOUT_AMOUNT_CENTS=100 charges A$1.00 and webhook still fulfills'
     else process.env.STRIPE_SECRET_KEY = prevKey;
     if (prevSmoke === undefined) delete process.env.SMOKE_CHECKOUT_AMOUNT_CENTS;
     else process.env.SMOKE_CHECKOUT_AMOUNT_CENTS = prevSmoke;
+    await fs.unlink(file).catch(() => {});
+  }
+});
+
+test('paid jobs can move new → making → shipped without a second fulfill', async () => {
+  const file = path.join(os.tmpdir(), `wvs-fulfillment-${Date.now()}-${Math.random().toString(16).slice(2)}.json`);
+  const prev = {
+    unverified: process.env.ALLOW_UNVERIFIED_ORDERS,
+    publicList: process.env.ALLOW_PUBLIC_ORDER_LIST,
+    store: process.env.ORDER_STORE,
+    ordersFile: process.env.ORDERS_FILE,
+    stripe: process.env.STRIPE_SECRET_KEY,
+    admin: process.env.ORDERS_ADMIN_TOKEN,
+  };
+  process.env.ALLOW_UNVERIFIED_ORDERS = '1';
+  process.env.ALLOW_PUBLIC_ORDER_LIST = '1';
+  process.env.ORDER_STORE = 'file';
+  process.env.ORDERS_FILE = file;
+  delete process.env.STRIPE_SECRET_KEY;
+  delete process.env.ORDERS_ADMIN_TOKEN;
+
+  try {
+    const created = await handleCreateCheckoutSession(
+      {
+        customer,
+        orderConfig: { orderType: 'vinyl', quantity: 1 },
+        designSvg,
+        origin: 'http://127.0.0.1:5173',
+      },
+      { headers: {} },
+    );
+
+    const making = await handleSetFulfillment(
+      { headers: {} },
+      created.orderId,
+      { fulfillmentStatus: 'making' },
+    );
+    assert.equal(making.order.fulfillmentStatus, 'making');
+
+    const shipped = await handleSetFulfillment(
+      { headers: {} },
+      created.orderId,
+      { fulfillmentStatus: 'shipped' },
+    );
+    assert.equal(shipped.order.fulfillmentStatus, 'shipped');
+    assert.ok(shipped.order.shippedAt);
+
+    process.env.ORDERS_ADMIN_TOKEN = 'secret-admin';
+    process.env.ALLOW_PUBLIC_ORDER_LIST = '0';
+    await assert.rejects(
+      () => handleSetFulfillment({ headers: {} }, created.orderId, { fulfillmentStatus: 'new' }),
+      (err) => err.status === 401,
+    );
+    const reopened = await handleSetFulfillment(
+      { headers: { authorization: 'Bearer secret-admin' } },
+      created.orderId,
+      { fulfillmentStatus: 'new' },
+    );
+    assert.equal(reopened.order.fulfillmentStatus, 'new');
+  } finally {
+    const restore = (key, value) => {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    };
+    restore('ALLOW_UNVERIFIED_ORDERS', prev.unverified);
+    restore('ALLOW_PUBLIC_ORDER_LIST', prev.publicList);
+    restore('ORDER_STORE', prev.store);
+    restore('ORDERS_FILE', prev.ordersFile);
+    restore('STRIPE_SECRET_KEY', prev.stripe);
+    restore('ORDERS_ADMIN_TOKEN', prev.admin);
     await fs.unlink(file).catch(() => {});
   }
 });

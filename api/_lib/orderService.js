@@ -476,6 +476,43 @@ export async function handleGetOrder(req, orderId) {
   return { order: fulfillmentOrderView(order, { includeDesign: true }) };
 }
 
+const FULFILLMENT_STATUSES = new Set(['new', 'making', 'shipped']);
+
+function fulfillmentWriteAuthorized(req) {
+  if (adminAuthorized(req)) return true;
+  const token = String(process.env.ORDERS_ADMIN_TOKEN || '').trim();
+  // Local server.mjs opens the board when no admin token is configured.
+  return (
+    !token &&
+    (process.env.ALLOW_PUBLIC_ORDER_LIST === '1' || process.env.ALLOW_UNVERIFIED_ORDERS === '1')
+  );
+}
+
+/** Move a paid job through the shop: new → making → shipped. */
+export async function handleSetFulfillment(req, orderId, payload = {}) {
+  if (!fulfillmentWriteAuthorized(req)) {
+    throw Object.assign(new Error('Unauthorized'), { status: 401 });
+  }
+  const nextStatus = String(payload.fulfillmentStatus || '').trim();
+  if (!FULFILLMENT_STATUSES.has(nextStatus)) {
+    throw Object.assign(new Error('fulfillmentStatus must be new, making, or shipped'), {
+      status: 400,
+    });
+  }
+  const order = await getOrderById(orderId);
+  if (!order) throw Object.assign(new Error('Order not found'), { status: 404 });
+  if (order.status !== 'paid' && order.status !== 'unverified') {
+    throw Object.assign(new Error('Only paid jobs can be updated'), { status: 409 });
+  }
+  const now = new Date().toISOString();
+  const updated = await updateOrder(order.id, {
+    fulfillmentStatus: nextStatus,
+    fulfillmentUpdatedAt: now,
+    ...(nextStatus === 'shipped' ? { shippedAt: now } : {}),
+  });
+  return { order: fulfillmentOrderView(updated, { includeDesign: false }) };
+}
+
 export {
   calculateOrderTotal,
   checkoutChargeAmount,

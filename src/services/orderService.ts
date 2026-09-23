@@ -96,6 +96,9 @@ export interface FulfillmentOrder {
   paymentIntentId?: string | null;
   chargeId?: string | null;
   payerEmail?: string | null;
+  fulfillmentStatus?: 'new' | 'making' | 'shipped' | null;
+  fulfillmentUpdatedAt?: string | null;
+  shippedAt?: string | null;
   hasDesign?: boolean;
   designSvg?: string;
 }
@@ -163,6 +166,22 @@ export async function listFulfillmentOrders(adminToken?: string): Promise<{
   const response = await fetch(`${API_BASE_URL}/api/orders`, { headers });
   if (!response.ok) throw new Error(await readError(response));
   return response.json() as Promise<{ orders: FulfillmentOrder[]; store?: string }>;
+}
+
+export async function setFulfillmentStatus(
+  orderId: string,
+  fulfillmentStatus: 'new' | 'making' | 'shipped',
+  adminToken?: string,
+): Promise<{ order: FulfillmentOrder }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (adminToken) headers.Authorization = `Bearer ${adminToken}`;
+  const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(orderId)}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ fulfillmentStatus }),
+  });
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json() as Promise<{ order: FulfillmentOrder }>;
 }
 
 export async function getFulfillmentOrder(

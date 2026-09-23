@@ -458,8 +458,15 @@ function StepShippingPayment({
                 </p>
               ) : (
                 <p className="text-xs font-mono text-gray-400">
-                  You will be redirected to Stripe Checkout to pay. The vinyl/apparel job is saved
-                  first so it still shows up after payment.
+                  You will be redirected to Stripe Checkout to pay. We make the sticker or iron-on
+                  after payment and ship it to this address.{' '}
+                  <a className="text-pink-300 hover:text-pink-200" href="/terms">
+                    Shipping and returns
+                  </a>
+                  {' · '}
+                  <a className="text-pink-300 hover:text-pink-200" href="/privacy">
+                    Privacy
+                  </a>
                 </p>
               )}
               <button
