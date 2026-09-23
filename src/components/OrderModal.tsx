@@ -362,13 +362,9 @@ function StepShippingPayment({
         </div>
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          return false;
-        }}
-        className="space-y-4"
-      >
+      {/* Div, not a form: Chrome's "Save address?" prompt treats a form submit as a
+          navigation and reloads the studio before we can redirect to /order/success. */}
+      <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4 pb-28">
           <input
             {...register('fullName', { required: 'Full name required' })}
@@ -479,7 +475,7 @@ function StepShippingPayment({
             </div>
           )}
         </div>
-      </form>
+      </div>
     </div>
   );
 }
