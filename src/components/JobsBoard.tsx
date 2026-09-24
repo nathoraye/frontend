@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   getFulfillmentOrder,
   listFulfillmentOrders,
+  loginJobsAdmin,
   setFulfillmentStatus,
   type FulfillmentOrder,
 } from '../services/orderService';
@@ -134,7 +135,11 @@ function JobDesignPanel({ orderId, token }: { orderId: string; token: string }) 
 
 export function JobsBoard() {
   const [token, setToken] = useState(() => readTokenFromLocation());
-  const [tokenInput, setTokenInput] = useState(token);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
+  const [needsLogin, setNeedsLogin] = useState(false);
   const [orders, setOrders] = useState<FulfillmentOrder[]>([]);
   const [store, setStore] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -153,11 +158,19 @@ export function JobsBoard() {
         setOrders(result.orders);
         setStore(result.store || '');
         setError(null);
+        setNeedsLogin(false);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
+        const message = err instanceof Error ? err.message : 'Could not load jobs';
         setOrders([]);
-        setError(err instanceof Error ? err.message : 'Could not load jobs');
+        if (/unauthor/i.test(message)) {
+          setNeedsLogin(true);
+          setError(null);
+          return;
+        }
+        setNeedsLogin(false);
+        setError(message);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -167,13 +180,33 @@ export function JobsBoard() {
     };
   }, [token, listEpoch]);
 
-  const saveToken = () => {
-    const next = tokenInput.trim();
-    sessionStorage.setItem(TOKEN_KEY, next);
-    setLoading(true);
+  const signIn = async () => {
+    setSigningIn(true);
+    setLoginError(null);
+    try {
+      const result = await loginJobsAdmin(username.trim(), password);
+      sessionStorage.setItem(TOKEN_KEY, result.token);
+      setPassword('');
+      setNeedsLogin(false);
+      setLoading(true);
+      setError(null);
+      setToken(result.token);
+      setListEpoch((n) => n + 1);
+    } catch (err: unknown) {
+      setLoginError(err instanceof Error ? err.message : 'Could not sign in');
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
+  const signOut = () => {
+    sessionStorage.removeItem(TOKEN_KEY);
+    setToken('');
+    setOrders([]);
+    setNeedsLogin(true);
+    setLoading(false);
     setError(null);
-    setToken(next);
-    setListEpoch((n) => n + 1);
+    setActionError(null);
   };
 
   const toMake = useMemo(() => orders.filter(isToMake), [orders]);
@@ -212,39 +245,68 @@ export function JobsBoard() {
               Pending checkouts stay under All until they are paid or expire.
             </p>
           </div>
-          <a
-            href="/"
-            className="inline-flex min-h-11 items-center rounded border border-slate-600 px-3 font-mono text-sm hover:bg-slate-800"
-          >
-            Studio
-          </a>
+          <div className="flex flex-wrap gap-2">
+            {token ? (
+              <button
+                type="button"
+                onClick={signOut}
+                className="inline-flex min-h-11 items-center rounded border border-slate-600 px-3 font-mono text-sm hover:bg-slate-800"
+              >
+                Sign out
+              </button>
+            ) : null}
+            <a
+              href="/"
+              className="inline-flex min-h-11 items-center rounded border border-slate-600 px-3 font-mono text-sm hover:bg-slate-800"
+            >
+              Studio
+            </a>
+          </div>
         </div>
 
-        <form
-          className="flex flex-col gap-2 rounded border border-slate-800 bg-[#181a25] p-4 sm:flex-row sm:items-end"
-          onSubmit={(event) => {
-            event.preventDefault();
-            saveToken();
-          }}
-        >
-          <label className="flex-1 space-y-1 font-mono text-xs text-slate-400">
-            <span>ORDERS_ADMIN_TOKEN (Vercel env → paste here)</span>
-            <input
-              type="password"
-              value={tokenInput}
-              onChange={(event) => setTokenInput(event.target.value)}
-              placeholder="Required on Vercel production; local list is open without Stripe"
-              className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
-            />
-          </label>
-          <button
-            type="submit"
-            className="min-h-11 rounded bg-pink-500 px-4 font-mono text-sm text-gray-900 hover:bg-pink-600"
+        {needsLogin ? (
+          <form
+            className="space-y-3 rounded border border-slate-800 bg-[#181a25] p-4"
+            data-testid="jobs-login"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void signIn();
+            }}
           >
-            Load orders
-          </button>
-        </form>
+            <p className="font-mono text-sm text-slate-300">Sign in to open the jobs board.</p>
+            <label className="block space-y-1 font-mono text-xs text-slate-400">
+              <span>Username</span>
+              <input
+                name="username"
+                autoComplete="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+              />
+            </label>
+            <label className="block space-y-1 font-mono text-xs text-slate-400">
+              <span>Password</span>
+              <input
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+              />
+            </label>
+            {loginError ? <p className="font-mono text-sm text-red-400">{loginError}</p> : null}
+            <button
+              type="submit"
+              disabled={signingIn}
+              className="min-h-11 rounded bg-pink-500 px-4 font-mono text-sm text-gray-900 hover:bg-pink-600 disabled:opacity-50"
+            >
+              {signingIn ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
+        ) : null}
 
+        {needsLogin ? null : (
         <div className="space-y-1 font-mono text-xs text-slate-500">
           {store ? (
             <p>
@@ -275,24 +337,18 @@ export function JobsBoard() {
           </div>
           <p>
             Production URL: <code className="text-slate-400">/admin/orders</code> (alias{' '}
-            <code className="text-slate-400">/jobs</code>). Token also accepted as{' '}
-            <code className="text-slate-400">?token=</code>.
+            <code className="text-slate-400">/jobs</code>).
           </p>
         </div>
+        )}
 
         {actionError ? <p className="font-mono text-sm text-red-400">{actionError}</p> : null}
 
-        {loading ? (
+        {needsLogin ? null : loading ? (
           <p className="font-mono text-sm text-slate-400">Loading jobs…</p>
         ) : error ? (
           <div className="space-y-1">
             <p className="font-mono text-sm text-red-400">{error}</p>
-            {/unauthor/i.test(error) ? (
-              <p className="font-mono text-xs text-amber-400">
-                Paste <code>ORDERS_ADMIN_TOKEN</code> from the Vercel project env and click Load
-                orders.
-              </p>
-            ) : null}
           </div>
         ) : visible.length === 0 ? (
           <p className="font-mono text-sm text-slate-400">

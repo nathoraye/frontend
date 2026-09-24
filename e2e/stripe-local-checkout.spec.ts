@@ -94,7 +94,7 @@ test('Orders board routes and cancel page render', async ({ page }) => {
   await page.goto('/admin/orders');
   await expect(page.getByTestId('jobs-board')).toBeVisible();
   await expect(page.getByRole('heading', { name: /^orders$/i })).toBeVisible();
-  await expect(page.getByText(/ORDERS_ADMIN_TOKEN/i)).toBeVisible();
+  await expect(page.getByText(/ORDERS_ADMIN_TOKEN/i)).toHaveCount(0);
 
   await page.goto('/jobs');
   await expect(page.getByTestId('jobs-board')).toBeVisible();

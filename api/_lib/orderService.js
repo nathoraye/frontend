@@ -22,6 +22,7 @@ import {
   toStripeAmount,
   verifyPaymentIntent,
 } from './stripe.js';
+import { sessionTokenValid } from './adminSession.js';
 import {
   appendOrder,
   fulfillmentOrderView,
@@ -36,14 +37,16 @@ import {
 } from './orderStore.js';
 
 export function adminAuthorized(req) {
-  const token = String(process.env.ORDERS_ADMIN_TOKEN || '').trim();
-  if (!token) return false;
   const header = String(req.headers?.authorization || req.headers?.Authorization || '');
   const prefix = 'Bearer ';
   if (!header.startsWith(prefix)) return false;
   // Trim both sides: Vercel/.env values often include a trailing newline, and the
-  // jobs board already trims pasted / ?token= values before sending Bearer.
-  return header.slice(prefix.length).trim() === token;
+  // jobs board trims values before sending Bearer.
+  const presented = header.slice(prefix.length).trim();
+  if (!presented) return false;
+  const token = String(process.env.ORDERS_ADMIN_TOKEN || '').trim();
+  if (token && presented === token) return true;
+  return sessionTokenValid(presented);
 }
 
 export async function handleHealth() {

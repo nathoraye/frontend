@@ -157,6 +157,21 @@ export async function fetchSessionStatus(params: {
   return response.json() as Promise<SessionStatusResult>;
 }
 
+export async function loginJobsAdmin(
+  username: string,
+  password: string,
+): Promise<{ token: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!response.ok) throw new Error(await readError(response));
+  const data = (await response.json()) as { token?: string };
+  if (!data.token) throw new Error('Sign-in did not return a session');
+  return { token: data.token };
+}
+
 export async function listFulfillmentOrders(adminToken?: string): Promise<{
   orders: FulfillmentOrder[];
   store?: string;
