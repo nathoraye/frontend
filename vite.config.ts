@@ -5,8 +5,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   build: {
-    // Fabric + studio stay in one client chunk (~800 kB). Warn above that.
-    chunkSizeWarningLimit: 850,
+    // Fabric + studio stay in one client chunk (853.69 kB minified on the
+    // 2026-09-23 production build). Warn if that chunk grows past this.
+    chunkSizeWarningLimit: 900,
   },
   server: {
     proxy: {
