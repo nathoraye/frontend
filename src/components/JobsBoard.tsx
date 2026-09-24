@@ -232,9 +232,12 @@ export function JobsBoard() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#0f111a] px-4 py-6 text-slate-200" data-testid="jobs-board">
-      <div className="mx-auto w-full max-w-4xl space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+    <div
+      className="flex h-[100dvh] flex-col overflow-hidden bg-[#0f111a] px-4 py-6 text-slate-200"
+      data-testid="jobs-board"
+    >
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col gap-4">
+        <div className="flex shrink-0 flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-black tracking-widest text-pink-400 uppercase">
               West Vinyl Studio
@@ -307,7 +310,7 @@ export function JobsBoard() {
         ) : null}
 
         {needsLogin ? null : (
-        <div className="space-y-1 font-mono text-xs text-slate-500">
+        <div className="shrink-0 space-y-1 font-mono text-xs text-slate-500">
           {store ? (
             <p>
               Store: {describeStore(store)} · {toMake.length} to make · {shipped.length} shipped
@@ -342,20 +345,25 @@ export function JobsBoard() {
         </div>
         )}
 
-        {actionError ? <p className="font-mono text-sm text-red-400">{actionError}</p> : null}
+        {actionError ? <p className="shrink-0 font-mono text-sm text-red-400">{actionError}</p> : null}
 
-        {needsLogin ? null : loading ? (
-          <p className="font-mono text-sm text-slate-400">Loading jobs…</p>
+        {needsLogin ? null : (
+        <div
+          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain rounded-md border border-slate-800"
+          data-testid="jobs-scroll"
+        >
+        {loading ? (
+          <p className="p-3 font-mono text-sm text-slate-400">Loading jobs…</p>
         ) : error ? (
-          <div className="space-y-1">
+          <div className="space-y-1 p-3">
             <p className="font-mono text-sm text-red-400">{error}</p>
           </div>
         ) : visible.length === 0 ? (
-          <p className="font-mono text-sm text-slate-400">
+          <p className="p-3 font-mono text-sm text-slate-400">
             {filter === 'make' ? 'Nothing to make right now.' : 'No jobs in this view.'}
           </p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-3 p-1">
             {visible.map((order) => {
               const open = openId === order.id;
               const dashboard = stripeDashboardHref(order.paymentIntentId);
@@ -471,6 +479,8 @@ export function JobsBoard() {
               );
             })}
           </ul>
+        )}
+        </div>
         )}
       </div>
     </div>
