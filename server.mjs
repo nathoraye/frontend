@@ -12,6 +12,7 @@ import {
   handleStripeWebhookRequest,
   handleSubmitOrder,
 } from './api/_lib/orderService.js';
+import { handleAdminLogin } from './api/_lib/adminSession.js';
 import { readTrimmedEnv } from './api/_lib/stripe.js';
 
 // Local/dev convenience when Stripe secrets are absent. Vercel stays fail-closed.
@@ -63,6 +64,11 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/stripe/create-payment-intent') {
       const body = await readJsonBody(req);
       return sendJson(res, 200, await handleCreatePaymentIntent(body));
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/admin/login') {
+      const body = await readJsonBody(req);
+      return sendJson(res, 200, handleAdminLogin(body));
     }
 
     if (req.method === 'GET' && url.pathname === '/api/orders') {
