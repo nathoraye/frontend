@@ -90,6 +90,12 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
     }
 
     tightPackWeldObject(activeObj);
+    const withDims = activeObj as fabric.Object & {
+      setDimensions?: () => void;
+      triggerLayout?: () => void;
+    };
+    withDims.setDimensions?.();
+    withDims.triggerLayout?.();
     activeObj.setCoords();
     canvas.requestRenderAll();
     saveHistorySnapshot(canvas, true);
