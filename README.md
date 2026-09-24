@@ -103,7 +103,8 @@ Content (bubblewrap generates the exact fingerprint for you):
 - Export pipeline: `src/utils/exportPipeline.ts` — SVGO optimisation + DOMPurify sanitisation.
 - Geometry validation: `src/utils/geometryValidation.ts` — validates cut paths including full Bezier C/Q/S/T/A support.
 - Checkout: `src/components/OrderModal.tsx` — 2-step flow (product review → shipping) that creates a Stripe Checkout Session and redirects. Local unverified jobs are saved when `STRIPE_SECRET_KEY` is unset.
-- After payment: open **`/admin/orders`** (alias `/jobs`) to see the paid vinyl/apparel job (design SVG, size/finish or garment, customer, download). Paste `ORDERS_ADMIN_TOKEN` from Vercel env. Stripe Dashboard shows the payment only. There is no Appwrite collection. Production orders live in Vercel Blob `west-vinyl-orders.json` when `BLOB_READ_WRITE_TOKEN` is set; local `server.mjs` uses `data/orders.json`.
+- After payment: open **`/admin/orders`** (alias `/jobs`) to see the paid vinyl/apparel job (design SVG, size/finish or garment, customer, download). Paste `ORDERS_ADMIN_TOKEN` from Vercel env. The customer-facing studio does not link here. Stripe Dashboard shows the payment only. There is no Appwrite collection. Production orders live in Vercel Blob `west-vinyl-orders.json` (`BLOB_STORE_ID` / OIDC). Local `server.mjs` uses `data/orders.json`.
+- Public pages for ads and checkout: `/policies`, `/privacy`, `/terms`, `/contact`. Canonical site origin is `https://westvinylstudio.com` (`PUBLIC_APP_URL`).
 
 ---
 
@@ -115,7 +116,7 @@ Checkout is a **Stripe Checkout Session** (`mode: payment`) for one-time custom 
 
 | Place | What you see |
 | --- | --- |
-| **`/admin/orders` (primary; alias `/jobs`)** | What to make: vinyl size/finish or apparel product/colour/size, customer address, design preview, SVG download. Gate with `ORDERS_ADMIN_TOKEN` on Vercel. |
+| **`/admin/orders` (primary; alias `/jobs`)** | What to make: vinyl size/finish or apparel product/colour/size, customer address, design preview, SVG download. Default view is **To make**. Mark a job making or shipped there. Gate with `ORDERS_ADMIN_TOKEN` on Vercel. |
 | **Stripe Dashboard → Payments / Checkout Sessions** | Money movement, receipt email, `metadata.orderId`. Not the cut file. |
 | **Vercel Blob `west-vinyl-orders.json`** | Durable store when `BLOB_READ_WRITE_TOKEN` is set on project `frontendwvs`. |
 | **`data/orders.json`** | Local/dev store used by `server.mjs`. |
@@ -144,7 +145,7 @@ Set on the Vercel project (Preview + Production). Do not commit secrets.
 
 ### Exact access steps (Nathan)
 
-1. **URL:** `https://<your-deployment>/admin/orders` (also `/jobs`). Studio header **Orders** opens this page.
+1. **URL:** `https://westvinylstudio.com/admin/orders` (also `/jobs`). The studio header does not link here. Bookmark this URL.
 2. **Token:** Vercel project `frontendwvs` → Settings → Environment Variables → `ORDERS_ADMIN_TOKEN`. Paste it in the box (or `?token=`). Local `server.mjs` without Stripe leaves the list open.
 3. **Where the rows live:** Vercel Blob `west-vinyl-orders.json` when `BLOB_READ_WRITE_TOKEN` is set; otherwise local `data/orders.json`. The board prints the active store at the top.
 4. **How a paid row gets there:** checkout `POST /api/stripe/create-checkout-session` writes the job + SVG on the server first; Stripe `POST /api/stripe/webhook` (`checkout.session.completed`) marks it `paid`. Not a browser-only POST after pay.

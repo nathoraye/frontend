@@ -16,12 +16,20 @@ export function OrderCancelPage() {
             Pending job {orderId} stays unpaid until you complete Stripe Checkout.
           </p>
         ) : null}
-        <a
-          href="/"
-          className="inline-flex min-h-11 items-center justify-center rounded bg-pink-500 px-4 font-mono text-sm text-gray-900 hover:bg-pink-600"
-        >
-          Back to studio
-        </a>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <a
+            href="/"
+            className="inline-flex min-h-11 items-center justify-center rounded bg-pink-500 px-4 font-mono text-sm text-gray-900 hover:bg-pink-600"
+          >
+            Back to studio
+          </a>
+          <a
+            href="/terms"
+            className="inline-flex min-h-11 items-center justify-center rounded border border-slate-600 px-4 font-mono text-sm hover:bg-slate-800"
+          >
+            Shipping and returns
+          </a>
+        </div>
       </div>
     </div>
   );

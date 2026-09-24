@@ -1,5 +1,5 @@
-import { errorStatus, sendJson } from '../_lib/http.js';
-import { handleGetOrder } from '../_lib/orderService.js';
+import { errorStatus, readJsonBody, sendJson } from '../_lib/http.js';
+import { handleGetOrder, handleSetFulfillment } from '../_lib/orderService.js';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (req.method !== 'GET') {
+  if (req.method !== 'GET' && req.method !== 'POST') {
     sendJson(res, 405, { error: 'Method not allowed' });
     return;
   }
@@ -16,6 +16,12 @@ export default async function handler(req, res) {
     const orderId = req.query?.id;
     if (!orderId) {
       sendJson(res, 400, { error: 'Missing order id' });
+      return;
+    }
+    if (req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const payload = await handleSetFulfillment(req, orderId, body);
+      sendJson(res, 200, payload);
       return;
     }
     const payload = await handleGetOrder(req, orderId);

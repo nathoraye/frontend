@@ -362,13 +362,9 @@ function StepShippingPayment({
         </div>
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          return false;
-        }}
-        className="space-y-4"
-      >
+      {/* Div, not a form: Chrome's "Save address?" prompt treats a form submit as a
+          navigation and reloads the studio before we can redirect to /order/success. */}
+      <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4 pb-28">
           <input
             {...register('fullName', { required: 'Full name required' })}
@@ -458,8 +454,15 @@ function StepShippingPayment({
                 </p>
               ) : (
                 <p className="text-xs font-mono text-gray-400">
-                  You will be redirected to Stripe Checkout to pay. The vinyl/apparel job is saved
-                  first so it still shows up after payment.
+                  You will be redirected to Stripe Checkout to pay. We make the sticker or iron-on
+                  after payment and ship it to this address.{' '}
+                  <a className="text-pink-300 hover:text-pink-200" href="/terms">
+                    Shipping and returns
+                  </a>
+                  {' · '}
+                  <a className="text-pink-300 hover:text-pink-200" href="/privacy">
+                    Privacy
+                  </a>
                 </p>
               )}
               <button
@@ -472,7 +475,7 @@ function StepShippingPayment({
             </div>
           )}
         </div>
-      </form>
+      </div>
     </div>
   );
 }

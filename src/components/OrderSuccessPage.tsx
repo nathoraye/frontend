@@ -36,8 +36,8 @@ export function OrderSuccessPage() {
               {status.unverified
                 ? 'Saved as a local unverified job (no Stripe capture).'
                 : status.status === 'paid'
-                  ? 'Stripe marked this session paid. The cut job is on the Jobs board.'
-                  : `Order status: ${status.status}.`}
+                  ? 'Stripe marked this order paid. We will make the custom piece and ship it to the address you entered. The receipt goes to your email.'
+                  : `Order status: ${status.status}. If this stays unpaid, no charge was taken.`}
             </p>
             <div className="rounded border border-slate-700 bg-slate-950/60 p-3 space-y-1">
               <div className="flex justify-between gap-4">
@@ -67,6 +67,12 @@ export function OrderSuccessPage() {
             className="inline-flex min-h-11 items-center justify-center rounded bg-pink-500 px-4 font-mono text-sm text-gray-900 hover:bg-pink-600"
           >
             Back to studio
+          </a>
+          <a
+            href="/contact"
+            className="inline-flex min-h-11 items-center justify-center rounded border border-slate-600 px-4 font-mono text-sm hover:bg-slate-800"
+          >
+            Contact
           </a>
         </div>
       </div>

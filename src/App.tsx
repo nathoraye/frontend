@@ -449,6 +449,12 @@ export default function App() {
                 <span className="sm:hidden">WVS</span>
                 <span className="hidden sm:inline">West Vinyl Studio</span>
               </span>
+              <a
+                href="/policies"
+                className="shrink-0 text-[10px] font-bold tracking-wider text-slate-400 uppercase hover:text-pink-400"
+              >
+                Info
+              </a>
               <div className="mx-1 hidden h-5 w-px bg-slate-800 sm:block"></div>
               <div className="flex items-center gap-1 rounded-lg bg-slate-500/5 p-1">
                 <button onClick={() => handleUndo(canvas)} className="min-h-9 min-w-9 rounded-md p-1.5 text-slate-300 transition-colors hover:bg-slate-700/50 touch-manipulation" title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>

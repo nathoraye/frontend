@@ -189,6 +189,9 @@ export function fulfillmentOrderView(order, { includeDesign = false } = {}) {
     paymentIntentId: order.paymentIntentId || order.paypalOrderId || null,
     chargeId: order.chargeId || null,
     payerEmail: order.payerEmail || null,
+    fulfillmentStatus: order.fulfillmentStatus || null,
+    fulfillmentUpdatedAt: order.fulfillmentUpdatedAt || null,
+    shippedAt: order.shippedAt || null,
     hasDesign: Boolean(order.designSvg),
     ...(includeDesign ? { designSvg: order.designSvg || '' } : {}),
   };

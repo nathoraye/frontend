@@ -8,6 +8,7 @@ import {
   handleHealth,
   handleListOrders,
   handleSessionStatus,
+  handleSetFulfillment,
   handleStripeWebhookRequest,
   handleSubmitOrder,
 } from './api/_lib/orderService.js';
@@ -69,8 +70,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname.startsWith('/api/orders/')) {
-      const orderId = url.pathname.split('/').pop();
+      const orderId = decodeURIComponent(url.pathname.split('/').pop() || '');
       return sendJson(res, 200, await handleGetOrder(req, orderId));
+    }
+
+    if (req.method === 'POST' && url.pathname.startsWith('/api/orders/')) {
+      const orderId = decodeURIComponent(url.pathname.split('/').pop() || '');
+      const body = await readJsonBody(req);
+      return sendJson(res, 200, await handleSetFulfillment(req, orderId, body));
     }
 
     if (req.method === 'POST' && url.pathname === '/api/orders') {
