@@ -36,7 +36,11 @@ export const WELD_SPECK_PAD_MIN = 12;
 
 function isInvisiblePaint(value: unknown): boolean {
   const n = normalizeFill(value);
-  return n === '' || n === 'transparent' || n === 'none';
+  if (n === '' || n === 'transparent' || n === 'none') return true;
+  // Fabric serializes clear fills as rgba(0,0,0,0) — still leftover paper.
+  if (/^rgba\(\d+,\d+,\d+,0(?:\.0+)?\)$/.test(n)) return true;
+  if (/^hsla?\([^)]+,0(?:\.0+)?\)$/.test(n)) return true;
+  return false;
 }
 
 function originOffset(origin: string | number | undefined, size: number): number {
@@ -181,9 +185,17 @@ type GroupLike = WeldImportShape & {
   remove?: (...objects: unknown[]) => unknown;
   triggerLayout?: () => void;
   setCoords?: () => void;
+  setDimensions?: () => void;
 };
 
 function relayoutGroup(group: GroupLike): void {
+  // Paths keep stale width/height after children are removed; refresh from geometry.
+  const refresh = (obj: GroupLike) => {
+    obj.setDimensions?.();
+    const kids = obj.getObjects?.() ?? [];
+    for (const child of kids) refresh(child as GroupLike);
+  };
+  refresh(group);
   group.triggerLayout?.();
   group.setCoords?.();
 }

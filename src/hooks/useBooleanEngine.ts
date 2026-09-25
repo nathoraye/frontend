@@ -116,7 +116,16 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
                 objectCaching: true,
                 fillRule: 'nonzero'
             });
+            // Drop export dust / invisible paper and refit the pink handle box
+            // to visible ink (traced SVGs often arrive with empty viewBox padding).
             tightPackWeldObject(result);
+            const withDims = result as fabric.Object & {
+              setDimensions?: () => void;
+              triggerLayout?: () => void;
+            };
+            withDims.setDimensions?.();
+            withDims.triggerLayout?.();
+            result.setCoords();
             
             canvas.add(result);
             canvas.setActiveObject(result);

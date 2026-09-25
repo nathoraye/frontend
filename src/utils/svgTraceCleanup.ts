@@ -1,5 +1,10 @@
 import { bboxOverlapArea, mergeSameColorDs, pathBBox, type BBox } from './pathContours.ts';
 
+/** Distant dust smaller than this fraction of the largest piece is dropped before same-colour merge. */
+const TRACE_SPECK_AREA_RATIO = 0.015;
+const TRACE_SPECK_PAD_RATIO = 0.1;
+const TRACE_SPECK_PAD_MIN = 12;
+
 function roundPathD(d: string): string {
   return d.replace(/-?\d+\.\d+/g, (token) => {
     const r = Math.round(Number(token) * 10) / 10;
@@ -112,12 +117,82 @@ function readSvgSize(svg: string, fallbackW: number, fallbackH: number): { width
   };
 }
 
+function bboxArea(box: BBox): number {
+  return Math.max(0, box.maxX - box.minX) * Math.max(0, box.maxY - box.minY);
+}
+
+function bboxOverlap(a: BBox, b: BBox): boolean {
+  return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY;
+}
+
+function unionBoxes(boxes: BBox[]): BBox | null {
+  if (!boxes.length) return null;
+  return {
+    minX: Math.min(...boxes.map((b) => b.minX)),
+    minY: Math.min(...boxes.map((b) => b.minY)),
+    maxX: Math.max(...boxes.map((b) => b.maxX)),
+    maxY: Math.max(...boxes.map((b) => b.maxY)),
+  };
+}
+
+/**
+ * Trace dust far from the main cut expands compound same-colour paths
+ * (selection box has ink in one corner). Drop tiny outliers before merge.
+ */
+export function dropDistantTracePaths<T extends { bbox: BBox }>(paths: T[]): T[] {
+  if (paths.length < 2) return paths;
+  const areas = paths.map((p) => bboxArea(p.bbox));
+  const maxArea = Math.max(...areas);
+  if (maxArea <= 0) return paths;
+
+  const mainBoxes = paths
+    .filter((_, i) => areas[i] >= maxArea * TRACE_SPECK_AREA_RATIO)
+    .map((p) => p.bbox);
+  const main = unionBoxes(mainBoxes);
+  if (!main) return paths;
+
+  const padX = Math.max(TRACE_SPECK_PAD_MIN, (main.maxX - main.minX) * TRACE_SPECK_PAD_RATIO);
+  const padY = Math.max(TRACE_SPECK_PAD_MIN, (main.maxY - main.minY) * TRACE_SPECK_PAD_RATIO);
+  const padded: BBox = {
+    minX: main.minX - padX,
+    minY: main.minY - padY,
+    maxX: main.maxX + padX,
+    maxY: main.maxY + padY,
+  };
+
+  return paths.filter((p, i) => {
+    if (areas[i] >= maxArea * TRACE_SPECK_AREA_RATIO) return true;
+    return bboxOverlap(padded, p.bbox);
+  });
+}
+
+/** Original artboard size — used to overlay on the source photo. */
+export function readTraceFrame(svg: string): { width: number; height: number } | null {
+  const attr = /data-trace-frame="\s*([\d.]+)\s+([\d.]+)\s*"/.exec(svg);
+  if (attr) {
+    const width = Number(attr[1]);
+    const height = Number(attr[2]);
+    if (width > 0 && height > 0) return { width, height };
+  }
+  return null;
+}
+
+function svgRootAttrs(width: number, height: number): string {
+  const w = Math.round(width * 10) / 10;
+  const h = Math.round(height * 10) / 10;
+  return `viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" data-trace-frame="${w} ${h}" preserveAspectRatio="xMidYMid meet"`;
+}
+
 /**
  * Drop full-frame paper so counters (O/S/0) stay holes.
  * Drop mid-grey AA fringe paths that overlap a darker fill — those stacked
  * greys are the jagged "shards" of under-colour, not missing fill-rule.
+ * Drop distant dust before same-colour merge so compound paths cannot
+ * swallow empty SVG canvas into the selection box.
  * Union overlapping same-colour contours; concatenate disjoint ones so
  * evenodd does not punch AA rings. Keep fill-rule=evenodd per path.
+ * Keep the original artboard viewBox and stash it in data-trace-frame so
+ * placeOverSource can map ink onto the source photo without stretching.
  */
 export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
   const parsed = readSvgSize(svg, width, height);
@@ -155,9 +230,10 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
     const y = fillLuma(p.fill);
     return !darker.some((ink) => fillLuma(ink.fill) < y - 8 && bboxOverlapArea(p.bbox, ink.bbox) > 4);
   });
+  const afterSpecks = dropDistantTracePaths(afterGrey);
 
   const byColor = new Map<string, string[]>();
-  for (const p of afterGrey) {
+  for (const p of afterSpecks) {
     const list = byColor.get(p.fill) ?? [];
     list.push(p.d);
     byColor.set(p.fill, list);
@@ -171,9 +247,7 @@ export function cleanupTracedSvg(svg: string, width = 0, height = 0): string {
     paths.push(`<path fill="${fill}" fill-rule="evenodd" d="${united}"/>`);
   }
 
-  const w = Math.round(size.width * 10) / 10;
-  const h = Math.round(size.height * 10) / 10;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet">${paths.join('')}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" ${svgRootAttrs(size.width, size.height)}>${paths.join('')}</svg>`;
 }
 
 export type StackedLayerPreview = {
@@ -246,15 +320,13 @@ export function cleanupStackedTracedSvg(svg: string, width = 0, height = 0): str
     }
   }
 
-  const w = Math.round(size.width * 10) / 10;
-  const h = Math.round(size.height * 10) / 10;
   const body = layers.map((layer) => {
     const paths = layer.ds
       .map((d) => `<path fill="${layer.fill}" fill-rule="evenodd" d="${d}"/>`)
       .join('');
     return `<g id="${layer.id}" fill="${layer.fill}">${paths}</g>`;
   }).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet">${body}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" ${svgRootAttrs(size.width, size.height)}>${body}</svg>`;
 }
 
 export function listStackedLayers(svg: string): StackedLayerPreview[] {
