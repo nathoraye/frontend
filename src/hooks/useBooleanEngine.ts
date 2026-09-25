@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import * as fabric from 'fabric';
 import { keepWeldArtwork, tightPackWeldObject } from '../utils/weldImport';
+import { withSvgExportIsolation } from '../utils/weldExportIsolation';
 import { notifyStudio } from '../utils/studioNotice';
 
 export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapshot: (c: fabric.Canvas, i?: boolean) => void) {
@@ -42,18 +43,10 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
         const fillToUse = actives[0].fill || '#FF1493';
 
         // 2. THE ISOLATED BAKE PASS
-        // We temporarily hide everything else on the canvas. This allows us to export 
-        // a pure, absolute canvas-sized SVG that locks in the exact scale, X/Y coordinates, 
-        // and rotation multipliers permanently into the raw paths.
+        // Export only the selection via excludeFromExport. Hiding with
+        // visible:false still serializes those objects (visibility:hidden)
+        // and re-import welds the whole mat into an oversized group.
         const allObjs = canvas.getObjects();
-        const visibilityMap = new Map();
-        
-        allObjs.forEach(obj => {
-            visibilityMap.set(obj, obj.visible);
-            if (!actives.includes(obj)) {
-                obj.set('visible', false);
-            }
-        });
 
         // Strip the background so we don't accidentally weld a giant background square
         const currentBg = canvas.backgroundColor;
@@ -70,17 +63,14 @@ export function useBooleanEngine(canvas: fabric.Canvas | null, saveHistorySnapsh
                 (canvas as any).overlayColor = '';
             }
 
-            // 3. Export the absolute baked SVG
-            fullSvg = canvas.toSVG();
+            // 3. Export only the active bake targets at absolute canvas coords
+            fullSvg = withSvgExportIsolation(allObjs, actives, () => canvas.toSVG());
         } finally {
-            // 4. Always restore the canvas visibility and background state
+            // 4. Always restore the canvas background state
             canvas.backgroundColor = currentBg;
             if ('overlayColor' in canvas && currentOverlay !== undefined) {
                 (canvas as any).overlayColor = currentOverlay;
             }
-            allObjs.forEach(obj => {
-                obj.set('visible', visibilityMap.get(obj));
-            });
             canvas.requestRenderAll();
         }
         
