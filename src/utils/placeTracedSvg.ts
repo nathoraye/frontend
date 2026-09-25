@@ -1,7 +1,9 @@
 import * as fabric from 'fabric';
-import { isBackgroundFill, isBlackFill, isFullFrameShape, normalizeFill } from './traceFills';
+import { isBackgroundFill, isBlackFill, isFullFrameShape, normalizeFill } from './traceFills.ts';
+import { keepWeldArtwork } from './weldImport.ts';
+import { readTraceFrame } from './svgTraceCleanup.ts';
 
-export { isBackgroundFill, isBlackFill, isFullFrameShape, normalizeFill } from './traceFills';
+export { isBackgroundFill, isBlackFill, isFullFrameShape, normalizeFill } from './traceFills.ts';
 
 type FabricAny = fabric.Object & {
   fill?: unknown;
@@ -11,6 +13,11 @@ type FabricAny = fabric.Object & {
   scaleX?: number;
   scaleY?: number;
   type?: string;
+};
+
+export type TraceFrame = {
+  width: number;
+  height: number;
 };
 
 export function filterTracedObjects(
@@ -33,12 +40,22 @@ export async function loadTracedObjects(
   svgString: string,
   keepOnlyBlack = false,
   keepFullFrame = false,
-): Promise<fabric.Object[]> {
+): Promise<{ objects: fabric.Object[]; frame: TraceFrame }> {
   const result = await (fabric as { loadSVGFromString: (svg: string) => Promise<{ objects?: fabric.Object[]; options?: { width?: number; height?: number } }> }).loadSVGFromString(svgString);
   const objects = (result.objects || []).filter(Boolean);
   const svgWidth = Number(result.options?.width || 0);
   const svgHeight = Number(result.options?.height || 0);
-  return filterTracedObjects(objects, svgWidth, svgHeight, keepOnlyBlack, keepFullFrame);
+  const meta = readTraceFrame(svgString);
+  // Prefer the pre-crop artboard so placeOverSource maps onto the source photo.
+  // Fall back to the (possibly cropped) SVG size when metadata is absent.
+  const frame: TraceFrame = {
+    width: meta?.width || svgWidth,
+    height: meta?.height || svgHeight,
+  };
+  const filtered = filterTracedObjects(objects, svgWidth, svgHeight, keepOnlyBlack, keepFullFrame);
+  // Drop leftover dust Fabric still imported as separate shapes.
+  const cleaned = keepWeldArtwork(filtered, { width: svgWidth, height: svgHeight });
+  return { objects: cleaned, frame };
 }
 
 const CONTROL_STYLE = {
@@ -122,14 +139,44 @@ export function groupStackedTracedObjects(objects: fabric.Object[]): fabric.Obje
   return stack;
 }
 
-/** Match the traced group to the source image's on-canvas size and pose. */
+/**
+ * Match the traced artwork to the source image's on-canvas pose.
+ *
+ * Scale by the original SVG artboard (viewBox / data-trace-frame), not the
+ * ink-tight group size — otherwise corner logos stretch to fill the photo
+ * and empty SVG canvas becomes a huge selection box.
+ */
 export function placeOverSource(
   placed: fabric.Object,
   source: fabric.Object,
+  frame?: TraceFrame | null,
 ): void {
   const center = source.getCenterPoint();
   const sw = Math.max(1, source.getScaledWidth());
   const sh = Math.max(1, source.getScaledHeight());
+
+  const frameW = frame?.width && frame.width > 0 ? frame.width : 0;
+  const frameH = frame?.height && frame.height > 0 ? frame.height : 0;
+
+  if (frameW > 0 && frameH > 0) {
+    const scaleX = sw / frameW;
+    const scaleY = sh / frameH;
+    // `placed` is still in SVG user units (ink center within the artboard).
+    const inkX = placed.left ?? frameW / 2;
+    const inkY = placed.top ?? frameH / 2;
+    placed.set({
+      ...CONTROL_STYLE,
+      left: center.x + (inkX - frameW / 2) * scaleX,
+      top: center.y + (inkY - frameH / 2) * scaleY,
+      scaleX: (placed.scaleX || 1) * scaleX,
+      scaleY: (placed.scaleY || 1) * scaleY,
+      angle: source.angle || 0,
+    });
+    placed.setCoords();
+    return;
+  }
+
+  // Legacy fallback when no artboard size is known: fit ink box to the photo.
   const pw = Math.max(1, placed.getScaledWidth());
   const ph = Math.max(1, placed.getScaledHeight());
   placed.set({
@@ -155,7 +202,7 @@ export async function tracedSvgToObject(
   },
 ): Promise<fabric.Object | null> {
   const stacked = options?.hierarchical === 'stacked';
-  const objects = await loadTracedObjects(
+  const { objects, frame } = await loadTracedObjects(
     svgString,
     options?.keepOnlyBlack ?? false,
     stacked,
@@ -165,7 +212,7 @@ export async function tracedSvgToObject(
     : groupTracedObjects(objects, options?.fill != null ? { fill: options.fill } : undefined);
   if (!grouped) return null;
   if (options?.source) {
-    placeOverSource(grouped, options.source);
+    placeOverSource(grouped, options.source, frame);
   }
   return grouped;
 }
@@ -182,7 +229,7 @@ export async function placeTracedSvg(
   svgString: string,
   canvas: fabric.Canvas,
 ): Promise<fabric.Object | null> {
-  const objects = await loadTracedObjects(svgString);
+  const { objects } = await loadTracedObjects(svgString);
   const importedGroup = groupTracedObjects(objects);
   if (!importedGroup) return null;
 

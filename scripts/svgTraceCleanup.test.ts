@@ -129,3 +129,25 @@ test('cleanup drops near-white quantized paper that would plug counters', () => 
   assert.doesNotMatch(out, /fill="#F1F1F1"/);
   assert.match(out, /fill="#141414"/);
 });
+
+test('cleanup drops distant same-colour dust so the path bbox stays on the ink', () => {
+  const svg = `<svg width="800" height="600">
+    <path fill="#111111" d="M0 0 L2 0 L2 2 L0 2 Z"/>
+    <path fill="#111111" d="M500 40 L760 40 L760 220 L500 220 Z"/>
+  </svg>`;
+  const out = cleanupTracedSvg(svg, 800, 600);
+  assert.match(out, /data-trace-frame="800 600"/);
+  assert.match(out, /viewBox="0 0 800 600"/);
+  assert.doesNotMatch(out, /M\s*0\s+0/);
+  assert.match(out, /M\s*500/);
+});
+
+test('cleanup still keeps nearby drips under the main artwork', () => {
+  const svg = `<svg width="80" height="80">
+    <path fill="#141414" d="M 10 10 L 50 10 L 50 50 L 10 50 Z"/>
+    <path fill="#141414" d="M 52 52 L 56 52 L 56 56 L 52 56 Z"/>
+  </svg>`;
+  const out = cleanupTracedSvg(svg, 80, 80);
+  assert.match(out, /M\s*10/);
+  assert.match(out, /M\s*52/);
+});
