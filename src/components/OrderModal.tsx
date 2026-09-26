@@ -4,6 +4,7 @@ import * as fabric from 'fabric';
 import { createCheckoutSession, fetchCheckoutHealth } from '../services/orderService';
 import { notifyStudio } from '../utils/studioNotice';
 import { snapshotDesignAsDataURL } from '../utils/designSnapshot';
+import { serializeDesignSvgForOrder } from '../utils/orderDesignSerialize';
 import {
   calculateOrderTotal,
   PERMANENT_SURCHARGE,
@@ -525,6 +526,8 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
   const handleConfirm = async (customer: CustomerFormValues) => {
     setIsProcessing(true);
     try {
+      const designSvg = await serializeDesignSvgForOrder(canvas);
+      const designPreviewPng = designDataUrl || snapshotDesignAsDataURL(canvas) || undefined;
       const result = await createCheckoutSession({
         customer: {
           fullName: customer.fullName,
@@ -548,7 +551,8 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
           productSize: config.productSize,
           printConfigs: config.printConfigs,
         },
-        designSvg: canvas.toSVG(),
+        designSvg,
+        designPreviewPng,
         origin: window.location.origin,
       });
       if (!result.url) {

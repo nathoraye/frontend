@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  fetchOrderDesignBlob,
+  fetchOrderPreviewBlob,
   getFulfillmentOrder,
   listFulfillmentOrders,
   loginJobsAdmin,
@@ -63,33 +65,157 @@ function stripeDashboardHref(paymentIntentId?: string | null) {
   return `https://dashboard.stripe.com/${mode}payments/${paymentIntentId}`;
 }
 
-function svgPreviewUrl(svg: string) {
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+function triggerBlobDownload(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 function JobDesignPanel({ orderId, token }: { orderId: string; token: string }) {
   const [detail, setDetail] = useState<FulfillmentOrder | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [designUrl, setDesignUrl] = useState<string | null>(null);
+  const [assetError, setAssetError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<'preview' | 'design' | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void getFulfillmentOrder(orderId, token || undefined)
-      .then((result) => {
-        if (!cancelled) {
-          setDetail(result.order);
-          setDetailError(null);
+    const objectUrls: string[] = [];
+    const track = (url: string) => {
+      objectUrls.push(url);
+      return url;
+    };
+
+    void (async () => {
+      try {
+        const result = await getFulfillmentOrder(orderId, token || undefined);
+        if (cancelled) return;
+        setDetail(result.order);
+        setDetailError(null);
+
+        const order = result.order;
+        const errors: string[] = [];
+
+        // Prefer authenticated private-blob / inline asset endpoints so <img>
+        // never needs a giant data: URL (those break for photo-heavy SVGs).
+        if (order.hasPreview || order.previewBlobPath || order.designPreviewPng) {
+          try {
+            const blob = await fetchOrderPreviewBlob(orderId, token || undefined);
+            if (cancelled) return;
+            setPreviewUrl(track(URL.createObjectURL(blob)));
+          } catch (err: unknown) {
+            errors.push(err instanceof Error ? err.message : 'Preview failed');
+          }
         }
-      })
-      .catch((err: unknown) => {
+
+        if (order.hasDesign || order.designBlobPath || order.designSvg) {
+          try {
+            const blob = await fetchOrderDesignBlob(orderId, token || undefined);
+            if (cancelled) return;
+            const url = track(URL.createObjectURL(blob));
+            setDesignUrl(url);
+            // Legacy jobs without a PNG still need something in the preview frame.
+            if (!order.hasPreview && !order.previewBlobPath && !order.designPreviewPng) {
+              setPreviewUrl(url);
+            }
+          } catch (err: unknown) {
+            // Fall back to inline SVG from the detail payload when asset route is unavailable.
+            if (order.designSvg && order.designSvg.length >= 20) {
+              const blob = new Blob([order.designSvg], { type: 'image/svg+xml;charset=utf-8' });
+              const url = track(URL.createObjectURL(blob));
+              setDesignUrl(url);
+              if (!order.hasPreview && !order.previewBlobPath && !order.designPreviewPng) {
+                setPreviewUrl(url);
+              }
+            } else {
+              errors.push(err instanceof Error ? err.message : 'Design failed');
+            }
+          }
+        }
+
+        if (!cancelled) {
+          setAssetError(errors.length ? errors.join(' · ') : null);
+        }
+      } catch (err: unknown) {
         if (!cancelled) {
           setDetail(null);
           setDetailError(err instanceof Error ? err.message : 'Could not load design');
         }
-      });
+      }
+    })();
+
     return () => {
       cancelled = true;
+      while (objectUrls.length) {
+        const url = objectUrls.pop();
+        if (url) URL.revokeObjectURL(url);
+      }
     };
   }, [orderId, token]);
+
+  const openPreview = async () => {
+    setBusy('preview');
+    setAssetError(null);
+    try {
+      if (previewUrl) {
+        window.open(previewUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      const blob = await fetchOrderPreviewBlob(orderId, token || undefined);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err: unknown) {
+      setAssetError(err instanceof Error ? err.message : 'Could not open preview');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const openDesign = async () => {
+    setBusy('design');
+    setAssetError(null);
+    try {
+      if (designUrl) {
+        window.open(designUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      const blob = await fetchOrderDesignBlob(orderId, token || undefined);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err: unknown) {
+      setAssetError(err instanceof Error ? err.message : 'Could not open design');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const downloadDesign = async () => {
+    setBusy('design');
+    setAssetError(null);
+    try {
+      const blob = await fetchOrderDesignBlob(orderId, token || undefined, true);
+      triggerBlobDownload(blob, `${orderId}.svg`);
+    } catch (err: unknown) {
+      if (detail?.designSvg) {
+        triggerBlobDownload(
+          new Blob([detail.designSvg], { type: 'image/svg+xml;charset=utf-8' }),
+          `${orderId}.svg`,
+        );
+      } else {
+        setAssetError(err instanceof Error ? err.message : 'Could not download design');
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
 
   if (detailError) {
     return (
@@ -110,25 +236,47 @@ function JobDesignPanel({ orderId, token }: { orderId: string; token: string }) 
   return (
     <div className="mt-4 space-y-3 border-t border-slate-800 pt-4">
       <div className="rounded border border-slate-700 bg-white p-3">
-        {detail.designSvg ? (
+        {previewUrl ? (
           <img
-            src={svgPreviewUrl(detail.designSvg)}
-            alt={`Design for ${orderId}`}
+            src={previewUrl}
+            alt={`Product preview for ${orderId}`}
             className="mx-auto max-h-80 w-full object-contain"
+            data-testid="job-preview-image"
           />
         ) : (
-          <p className="font-mono text-xs text-slate-500">No SVG stored.</p>
+          <p className="font-mono text-xs text-slate-500">No product preview stored.</p>
         )}
       </div>
-      {detail.designSvg ? (
-        <a
-          href={svgPreviewUrl(detail.designSvg)}
-          download={`${orderId}.svg`}
-          className="inline-flex min-h-10 items-center rounded bg-pink-500 px-3 font-mono text-xs text-gray-900 hover:bg-pink-600"
+      {assetError ? <p className="font-mono text-xs text-amber-400">{assetError}</p> : null}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={!previewUrl || busy === 'preview'}
+          onClick={() => void openPreview()}
+          className="inline-flex min-h-10 items-center rounded border border-slate-600 px-3 font-mono text-xs hover:bg-slate-800 disabled:opacity-50"
+          data-testid="job-open-preview"
+        >
+          Open preview
+        </button>
+        <button
+          type="button"
+          disabled={(!designUrl && !detail.hasDesign && !detail.designSvg) || busy === 'design'}
+          onClick={() => void openDesign()}
+          className="inline-flex min-h-10 items-center rounded border border-pink-500 px-3 font-mono text-xs text-pink-300 hover:bg-pink-500/10 disabled:opacity-50"
+          data-testid="job-open-design"
+        >
+          Open design file
+        </button>
+        <button
+          type="button"
+          disabled={(!designUrl && !detail.hasDesign && !detail.designSvg) || busy === 'design'}
+          onClick={() => void downloadDesign()}
+          className="inline-flex min-h-10 items-center rounded bg-pink-500 px-3 font-mono text-xs text-gray-900 hover:bg-pink-600 disabled:opacity-50"
+          data-testid="job-download-svg"
         >
           Download SVG
-        </a>
-      ) : null}
+        </button>
+      </div>
     </div>
   );
 }

@@ -53,10 +53,11 @@ test('Product Preview → Buy Sticker → local checkout → jobs board', async 
   await expect(jobCard.getByText(/vinyl 10×10cm removable/i)).toBeVisible();
 
   await jobCard.getByRole('button', { name: /show design/i }).click();
-  await expect(page.getByRole('img', { name: new RegExp(`design for ${orderId}`, 'i') })).toBeVisible({
+  await expect(page.getByTestId('job-preview-image')).toBeVisible({
     timeout: 10_000,
   });
-  await expect(jobCard.getByRole('link', { name: /download svg/i })).toBeVisible();
+  await expect(jobCard.getByTestId('job-download-svg')).toBeVisible();
+  await expect(jobCard.getByTestId('job-open-design')).toBeVisible();
 
   await jobCard.getByRole('button', { name: /mark shipped/i }).click();
   await expect(jobCard).toHaveCount(0);

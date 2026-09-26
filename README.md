@@ -116,7 +116,7 @@ Checkout is a **Stripe Checkout Session** (`mode: payment`) for one-time custom 
 
 | Place | What you see |
 | --- | --- |
-| **`/admin/orders` (primary; alias `/jobs`)** | What to make: vinyl size/finish or apparel product/colour/size, customer address, design preview, SVG download. Default view is **To make**. Mark a job making or shipped there. Sign in with `JOBS_ADMIN_USERNAME` / `JOBS_ADMIN_PASSWORD`. |
+| **`/admin/orders` (primary; alias `/jobs`)** | What to make: vinyl size/finish or apparel product/colour/size, customer address, **product preview** + **design SVG** (open/download). Artwork is served via authenticated `GET /api/orders/:id/preview` and `/design` (private Blob `get()` in production, inline fallback locally). Default view is **To make**. Sign in with `JOBS_ADMIN_USERNAME` / `JOBS_ADMIN_PASSWORD`. |
 | **Stripe Dashboard → Payments / Checkout Sessions** | Money movement, receipt email, `metadata.orderId`. Not the cut file. |
 | **Vercel Blob `west-vinyl-orders.json`** | Durable store when `BLOB_READ_WRITE_TOKEN` is set on project `frontendwvs`. |
 | **`data/orders.json`** | Local/dev store used by `server.mjs`. |

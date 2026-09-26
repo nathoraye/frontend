@@ -44,6 +44,8 @@ export interface CreateCheckoutSessionPayload {
   customer: OrderCustomer;
   orderConfig: Record<string, unknown>;
   designSvg: string;
+  /** Optional PNG data URL for the jobs-board product preview. */
+  designPreviewPng?: string;
   origin?: string;
 }
 
@@ -100,7 +102,11 @@ export interface FulfillmentOrder {
   fulfillmentUpdatedAt?: string | null;
   shippedAt?: string | null;
   hasDesign?: boolean;
+  hasPreview?: boolean;
+  designBlobPath?: string | null;
+  previewBlobPath?: string | null;
   designSvg?: string;
+  designPreviewPng?: string;
 }
 
 async function readError(response: Response): Promise<string> {
@@ -210,6 +216,37 @@ export async function getFulfillmentOrder(
   });
   if (!response.ok) throw new Error(await readError(response));
   return response.json() as Promise<{ order: FulfillmentOrder }>;
+}
+
+async function fetchOrderAssetBlob(
+  orderId: string,
+  kind: 'design' | 'preview',
+  adminToken?: string,
+  download = false,
+): Promise<Blob> {
+  const headers: Record<string, string> = {};
+  if (adminToken) headers.Authorization = `Bearer ${adminToken}`;
+  const query = download ? '?download=1' : '';
+  const response = await fetch(
+    `${API_BASE_URL}/api/orders/${encodeURIComponent(orderId)}/${kind}${query}`,
+    { headers },
+  );
+  if (!response.ok) throw new Error(await readError(response));
+  return response.blob();
+}
+
+/** Authenticated product-preview PNG (private Blob get or inline fallback). */
+export async function fetchOrderPreviewBlob(orderId: string, adminToken?: string): Promise<Blob> {
+  return fetchOrderAssetBlob(orderId, 'preview', adminToken);
+}
+
+/** Authenticated cut SVG (private Blob get or inline fallback). */
+export async function fetchOrderDesignBlob(
+  orderId: string,
+  adminToken?: string,
+  download = false,
+): Promise<Blob> {
+  return fetchOrderAssetBlob(orderId, 'design', adminToken, download);
 }
 
 /** Persist an order after Stripe payment succeeds (or local unverified checkout). */
