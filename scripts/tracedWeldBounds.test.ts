@@ -56,6 +56,73 @@ test('placeOverSource scales by artboard frame so corner ink stays corner ink', 
   assert.ok((ink.left || 0) > 600, `expected right-of-centre placement, got left=${ink.left}`);
 });
 
+test('placeOverSource rotates ink offset with the source photo', async () => {
+  const svg = cleanupTracedSvg(
+    `<svg width="800" height="600">
+      <path fill="#111111" d="M500 40 L760 40 L760 220 L500 220 Z"/>
+    </svg>`,
+    800,
+    600,
+  );
+  const { objects } = await fabric.loadSVGFromString(svg);
+  const ink = (objects || []).filter(Boolean)[0] as fabric.FabricObject;
+  const source = new fabric.Rect({
+    left: 600,
+    top: 400,
+    width: 400,
+    height: 300,
+    originX: 'center',
+    originY: 'center',
+    angle: 90,
+  });
+  placeOverSource(ink, source, { width: 800, height: 600 });
+
+  // Path centre (630, 130) → artboard offset (230, -170) → photo units (115, -85).
+  // Axis-aligned (buggy) place: (715, 315). After 90° CW: (685, 515).
+  assert.equal(ink.angle, 90);
+  assert.ok(
+    Math.abs((ink.left || 0) - 685) < 2,
+    `expected left≈685 after rotating offset, got ${ink.left}`,
+  );
+  assert.ok(
+    Math.abs((ink.top || 0) - 515) < 2,
+    `expected top≈515 after rotating offset, got ${ink.top}`,
+  );
+});
+
+test('placeOverSource flips ink offset with the source photo', async () => {
+  const svg = cleanupTracedSvg(
+    `<svg width="800" height="600">
+      <path fill="#111111" d="M500 40 L760 40 L760 220 L500 220 Z"/>
+    </svg>`,
+    800,
+    600,
+  );
+  const { objects } = await fabric.loadSVGFromString(svg);
+  const ink = (objects || []).filter(Boolean)[0] as fabric.FabricObject;
+  const source = new fabric.Rect({
+    left: 600,
+    top: 400,
+    width: 400,
+    height: 300,
+    originX: 'center',
+    originY: 'center',
+    flipX: true,
+  });
+  placeOverSource(ink, source, { width: 800, height: 600 });
+
+  assert.equal(ink.flipX, true);
+  // Right-side logo mirrors to the left of the photo centre.
+  assert.ok(
+    (ink.left || 0) < 600,
+    `flipped logo should sit left of photo centre, got left=${ink.left}`,
+  );
+  assert.ok(
+    (ink.top || 0) < 400,
+    `flipped logo should stay above photo centre, got top=${ink.top}`,
+  );
+});
+
 test('weld of a corner-traced SVG keeps a tight selection box', async () => {
   const svg = cleanupTracedSvg(
     `<svg width="800" height="600">
