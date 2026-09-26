@@ -164,13 +164,24 @@ export function placeOverSource(
     // `placed` is still in SVG user units (ink center within the artboard).
     const inkX = placed.left ?? frameW / 2;
     const inkY = placed.top ?? frameH / 2;
+    // Offset from artboard centre in photo-sized canvas units. Rotate/flip it
+    // with the source pose so a corner logo stays on the same ink after the
+    // photo is rotated or mirrored (angle alone would spin the logo in place).
+    let ox = (inkX - frameW / 2) * scaleX;
+    let oy = (inkY - frameH / 2) * scaleY;
+    if (source.flipX) ox = -ox;
+    if (source.flipY) oy = -oy;
+    const rad = fabric.util.degreesToRadians(source.angle || 0);
+    const offset = new fabric.Point(ox, oy).rotate(rad);
     placed.set({
       ...CONTROL_STYLE,
-      left: center.x + (inkX - frameW / 2) * scaleX,
-      top: center.y + (inkY - frameH / 2) * scaleY,
+      left: center.x + offset.x,
+      top: center.y + offset.y,
       scaleX: (placed.scaleX || 1) * scaleX,
       scaleY: (placed.scaleY || 1) * scaleY,
       angle: source.angle || 0,
+      flipX: !!source.flipX,
+      flipY: !!source.flipY,
     });
     placed.setCoords();
     return;
@@ -186,6 +197,8 @@ export function placeOverSource(
     scaleX: (placed.scaleX || 1) * (sw / pw),
     scaleY: (placed.scaleY || 1) * (sh / ph),
     angle: source.angle || 0,
+    flipX: !!source.flipX,
+    flipY: !!source.flipY,
   });
   placed.setCoords();
 }
