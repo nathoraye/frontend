@@ -67,3 +67,22 @@ test('jobSummary describes vinyl and apparel jobs', () => {
     'tshirt · L · #ffffff ×1',
   );
 });
+
+test('formatOrderSize shows cm+inches for vinyl and garment size for apparel', async () => {
+  const { formatOrderSize, vinylSizeCm, coercePositiveNumber } = await import(
+    '../api/_lib/orderPricing.js'
+  );
+  assert.equal(coercePositiveNumber('15.5'), 15.5);
+  assert.equal(coercePositiveNumber('nope', 10), 10);
+  assert.deepEqual(vinylSizeCm({ vinylWidthCm: '12', vinylHeightCm: 8 }), {
+    widthCm: 12,
+    heightCm: 8,
+  });
+  assert.equal(formatOrderSize({ orderType: 'vinyl', vinylWidthCm: 10, vinylHeightCm: 10 }), '10×10 cm · 3.9×3.9 in');
+  assert.equal(
+    formatOrderSize({ orderType: 'product', productSize: 'L' }),
+    'L',
+  );
+  assert.equal(formatOrderSize({ orderType: 'vinyl' }), null);
+  assert.equal(formatOrderSize({ orderType: 'product', productId: 'tshirt' }), null);
+});

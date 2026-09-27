@@ -63,6 +63,37 @@ export function calculateOrderTotal(config = {}) {
   return roundMoney(unitPriceForConfig(config) * quantity + SHIPPING_COST);
 }
 
+/** Coerce a positive finite number (accepts numeric strings from JSON/forms). */
+export function coercePositiveNumber(value, fallback = null) {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.round(n * 10) / 10;
+}
+
+/** Vinyl cut size in cm, or null when the stored order never recorded one. */
+export function vinylSizeCm(orderConfig = {}) {
+  const w = coercePositiveNumber(orderConfig.vinylWidthCm, null);
+  const h = coercePositiveNumber(orderConfig.vinylHeightCm, null);
+  if (w == null || h == null) return null;
+  return { widthCm: w, heightCm: h };
+}
+
+/** Human size line for jobs board / Stripe (cm + inches for vinyl; S/M/L for apparel). */
+export function formatOrderSize(orderConfig = {}) {
+  const orderType = orderConfig.orderType === 'product' ? 'product' : 'vinyl';
+  if (orderType === 'product') {
+    const size =
+      typeof orderConfig.productSize === 'string' ? orderConfig.productSize.trim() : '';
+    return size || null;
+  }
+  const dims = vinylSizeCm(orderConfig);
+  if (!dims) return null;
+  const { widthCm, heightCm } = dims;
+  const widthIn = Math.round((widthCm / 2.54) * 10) / 10;
+  const heightIn = Math.round((heightCm / 2.54) * 10) / 10;
+  return `${widthCm}×${heightCm} cm · ${widthIn}×${heightIn} in`;
+}
+
 /** Short production label for Stripe line items and the jobs board. */
 export function jobSummary(orderConfig = {}) {
   const orderType = orderConfig.orderType === 'product' ? 'product' : 'vinyl';
@@ -70,13 +101,14 @@ export function jobSummary(orderConfig = {}) {
   if (orderType === 'product') {
     const parts = [
       orderConfig.productId || 'apparel',
-      orderConfig.productSize,
+      typeof orderConfig.productSize === 'string' ? orderConfig.productSize.trim() : orderConfig.productSize,
       orderConfig.productColor,
     ].filter(Boolean);
     return `${parts.join(' · ')} ×${qty}`;
   }
-  const w = orderConfig.vinylWidthCm || 10;
-  const h = orderConfig.vinylHeightCm || 10;
+  const dims = vinylSizeCm(orderConfig);
+  const w = dims?.widthCm ?? 10;
+  const h = dims?.heightCm ?? 10;
   const finish = orderConfig.vinylPermanent
     ? `permanent ${orderConfig.vinylFinish || 'matte'}`
     : 'removable';

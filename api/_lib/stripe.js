@@ -260,14 +260,39 @@ export async function createCheckoutSession(
         orderId,
         orderType,
         quantity: String(quantity),
+        // Size on Stripe metadata so Dashboard / receipts show cut or garment size
+        // even if someone only opens the PaymentIntent (jobs board still uses Blob).
+        ...(orderType === 'vinyl'
+          ? {
+              vinylWidthCm: String(orderConfig.vinylWidthCm ?? 10),
+              vinylHeightCm: String(orderConfig.vinylHeightCm ?? 10),
+            }
+          : {
+              ...(orderConfig.productId
+                ? { productId: String(orderConfig.productId) }
+                : {}),
+              ...(orderConfig.productSize
+                ? { productSize: String(orderConfig.productSize) }
+                : {}),
+            }),
         ...(smokeCents != null ? { smokeCheckoutAmountCents: String(smokeCents) } : {}),
         ...metadata,
       },
       payment_intent_data: {
-        description: `West Vinyl Studio - ${orderType}`,
+        description: `West Vinyl Studio - ${jobSummary(orderConfig).slice(0, 500)}`,
         metadata: {
           orderId,
           orderType,
+          ...(orderType === 'vinyl'
+            ? {
+                vinylWidthCm: String(orderConfig.vinylWidthCm ?? 10),
+                vinylHeightCm: String(orderConfig.vinylHeightCm ?? 10),
+              }
+            : {
+                ...(orderConfig.productSize
+                  ? { productSize: String(orderConfig.productSize) }
+                  : {}),
+              }),
         },
       },
     });

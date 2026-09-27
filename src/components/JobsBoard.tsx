@@ -8,7 +8,7 @@ import {
   setFulfillmentStatus,
   type FulfillmentOrder,
 } from '../services/orderService';
-import { describeOrderJob, moneyString } from '../utils/orderPricing';
+import { describeOrderJob, formatOrderSize, moneyString } from '../utils/orderPricing';
 
 const TOKEN_KEY = 'wvs-orders-admin-token';
 
@@ -63,6 +63,23 @@ function stripeDashboardHref(paymentIntentId?: string | null) {
   const live = !paymentIntentId.includes('_test_') && !import.meta.env.DEV;
   const mode = live ? '' : 'test/';
   return `https://dashboard.stripe.com/${mode}payments/${paymentIntentId}`;
+}
+
+/** Labeled cut / garment size — separate from the pink job summary line. */
+function JobSizeLine({ orderConfig }: { orderConfig?: Record<string, unknown> | null }) {
+  const orderType = orderConfig?.orderType === 'product' ? 'product' : 'vinyl';
+  const size = formatOrderSize(orderConfig);
+  const label = orderType === 'product' ? 'Garment size' : 'Vinyl size';
+  return (
+    <p className="font-mono text-sm text-slate-200" data-testid="job-size">
+      <span className="text-slate-500">{label} · </span>
+      {size ? (
+        <span className="text-pink-300">{size}</span>
+      ) : (
+        <span className="text-amber-400/90">not set (legacy order)</span>
+      )}
+    </p>
+  );
 }
 
 function triggerBlobDownload(blob: Blob, fileName: string) {
@@ -235,6 +252,7 @@ function JobDesignPanel({ orderId, token }: { orderId: string; token: string }) 
 
   return (
     <div className="mt-4 space-y-3 border-t border-slate-800 pt-4">
+      <JobSizeLine orderConfig={detail.orderConfig} />
       <div className="rounded border border-slate-700 bg-white p-3">
         {previewUrl ? (
           <img
@@ -532,6 +550,7 @@ export function JobsBoard() {
                           {describeOrderJob(order.orderConfig)}
                         </span>
                       </div>
+                      <JobSizeLine orderConfig={order.orderConfig} />
                       <p className="font-mono text-xs text-slate-400">{order.id}</p>
                       <p className="text-sm text-slate-200">
                         {order.customer?.fullName || 'Unknown customer'}

@@ -2,6 +2,7 @@ import {
   calculateOrderTotal,
   checkoutChargeAmount,
   clampQuantity,
+  coercePositiveNumber,
   jobSummary,
   moneyString,
   ORDER_CURRENCY,
@@ -109,13 +110,54 @@ export function normalizeCustomer(customer = {}) {
   };
 }
 
+/**
+ * Normalize checkout orderConfig and always persist size fields for new jobs.
+ * Vinyl defaults to 10×10 cm (matches checkout UI) when the client omits dims.
+ * Apparel keeps productSize when present; sized garments default to M if omitted.
+ */
 export function normalizeOrderConfig(orderConfig = {}) {
-  return {
+  const orderType = orderConfig.orderType === 'product' ? 'product' : 'vinyl';
+  const quantity = clampQuantity(orderConfig.quantity);
+  const vinylPermanent = Boolean(orderConfig.vinylPermanent);
+  const next = {
     ...orderConfig,
-    orderType: orderConfig.orderType === 'product' ? 'product' : 'vinyl',
-    quantity: clampQuantity(orderConfig.quantity),
-    vinylPermanent: Boolean(orderConfig.vinylPermanent),
+    orderType,
+    quantity,
+    vinylPermanent,
   };
+
+  if (orderType === 'vinyl') {
+    // Clamp to the same 2–30 cm window as the checkout sticker-size inputs.
+    const width = coercePositiveNumber(orderConfig.vinylWidthCm, 10);
+    const height = coercePositiveNumber(orderConfig.vinylHeightCm, 10);
+    next.vinylWidthCm = Math.max(2, Math.min(30, width));
+    next.vinylHeightCm = Math.max(2, Math.min(30, height));
+    if (vinylPermanent) {
+      const finish =
+        typeof orderConfig.vinylFinish === 'string' && orderConfig.vinylFinish.trim()
+          ? orderConfig.vinylFinish.trim()
+          : 'matte';
+      next.vinylFinish = finish;
+    }
+  } else {
+    if (typeof orderConfig.productId === 'string' && orderConfig.productId.trim()) {
+      next.productId = orderConfig.productId.trim();
+    }
+    if (typeof orderConfig.productColor === 'string' && orderConfig.productColor.trim()) {
+      next.productColor = orderConfig.productColor.trim();
+    }
+    const sizedIds = new Set(['tshirt', 'hoodie', 'sloppyJoe', 'babyClothes']);
+    const rawSize =
+      typeof orderConfig.productSize === 'string' ? orderConfig.productSize.trim() : '';
+    if (rawSize) {
+      next.productSize = rawSize;
+    } else if (sizedIds.has(String(orderConfig.productId || ''))) {
+      // Checkout UI defaults sized garments to M; persist that so the board never blanks.
+      next.productSize = 'M';
+    }
+  }
+
+  return next;
 }
 
 export function requireDesignSvg(designSvg) {
