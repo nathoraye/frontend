@@ -110,13 +110,34 @@ export interface FulfillmentOrder {
 }
 
 async function readError(response: Response): Promise<string> {
-  try {
-    const data = await response.json();
-    if (data?.error) return String(data.error);
-  } catch {
-    // fall through
+  const type = response.headers.get('content-type') || '';
+  const text = await response.text();
+  if (type.includes('json')) {
+    try {
+      const data = JSON.parse(text) as { error?: unknown };
+      if (data?.error) return String(data.error);
+    } catch {
+      // fall through
+    }
   }
-  return (await response.text()) || `Request failed (${response.status})`;
+  const trimmed = text.trim();
+  if (trimmed.startsWith('<')) {
+    return `The order API returned a page instead of JSON (${response.status}).`;
+  }
+  return trimmed.slice(0, 240) || `Request failed (${response.status})`;
+}
+
+async function readJson<T>(response: Response): Promise<T> {
+  if (!response.ok) throw new Error(await readError(response));
+  const type = response.headers.get('content-type') || '';
+  if (!type.includes('json')) {
+    const text = await response.text();
+    if (text.trimStart().startsWith('<')) {
+      throw new Error('The order API returned the studio page instead of order data.');
+    }
+    throw new Error(text.trim().slice(0, 240) || `Request failed (${response.status})`);
+  }
+  return response.json() as Promise<T>;
 }
 
 export async function fetchCheckoutHealth(): Promise<CheckoutHealth> {
@@ -185,8 +206,7 @@ export async function listFulfillmentOrders(adminToken?: string): Promise<{
   const headers: Record<string, string> = {};
   if (adminToken) headers.Authorization = `Bearer ${adminToken}`;
   const response = await fetch(`${API_BASE_URL}/api/orders`, { headers });
-  if (!response.ok) throw new Error(await readError(response));
-  return response.json() as Promise<{ orders: FulfillmentOrder[]; store?: string }>;
+  return readJson<{ orders: FulfillmentOrder[]; store?: string }>(response);
 }
 
 export async function setFulfillmentStatus(
@@ -196,13 +216,13 @@ export async function setFulfillmentStatus(
 ): Promise<{ order: FulfillmentOrder }> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (adminToken) headers.Authorization = `Bearer ${adminToken}`;
-  const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(orderId)}`, {
+  const query = new URLSearchParams({ id: orderId });
+  const response = await fetch(`${API_BASE_URL}/api/orders?${query}`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ fulfillmentStatus }),
   });
-  if (!response.ok) throw new Error(await readError(response));
-  return response.json() as Promise<{ order: FulfillmentOrder }>;
+  return readJson<{ order: FulfillmentOrder }>(response);
 }
 
 export async function getFulfillmentOrder(
@@ -211,11 +231,9 @@ export async function getFulfillmentOrder(
 ): Promise<{ order: FulfillmentOrder }> {
   const headers: Record<string, string> = {};
   if (adminToken) headers.Authorization = `Bearer ${adminToken}`;
-  const response = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(orderId)}`, {
-    headers,
-  });
-  if (!response.ok) throw new Error(await readError(response));
-  return response.json() as Promise<{ order: FulfillmentOrder }>;
+  const query = new URLSearchParams({ id: orderId });
+  const response = await fetch(`${API_BASE_URL}/api/orders?${query}`, { headers });
+  return readJson<{ order: FulfillmentOrder }>(response);
 }
 
 async function fetchOrderAssetBlob(
@@ -226,12 +244,14 @@ async function fetchOrderAssetBlob(
 ): Promise<Blob> {
   const headers: Record<string, string> = {};
   if (adminToken) headers.Authorization = `Bearer ${adminToken}`;
-  const query = download ? '?download=1' : '';
-  const response = await fetch(
-    `${API_BASE_URL}/api/orders/${encodeURIComponent(orderId)}/${kind}${query}`,
-    { headers },
-  );
+  const query = new URLSearchParams({ id: orderId, asset: kind });
+  if (download) query.set('download', '1');
+  const response = await fetch(`${API_BASE_URL}/api/orders?${query}`, { headers });
   if (!response.ok) throw new Error(await readError(response));
+  const type = response.headers.get('content-type') || '';
+  if (type.includes('text/html')) {
+    throw new Error('The order API returned the studio page instead of the design file.');
+  }
   return response.blob();
 }
 
