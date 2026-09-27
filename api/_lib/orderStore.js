@@ -172,9 +172,13 @@ export function publicOrderView(order) {
   };
 }
 
-/** Jobs-board payload: product + customer, no cut SVG (fetch /api/orders/:id for that). */
+/** Jobs-board payload: product + customer, no cut SVG (fetch /api/orders?id= for that). */
 export function fulfillmentOrderView(order, { includeDesign = false } = {}) {
   if (!order) return null;
+  const hasInlineSvg = Boolean(order.designSvg);
+  const hasBlobDesign = Boolean(order.designBlobPath);
+  const hasInlinePreview = Boolean(order.designPreviewPng);
+  const hasBlobPreview = Boolean(order.previewBlobPath);
   return {
     id: order.id,
     createdAt: order.createdAt,
@@ -192,8 +196,17 @@ export function fulfillmentOrderView(order, { includeDesign = false } = {}) {
     fulfillmentStatus: order.fulfillmentStatus || null,
     fulfillmentUpdatedAt: order.fulfillmentUpdatedAt || null,
     shippedAt: order.shippedAt || null,
-    hasDesign: Boolean(order.designSvg),
-    ...(includeDesign ? { designSvg: order.designSvg || '' } : {}),
+    hasDesign: hasInlineSvg || hasBlobDesign,
+    hasPreview: hasInlinePreview || hasBlobPreview,
+    designBlobPath: order.designBlobPath || null,
+    previewBlobPath: order.previewBlobPath || null,
+    ...(includeDesign
+      ? {
+          designSvg: order.designSvg || '',
+          // Prefer private blob assets on the board; still return inline preview for local file store.
+          designPreviewPng: hasBlobPreview ? '' : order.designPreviewPng || '',
+        }
+      : {}),
   };
 }
 

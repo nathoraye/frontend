@@ -1,16 +1,16 @@
 import http from 'node:http';
 import { handleTraceRequest } from './api/trace.js';
-import { errorStatus, readJsonBody, readRawBody, sendJson } from './api/_lib/http.js';
+import ordersHandler from './api/orders.js';
+import { errorStatus, readJsonBody, readRawBody, sendBinary, sendJson } from './api/_lib/http.js';
 import {
   handleCreateCheckoutSession,
   handleCreatePaymentIntent,
   handleGetOrder,
+  handleGetOrderAsset,
   handleHealth,
-  handleListOrders,
   handleSessionStatus,
   handleSetFulfillment,
   handleStripeWebhookRequest,
-  handleSubmitOrder,
 } from './api/_lib/orderService.js';
 import { handleAdminLogin } from './api/_lib/adminSession.js';
 import { readTrimmedEnv } from './api/_lib/stripe.js';
@@ -71,8 +71,26 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, handleAdminLogin(body));
     }
 
-    if (req.method === 'GET' && url.pathname === '/api/orders') {
-      return sendJson(res, 200, await handleListOrders(req));
+    // Same handler Vercel runs for /api/orders, including ?id=&asset= design reads.
+    if (
+      (req.method === 'GET' || req.method === 'POST') &&
+      url.pathname === '/api/orders'
+    ) {
+      req.query = Object.fromEntries(url.searchParams.entries());
+      return ordersHandler(req, res);
+    }
+
+    const orderAssetMatch = url.pathname.match(/^\/api\/orders\/([^/]+)\/(design|preview)$/);
+    if (req.method === 'GET' && orderAssetMatch) {
+      const orderId = decodeURIComponent(orderAssetMatch[1]);
+      const kind = orderAssetMatch[2];
+      const download = url.searchParams.get('download') === '1';
+      const asset = await handleGetOrderAsset(req, orderId, kind, { download });
+      return sendBinary(res, 200, asset.body, {
+        contentType: asset.contentType,
+        fileName: asset.fileName,
+        download: asset.download,
+      });
     }
 
     if (req.method === 'GET' && url.pathname.startsWith('/api/orders/')) {
@@ -84,11 +102,6 @@ const server = http.createServer(async (req, res) => {
       const orderId = decodeURIComponent(url.pathname.split('/').pop() || '');
       const body = await readJsonBody(req);
       return sendJson(res, 200, await handleSetFulfillment(req, orderId, body));
-    }
-
-    if (req.method === 'POST' && url.pathname === '/api/orders') {
-      const body = await readJsonBody(req);
-      return sendJson(res, 201, await handleSubmitOrder(body));
     }
 
     return sendJson(res, 404, { error: 'Not found' });

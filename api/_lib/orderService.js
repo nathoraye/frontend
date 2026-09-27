@@ -35,6 +35,7 @@ import {
   publicOrderView,
   updateOrder,
 } from './orderStore.js';
+import { getPrivateOrderAsset, persistOrderDesignAssets } from './orderAssets.js';
 
 export function adminAuthorized(req) {
   const header = String(req.headers?.authorization || req.headers?.Authorization || '');
@@ -127,6 +128,40 @@ export function requireDesignSvg(designSvg) {
   return designSvg;
 }
 
+/** Optional PNG data URL captured at checkout for the jobs-board product preview. */
+export function normalizeDesignPreviewPng(designPreviewPng) {
+  if (designPreviewPng == null || designPreviewPng === '') return '';
+  if (typeof designPreviewPng !== 'string' || !designPreviewPng.startsWith('data:image/')) {
+    throw Object.assign(new Error('designPreviewPng must be an image data URL'), { status: 400 });
+  }
+  if (designPreviewPng.length > 2_500_000) {
+    throw Object.assign(new Error('designPreviewPng is too large'), { status: 413 });
+  }
+  return designPreviewPng;
+}
+
+async function attachDesignAssets(order, { designSvg, designPreviewPng }) {
+  const paths = await persistOrderDesignAssets(order.id, { designSvg, designPreviewPng });
+  const patch = {};
+  if (paths.designBlobPath) {
+    patch.designBlobPath = paths.designBlobPath;
+    // Keep the index JSON lean once the cut file lives in private Blob.
+    patch.designSvg = '';
+  }
+  if (paths.previewBlobPath) {
+    patch.previewBlobPath = paths.previewBlobPath;
+    patch.designPreviewPng = '';
+  } else if (designPreviewPng) {
+    patch.designPreviewPng = designPreviewPng;
+  }
+  if (!Object.keys(patch).length) {
+    if (designPreviewPng) return { ...order, designPreviewPng };
+    return order;
+  }
+  const updated = await updateOrder(order.id, patch);
+  return updated || { ...order, ...patch };
+}
+
 function newOrderId() {
   return `ord-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 }
@@ -150,7 +185,7 @@ export function checkoutReturnOrigin(req = {}, payload = {}) {
   return `${proto}://${host}`;
 }
 
-function buildPendingOrder({ customer, orderConfig, designSvg, status, extra = {} }) {
+function buildPendingOrder({ customer, orderConfig, designSvg, designPreviewPng = '', status, extra = {} }) {
   const amount = extra.amount ?? checkoutChargeAmount(orderConfig);
   return {
     id: newOrderId(),
@@ -161,6 +196,9 @@ function buildPendingOrder({ customer, orderConfig, designSvg, status, extra = {
     customer,
     orderConfig,
     designSvg,
+    designPreviewPng: designPreviewPng || '',
+    designBlobPath: null,
+    previewBlobPath: null,
     checkoutSessionId: null,
     paymentIntentId: null,
     chargeId: null,
@@ -218,6 +256,7 @@ export async function handleCreateCheckoutSession(payload = {}, req = {}, stripe
   const customer = normalizeCustomer(payload.customer);
   const orderConfig = normalizeOrderConfig(payload.orderConfig || {});
   const designSvg = requireDesignSvg(payload.designSvg);
+  const designPreviewPng = normalizeDesignPreviewPng(payload.designPreviewPng);
   const origin = checkoutReturnOrigin(req, payload);
   const amount = checkoutChargeAmount(orderConfig);
 
@@ -227,10 +266,14 @@ export async function handleCreateCheckoutSession(payload = {}, req = {}, stripe
         customer,
         orderConfig,
         designSvg,
+        designPreviewPng,
         status: 'unverified',
         extra: { amount, paymentIntentId: `LOCAL-${Date.now()}` },
       });
       const saved = await appendOrder(order);
+      if (!saved.duplicate) {
+        await attachDesignAssets(saved.order, { designSvg, designPreviewPng });
+      }
       return {
         url: `${origin}/order/success?orderId=${encodeURIComponent(saved.order.id)}&local=1`,
         sessionId: null,
@@ -252,28 +295,32 @@ export async function handleCreateCheckoutSession(payload = {}, req = {}, stripe
     customer,
     orderConfig,
     designSvg,
+    designPreviewPng,
     status: 'pending',
     extra: { amount },
   });
-  await appendOrder(order);
+  const saved = await appendOrder(order);
+  if (!saved.duplicate) {
+    await attachDesignAssets(saved.order, { designSvg, designPreviewPng });
+  }
 
   const session = await createCheckoutSession(
     {
-      orderId: order.id,
+      orderId: saved.order.id,
       orderConfig,
       customerEmail: customer.email,
       successUrl: `${origin}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${origin}/order/cancel?orderId=${encodeURIComponent(order.id)}`,
+      cancelUrl: `${origin}/order/cancel?orderId=${encodeURIComponent(saved.order.id)}`,
     },
     stripeClient,
   );
 
-  await updateOrder(order.id, { checkoutSessionId: session.id });
+  await updateOrder(saved.order.id, { checkoutSessionId: session.id });
 
   return {
     url: session.url,
     sessionId: session.id,
-    orderId: order.id,
+    orderId: saved.order.id,
     amount: moneyString(amount),
     currency: ORDER_CURRENCY,
   };
@@ -413,6 +460,7 @@ export async function handleSubmitOrder(payload = {}) {
   const customer = normalizeCustomer(payload.customer);
   const orderConfig = normalizeOrderConfig(payload.orderConfig || {});
   const designSvg = requireDesignSvg(payload.designSvg);
+  const designPreviewPng = normalizeDesignPreviewPng(payload.designPreviewPng);
 
   const paymentIntentId = payload.paymentIntentId;
   const expectedAmount = calculateOrderTotal(orderConfig);
@@ -447,9 +495,15 @@ export async function handleSubmitOrder(payload = {}) {
     customer,
     orderConfig,
     designSvg,
+    designPreviewPng,
+    designBlobPath: null,
+    previewBlobPath: null,
   };
 
   const saved = await appendOrder(order);
+  if (!saved.duplicate) {
+    await attachDesignAssets(saved.order, { designSvg, designPreviewPng });
+  }
   return {
     order: publicOrderView(saved.order),
     ordersCount: saved.ordersCount,
@@ -477,6 +531,66 @@ export async function handleGetOrder(req, orderId) {
   const order = await getOrderById(orderId);
   if (!order) throw Object.assign(new Error('Order not found'), { status: 404 });
   return { order: fulfillmentOrderView(order, { includeDesign: true }) };
+}
+
+/**
+ * Authenticated design / product-preview bytes for the jobs board.
+ * Prefer private Blob get(); fall back to inline fields for local/legacy orders.
+ */
+export async function handleGetOrderAsset(req, orderId, kind, { download = false } = {}) {
+  requireAdminOrPublicList(req);
+  const order = await getOrderById(orderId);
+  if (!order) throw Object.assign(new Error('Order not found'), { status: 404 });
+
+  if (kind === 'preview') {
+    if (order.previewBlobPath) {
+      const asset = await getPrivateOrderAsset(order.previewBlobPath);
+      if (asset?.buffer?.length) {
+        return {
+          body: asset.buffer,
+          contentType: asset.contentType || 'image/png',
+          fileName: `${order.id}-preview.png`,
+          download,
+        };
+      }
+    }
+    if (typeof order.designPreviewPng === 'string' && order.designPreviewPng.startsWith('data:image/')) {
+      const comma = order.designPreviewPng.indexOf(',');
+      const buffer = Buffer.from(order.designPreviewPng.slice(comma + 1), 'base64');
+      return {
+        body: buffer,
+        contentType: 'image/png',
+        fileName: `${order.id}-preview.png`,
+        download,
+      };
+    }
+    throw Object.assign(new Error('No product preview stored for this order'), { status: 404 });
+  }
+
+  if (kind === 'design') {
+    if (order.designBlobPath) {
+      const asset = await getPrivateOrderAsset(order.designBlobPath);
+      if (asset?.buffer?.length) {
+        return {
+          body: asset.buffer,
+          contentType: asset.contentType || 'image/svg+xml;charset=utf-8',
+          fileName: `${order.id}.svg`,
+          download,
+        };
+      }
+    }
+    if (typeof order.designSvg === 'string' && order.designSvg.length >= 20) {
+      return {
+        body: Buffer.from(order.designSvg, 'utf8'),
+        contentType: 'image/svg+xml;charset=utf-8',
+        fileName: `${order.id}.svg`,
+        download,
+      };
+    }
+    throw Object.assign(new Error('No design file stored for this order'), { status: 404 });
+  }
+
+  throw Object.assign(new Error('Unknown asset kind'), { status: 400 });
 }
 
 const FULFILLMENT_STATUSES = new Set(['new', 'making', 'shipped']);

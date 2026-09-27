@@ -74,13 +74,18 @@ export function useStudioActions({
     if (!file || !canvas) return; 
 
     try {
-      // 1. Create a high-speed local memory URL instead of running a slow Base64 string reader
-      const objectUrl = URL.createObjectURL(file);
+      // Durable data URL so canvas.toSVG() / checkout never embeds revoked blob: hrefs.
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('Could not read image'));
+        reader.readAsDataURL(file);
+      });
       
-      // 2. Fabric 7 requires a Promise (async/await)
-      const img = await fabric.Image.fromURL(objectUrl);
+      // Fabric 7 requires a Promise (async/await)
+      const img = await fabric.Image.fromURL(dataUrl);
       
-      // 3. Apply standard styling and drop it into the physical view
+      // Apply standard styling and drop it into the physical view
       const drop = viewportDrop(canvas);
       img.set({ 
           left: drop.left, 
@@ -98,15 +103,12 @@ export function useStudioActions({
       setTool('select'); 
       canvas.requestRenderAll(); 
       saveHistorySnapshot(canvas, true);
-      
-      // 4. Flush the temporary URL to prevent memory leaks in the browser
-      URL.revokeObjectURL(objectUrl);
 
     } catch {
       console.error("Upload Engine Crash:");
       notifyStudio({ tone: 'error', title: 'Could not read image', detail: 'Use a valid PNG or JPG.' });
     } finally {
-      // 5. Always reset the file input so you can re-upload the exact same file later
+      // Always reset the file input so you can re-upload the exact same file later
       e.target.value = '';
     }
   }, [canvas, setTool, saveHistorySnapshot]);
