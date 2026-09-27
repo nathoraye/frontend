@@ -172,7 +172,7 @@ export function publicOrderView(order) {
   };
 }
 
-/** Jobs-board payload: product + customer, no cut SVG (fetch /api/orders/:id for that). */
+/** Jobs-board payload: product + customer, no cut SVG (fetch /api/orders?id= for that). */
 export function fulfillmentOrderView(order, { includeDesign = false } = {}) {
   if (!order) return null;
   const hasInlineSvg = Boolean(order.designSvg);
