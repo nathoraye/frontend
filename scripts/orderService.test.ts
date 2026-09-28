@@ -15,6 +15,7 @@ import {
   handleSetFulfillment,
   handleStripeEvent,
   handleSubmitOrder,
+  normalizeOrderConfig,
 } from '../api/_lib/orderService.js';
 
 const customer = {
@@ -28,6 +29,39 @@ const customer = {
 };
 
 const designSvg = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20"/></svg>';
+
+test('normalizeOrderConfig always persists vinyl and apparel sizes', () => {
+  const vinyl = normalizeOrderConfig({
+    orderType: 'vinyl',
+    quantity: 2,
+    vinylWidthCm: '15.5',
+    vinylHeightCm: 8,
+    vinylPermanent: true,
+  });
+  assert.equal(vinyl.orderType, 'vinyl');
+  assert.equal(vinyl.vinylWidthCm, 15.5);
+  assert.equal(vinyl.vinylHeightCm, 8);
+  assert.equal(vinyl.vinylFinish, 'matte');
+
+  const vinylDefault = normalizeOrderConfig({ orderType: 'vinyl', quantity: 1 });
+  assert.equal(vinylDefault.vinylWidthCm, 10);
+  assert.equal(vinylDefault.vinylHeightCm, 10);
+
+  const apparel = normalizeOrderConfig({
+    orderType: 'product',
+    productId: 'tshirt',
+    productColor: '#ffffff',
+  });
+  assert.equal(apparel.productSize, 'M');
+
+  const apparelSized = normalizeOrderConfig({
+    orderType: 'product',
+    productId: 'hoodie',
+    productSize: 'XL',
+    productColor: '#000000',
+  });
+  assert.equal(apparelSized.productSize, 'XL');
+});
 
 test('unverified local checkout creates and lists an order', async () => {
   const file = path.join(os.tmpdir(), `wvs-orders-${Date.now()}.json`);
@@ -127,6 +161,8 @@ test('checkout session persists an unverified job and success status', async () 
   assert.equal(listed.orders[0].customer.email, 'ada@example.com');
   assert.equal(listed.orders[0].hasDesign, true);
   assert.equal(listed.orders[0].designSvg, undefined);
+  assert.equal(listed.orders[0].orderConfig.vinylWidthCm, 10);
+  assert.equal(listed.orders[0].orderConfig.vinylHeightCm, 10);
 
   const detail = await handleGetOrder({ headers: {} }, created.orderId);
   assert.match(detail.order.designSvg, /<svg/);

@@ -35,6 +35,42 @@ export function moneyString(value: number): string {
   return roundMoney(value).toFixed(2);
 }
 
+function coercePositiveNumber(value: unknown, fallback: number | null = null): number | null {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.round(n * 10) / 10;
+}
+
+/** Vinyl cut size in cm, or null when the stored order never recorded one. */
+export function vinylSizeCm(
+  config: Record<string, unknown> | null | undefined,
+): { widthCm: number; heightCm: number } | null {
+  if (!config) return null;
+  const w = coercePositiveNumber(config.vinylWidthCm, null);
+  const h = coercePositiveNumber(config.vinylHeightCm, null);
+  if (w == null || h == null) return null;
+  return { widthCm: w, heightCm: h };
+}
+
+/**
+ * Labeled size for the jobs board.
+ * Vinyl → cm + inches. Apparel → garment size (S/M/L…). Null when legacy jobs lack size.
+ */
+export function formatOrderSize(config: Record<string, unknown> | null | undefined): string | null {
+  if (!config) return null;
+  const orderType = config.orderType === 'product' ? 'product' : 'vinyl';
+  if (orderType === 'product') {
+    const size = typeof config.productSize === 'string' ? config.productSize.trim() : '';
+    return size || null;
+  }
+  const dims = vinylSizeCm(config);
+  if (!dims) return null;
+  const { widthCm, heightCm } = dims;
+  const widthIn = Math.round((widthCm / 2.54) * 10) / 10;
+  const heightIn = Math.round((heightCm / 2.54) * 10) / 10;
+  return `${widthCm}×${heightCm} cm · ${widthIn}×${heightIn} in`;
+}
+
 /** Short production label for the jobs board and checkout UI. */
 export function describeOrderJob(config: Record<string, unknown> | null | undefined): string {
   if (!config) return 'Custom job';
@@ -46,8 +82,9 @@ export function describeOrderJob(config: Record<string, unknown> | null | undefi
     );
     return `${parts.join(' · ') || 'apparel'} ×${qty}`;
   }
-  const w = typeof config.vinylWidthCm === 'number' ? config.vinylWidthCm : 10;
-  const h = typeof config.vinylHeightCm === 'number' ? config.vinylHeightCm : 10;
+  const dims = vinylSizeCm(config);
+  const w = dims?.widthCm ?? 10;
+  const h = dims?.heightCm ?? 10;
   const finish = config.vinylPermanent
     ? `permanent ${typeof config.vinylFinish === 'string' ? config.vinylFinish : 'matte'}`
     : 'removable';
