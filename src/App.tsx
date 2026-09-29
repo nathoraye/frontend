@@ -34,6 +34,7 @@ import {
   type ProductId,
 } from './three/productCatalog';
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
+import { moneyString, SHIPPING_COST, UNIT_PRICES } from './utils/orderPricing';
 import { tracedSvgToObject } from './utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
 import { imageDataToPngDataUrl } from './utils/imageDataPng';
@@ -42,6 +43,8 @@ type AppTool = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
 type ViewMode = 'sticker' | 'product';
 
 const CANVAS_BG = '#2a2e3c';
+const VINYL_FROM = moneyString(UNIT_PRICES.vinyl + SHIPPING_COST);
+const APPAREL_FROM = moneyString(UNIT_PRICES.product + SHIPPING_COST);
 
 export default function App() {
   const { canvasRef, containerRef, canvas } = useCanvasEngine();
@@ -122,6 +125,11 @@ export default function App() {
     const next = snapshotDesignAsDataURL(canvas);
     if (next) setDesignSnapshot(next);
   }, [canvas]);
+
+  const openProductPreview = useCallback(() => {
+    applyDesignToProduct();
+    setViewMode('product');
+  }, [applyDesignToProduct]);
 
   const { saveHistorySnapshot, handleUndo, handleRedo } = useHistoryEngine({ setCanvasObjects });
   const clipboard = useRef<fabric.Object | null>(null);
@@ -475,14 +483,11 @@ export default function App() {
               <button disabled={isGenerating} onClick={handleAIGeneration} className="flex h-8 items-center gap-2 rounded-md border border-slate-700 bg-[#181a25] px-2 py-1.5 text-[10px] font-bold tracking-wider text-white uppercase transition-colors hover:bg-slate-800 touch-manipulation sm:px-3">{isGenerating ? '…' : <><span className="sm:hidden">AI</span><span className="hidden sm:inline">Generate AI</span></>}</button>
 
               <div className="flex items-center gap-1 rounded-lg bg-slate-500/5 p-1">
-                <button onClick={() => setViewMode('sticker')} className={`h-7 rounded px-2 text-[10px] font-bold tracking-wider uppercase transition-colors touch-manipulation sm:h-6 ${viewMode === 'sticker' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}>2D</button>
+                <button onClick={() => setViewMode('sticker')} className={`h-9 rounded px-2 text-[10px] font-bold tracking-wider uppercase transition-colors touch-manipulation sm:h-8 ${viewMode === 'sticker' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}>Design</button>
                 <button
                   type="button"
-                  onClick={() => {
-                    applyDesignToProduct();
-                    setViewMode('product');
-                  }}
-                  className={`h-7 rounded px-2 text-[10px] font-bold tracking-wider uppercase transition-colors touch-manipulation sm:h-6 ${viewMode === 'product' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}
+                  onClick={openProductPreview}
+                  className={`h-9 rounded px-2 text-[10px] font-bold tracking-wider uppercase transition-colors touch-manipulation sm:h-8 ${viewMode === 'product' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}
                 >
                   <span className="sm:hidden">Product</span>
                   <span className="hidden sm:inline">Product Preview</span>
@@ -537,6 +542,60 @@ export default function App() {
                   <canvas ref={canvasRef} />
                 </div>
 
+                {viewMode === 'sticker' && canvasObjects.length === 0 && (
+                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6">
+                    <div className="pointer-events-auto w-full max-w-md text-center">
+                      <h1 className="text-balance text-2xl font-black tracking-tight text-slate-100 sm:text-3xl">
+                        Design the cut.
+                      </h1>
+                      <p className="mx-auto mt-3 max-w-[42ch] text-sm leading-relaxed text-slate-300">
+                        Add type or a photo on the mat. Preview it on a sticker or garment, then check out.
+                        Made in Wentworth, NSW. Vinyl from A${VINYL_FROM} with shipping.
+                      </p>
+                      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={addText}
+                          className="h-11 rounded-md bg-slate-700 px-4 text-xs font-bold text-white hover:bg-slate-600"
+                        >
+                          Add text
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="h-11 rounded-md bg-slate-700 px-4 text-xs font-bold text-white hover:bg-slate-600"
+                        >
+                          Import image
+                        </button>
+                        <button
+                          type="button"
+                          onClick={openProductPreview}
+                          className="h-11 rounded-md bg-[#FF1493] px-4 text-xs font-black uppercase tracking-wider text-black hover:bg-[#ff4da6]"
+                        >
+                          Preview & order
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {viewMode === 'sticker' && canvasObjects.length > 0 && !isNodeEditing && tool !== 'wand' && tool !== 'track-line' && tool !== 'eraser' && (
+                  <div className={`pointer-events-none absolute inset-x-3 z-20 flex justify-center ${isMobileLayout ? 'bottom-16' : 'bottom-4'}`}>
+                    <div className="pointer-events-auto flex max-w-xl flex-wrap items-center justify-center gap-3 rounded-xl border border-slate-700 bg-[#1e2230]/95 px-3 py-2 shadow-xl shadow-black/30">
+                      <p className="text-xs leading-snug text-slate-200">
+                        Preview this on a sticker or garment before you pay.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={openProductPreview}
+                        className="h-10 rounded-md bg-[#FF1493] px-3 text-xs font-black uppercase tracking-wider text-black hover:bg-[#ff4da6]"
+                      >
+                        Product Preview
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {viewMode === 'sticker' && tool === 'wand' && (
                   <div className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-fuchsia-500/30 bg-[#1e2230]/95 p-1 shadow-xl touch-manipulation">
                     <button type="button" onClick={() => setWandMode('erase')} className={`min-h-10 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'erase' ? 'bg-fuchsia-500 text-black' : 'text-slate-300 hover:text-white'}`}>Erase Color</button>
@@ -569,7 +628,7 @@ export default function App() {
                         onPlacementChange={setProductPlacement}
                       />
                     </div>
-                    <div className="flex max-h-[42%] shrink-0 flex-wrap items-center gap-2 overflow-y-auto border-t border-slate-800 bg-[#181a25] p-2 sm:max-h-none sm:gap-3 sm:p-3">
+                    <div className="flex max-h-[34%] shrink-0 flex-wrap items-center gap-2 overflow-y-auto border-t border-slate-800 bg-[#181a25] p-2 sm:max-h-none sm:gap-3 sm:p-3">
                       <select
                         id="preview-product"
                         aria-label="Product"
@@ -584,7 +643,7 @@ export default function App() {
 
                       <div className="flex items-center gap-1">
                         {PRODUCT_CATALOG[selectedProduct].colorOptions.map((c) => (
-                          <button key={c} onClick={() => setProductColor(c)} className={`w-5 h-5 rounded-full border-2 ${productColor === c ? 'border-[#FF1493]' : 'border-slate-700'}`} style={{ backgroundColor: c }} title={c} aria-label={`Colour ${c}`} />
+                          <button key={c} onClick={() => setProductColor(c)} className={`h-8 w-8 rounded-full border-2 ${productColor === c ? 'border-[#FF1493]' : 'border-slate-700'}`} style={{ backgroundColor: c }} title={c} aria-label={`Colour ${c}`} />
                         ))}
                       </div>
 
@@ -597,7 +656,7 @@ export default function App() {
                       <button onClick={applyDesignToProduct} className="h-8 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-black uppercase tracking-wider">Apply Design</button>
 
                       {isSizedProduct(selectedProduct) && (
-                        <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
                           Garment
                           <select
                             id="preview-garment-size"
@@ -613,7 +672,7 @@ export default function App() {
                         </label>
                       )}
 
-                      <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
                         Print scale
                         <input
                           type="range"
@@ -635,12 +694,19 @@ export default function App() {
                         Reset place
                       </button>
 
-                      <div className="ml-auto flex flex-wrap items-center gap-2">
-                        <button onClick={handleSafeSVGExport} className="h-8 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-black uppercase tracking-wider">Export SVG</button>
-                        <button onClick={() => setActiveOrderTab('vinyl')} className="h-8 px-3 bg-[#FF1493] hover:bg-[#ff4da6] text-black rounded text-[10px] font-black uppercase tracking-wider shadow-sm">Buy Sticker</button>
-                        <button onClick={() => setActiveOrderTab('apparel')} className="h-8 px-3 bg-emerald-500 hover:bg-emerald-400 text-black rounded text-[10px] font-black uppercase tracking-wider">Buy Apparel</button>
+                      <button onClick={handleSafeSVGExport} className="h-8 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-black uppercase tracking-wider">Export SVG</button>
+                      <p className="w-full text-xs leading-relaxed text-slate-300">Drag the print. Pink corners scale it. The green handle rotates it.</p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-800 bg-[#181a25] px-3 py-2">
+                      <p className="max-w-md text-xs leading-relaxed text-slate-200">
+                        Vinyl from <span className="font-mono text-[#FF1493]">A${VINYL_FROM}</span>.
+                        Apparel from <span className="font-mono text-emerald-300">A${APPAREL_FROM}</span>.
+                        Both include shipping.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button onClick={() => setActiveOrderTab('vinyl')} className="h-11 px-4 bg-[#FF1493] hover:bg-[#ff4da6] text-black rounded-md text-xs font-black uppercase tracking-wider">Buy Sticker</button>
+                        <button onClick={() => setActiveOrderTab('apparel')} className="h-11 px-4 bg-emerald-500 hover:bg-emerald-400 text-black rounded-md text-xs font-black uppercase tracking-wider">Buy Apparel</button>
                       </div>
-                      <p className="w-full text-[10px] font-mono text-slate-300">Final edit before checkout: colour, garment size, and placement. Drag the print; pink corners scale; green handle rotates.</p>
                     </div>
                   </div>
                 )}
@@ -736,7 +802,7 @@ export default function App() {
                     )}
                   </div>
                 </div>
-                {!showRightPanel && (
+                {!showRightPanel && viewMode !== 'product' && (
                   <button type="button" onClick={() => setShowRightPanel(true)} className="absolute bottom-3 right-3 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-[#181a25]/95 text-[#FF1493] shadow-lg shadow-black/30 transition-transform hover:scale-105 touch-manipulation sm:bottom-4 sm:right-4" aria-label="Open inspector">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
                   </button>

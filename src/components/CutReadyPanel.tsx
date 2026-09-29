@@ -22,7 +22,7 @@ export function CutReadyPanel({ report }: { report: CutReadyReport }) {
     >
       <h3 className={`text-[10px] font-bold uppercase tracking-widest ${color}`}>{headline}</h3>
       {report.issues.length === 0 ? (
-        <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+        <p className="mt-2 text-xs leading-relaxed text-slate-300">
           Vectors on the mat, weeding box in place. Export when you are happy with placement.
         </p>
       ) : (
@@ -30,7 +30,7 @@ export function CutReadyPanel({ report }: { report: CutReadyReport }) {
           {report.issues.map((issue) => (
             <li
               key={issue.code}
-              className={`text-[11px] leading-relaxed ${issue.severity === 'error' ? 'text-amber-200' : 'text-slate-400'}`}
+              className={`text-xs leading-relaxed ${issue.severity === 'error' ? 'text-amber-200' : 'text-slate-300'}`}
             >
               {issue.message}
             </li>
@@ -38,7 +38,7 @@ export function CutReadyPanel({ report }: { report: CutReadyReport }) {
         </ul>
       )}
       {warnings.length > 0 && errors.length === 0 && (
-        <p className="mt-2 text-[10px] text-slate-500">Export still works. Warnings will not block the knife, but weeding is harder.</p>
+        <p className="mt-2 text-xs text-slate-300">Export still works. Warnings will not block the knife, but weeding is harder.</p>
       )}
     </section>
   );
