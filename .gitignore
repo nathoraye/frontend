@@ -31,3 +31,10 @@ dist-ssr
 /playwright-report
 /test-results
 /blob-report
+
+# Impeccable live runtime (config.json is committed)
+.impeccable/live/server.json
+.impeccable/live/roots.json
+.impeccable/live/inject-journal.json
+.impeccable/live/sessions/
+.impeccable/review/
