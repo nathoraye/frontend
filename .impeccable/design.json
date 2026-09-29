@@ -1,0 +1,239 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-29T23:20:00.000Z",
+  "title": "Design System: West Vinyl Studio",
+  "extensions": {
+    "colorMeta": {
+      "registration-pink": {
+        "role": "primary",
+        "displayName": "Registration Pink",
+        "canonical": "#FF1493",
+        "tonalRamp": ["#4a0528", "#7a0a40", "#a80e58", "#d41270", "#ff1493", "#ff5aaf", "#ff8cc6", "#ffd6ec"]
+      },
+      "registration-pink-hover": {
+        "role": "primary",
+        "displayName": "Registration Pink Hover",
+        "canonical": "#ff4da6",
+        "tonalRamp": ["#4a0528", "#7a0a40", "#c2186a", "#ff1493", "#ff4da6", "#ff7abb", "#ffadd2", "#ffd6ec"]
+      },
+      "void": {
+        "role": "neutral",
+        "displayName": "Void",
+        "canonical": "#0f111a",
+        "tonalRamp": ["#07080d", "#0f111a", "#181a25", "#1e2230", "#2a2e3c", "#3d4356", "#64748b", "#e2e8f0"]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel",
+        "canonical": "#181a25",
+        "tonalRamp": ["#07080d", "#0f111a", "#181a25", "#1e2230", "#2a2e3c", "#3d4356", "#94a3b8", "#e2e8f0"]
+      },
+      "mat": {
+        "role": "neutral",
+        "displayName": "Mat",
+        "canonical": "#2a2e3c",
+        "tonalRamp": ["#0f111a", "#181a25", "#1e2230", "#2a2e3c", "#3d4356", "#5c657a", "#94a3b8", "#e2e8f0"]
+      },
+      "float": {
+        "role": "neutral",
+        "displayName": "Float",
+        "canonical": "#1e2230",
+        "tonalRamp": ["#0f111a", "#181a25", "#1e2230", "#2a2e3c", "#3d4356", "#64748b", "#94a3b8", "#e2e8f0"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#e2e8f0",
+        "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#e2e8f0", "#f8fafc"]
+      },
+      "ink-strong": {
+        "role": "neutral",
+        "displayName": "Strong Ink",
+        "canonical": "#f1f5f9",
+        "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9"]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#94a3b8",
+        "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#f1f5f9"]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#1e293b",
+        "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#e2e8f0"]
+      },
+      "field": {
+        "role": "neutral",
+        "displayName": "Field",
+        "canonical": "#1e293b",
+        "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#e2e8f0"]
+      },
+      "apparel": {
+        "role": "secondary",
+        "displayName": "Apparel Green",
+        "canonical": "#10b981",
+        "tonalRamp": ["#022c22", "#064e3b", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7", "#d1fae5"]
+      },
+      "apparel-hover": {
+        "role": "secondary",
+        "displayName": "Apparel Green Hover",
+        "canonical": "#34d399",
+        "tonalRamp": ["#022c22", "#064e3b", "#059669", "#10b981", "#34d399", "#6ee7b7", "#a7f3d0", "#ecfdf5"]
+      },
+      "weeding-cyan": {
+        "role": "tertiary",
+        "displayName": "Weeding Cyan",
+        "canonical": "#00FFFF",
+        "tonalRamp": ["#083344", "#155e75", "#0e7490", "#06b6d4", "#22d3ee", "#67e8f9", "#a5f3fc", "#ecfeff"]
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Warning",
+        "canonical": "#fbbf24",
+        "tonalRamp": ["#451a03", "#78350f", "#b45309", "#d97706", "#f59e0b", "#fbbf24", "#fcd34d", "#fef3c7"]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Danger",
+        "canonical": "#ef4444",
+        "tonalRamp": ["#450a0a", "#7f1d1d", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fee2e2"]
+      },
+      "notice-error": {
+        "role": "neutral",
+        "displayName": "Notice Error",
+        "canonical": "#2a151c",
+        "tonalRamp": ["#1a0b10", "#2a151c", "#3f1d2a", "#5c2438", "#fecaca", "#fee2e2", "#fef2f2", "#fff7f7"]
+      },
+      "notice-success": {
+        "role": "neutral",
+        "displayName": "Notice Success",
+        "canonical": "#152a1c",
+        "tonalRamp": ["#052e16", "#152a1c", "#14532d", "#166534", "#86efac", "#bbf7d0", "#dcfce7", "#f0fdf4"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Wordmark in the studio header." },
+      "headline": { "displayName": "Headline", "purpose": "Policy and info page titles, set in mono and pink." },
+      "title": { "displayName": "Title", "purpose": "Inspector section labels and tabs." },
+      "body": { "displayName": "Body", "purpose": "Policy and checkout explanations." },
+      "label": { "displayName": "Label", "purpose": "Uppercase tracked chrome, mode switch, and buy buttons." }
+    },
+    "shadows": [
+      { "name": "header-rest", "value": "0 1px 2px rgb(0 0 0 / 0.05)", "purpose": "Header only." },
+      { "name": "floating-bar", "value": "0 20px 25px -5px rgb(0 0 0 / 0.25)", "purpose": "Quick menu and in-canvas tool prompts." },
+      { "name": "scrim-lift", "value": "0 10px 15px -3px rgb(0 0 0 / 0.3)", "purpose": "Mobile dock toggle buttons." },
+      { "name": "active-tool", "value": "0 10px 15px -3px rgb(131 24 144 / 0.4)", "purpose": "Selected tool in the dock." },
+      { "name": "inspector-edge", "value": "-10px 0 30px rgb(0 0 0 / 0.05)", "purpose": "Right inspector separating from the mat." }
+    ],
+    "motion": [
+      { "name": "color", "value": "color 150ms ease", "purpose": "Hover colour on chrome buttons." },
+      { "name": "dock-slide", "value": "transform 200ms ease-out", "purpose": "Mobile dock overlay." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "studio-dock", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Vinyl purchase and selected mode. Black label on registration pink.",
+      "html": "<button class=\"ds-btn-primary\">Buy Sticker</button>",
+      "css": ".ds-btn-primary { background: #FF1493; color: #000; height: 44px; padding: 0 16px; border: none; border-radius: 6px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; } .ds-btn-primary:hover { background: #ff4da6; } .ds-btn-primary:focus-visible { outline: 2px solid #ff4da6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Apparel Button",
+      "kind": "button",
+      "refersTo": "button-apparel",
+      "description": "Apparel purchase. Black label on emerald, never pink.",
+      "html": "<button class=\"ds-btn-apparel\">Buy Apparel</button>",
+      "css": ".ds-btn-apparel { background: #10b981; color: #000; height: 44px; padding: 0 16px; border: none; border-radius: 6px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; } .ds-btn-apparel:hover { background: #34d399; } .ds-btn-apparel:focus-visible { outline: 2px solid #ff1493; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Secondary studio actions such as export and reset.",
+      "html": "<button class=\"ds-btn-secondary\">Export SVG</button>",
+      "css": ".ds-btn-secondary { background: #334155; color: #e2e8f0; height: 32px; padding: 0 12px; border: 1px solid #475569; border-radius: 6px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 10px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; } .ds-btn-secondary:hover { background: #475569; } .ds-btn-secondary:focus-visible { outline: 2px solid #FF1493; outline-offset: 2px; }"
+    },
+    {
+      "name": "Tool Button",
+      "kind": "button",
+      "refersTo": "button-tool-active",
+      "description": "Dock tool. Pink when active, muted when idle.",
+      "html": "<button class=\"ds-tool\" aria-pressed=\"true\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z\"/><path d=\"m13 13 6 6\"/></svg></button>",
+      "css": ".ds-tool { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border: none; border-radius: 12px; background: #FF1493; color: #fff; box-shadow: 0 10px 15px -3px rgb(131 24 144 / 0.4); cursor: pointer; } .ds-tool:focus-visible { outline: 2px solid #ff4da6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Dark checkout and inspector field.",
+      "html": "<label class=\"ds-field\"><span>Size (cm)</span><input value=\"10\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #cbd5e1; } .ds-field input { width: 80px; padding: 4px 8px; background: #1f2937; color: #f3f4f6; border: 1px solid #374151; border-radius: 4px; font: inherit; } .ds-field input:focus-visible { outline: 2px solid #FF1493; outline-offset: 2px; }"
+    },
+    {
+      "name": "View Chip",
+      "kind": "chip",
+      "refersTo": "chip-selected",
+      "description": "Selected product view such as Front or Back.",
+      "html": "<button class=\"ds-chip\">Front</button>",
+      "css": ".ds-chip { background: #FF1493; color: #000; border: none; border-radius: 4px; padding: 4px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; } .ds-chip:hover { background: #ff4da6; } .ds-chip:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Panel Card",
+      "kind": "card",
+      "refersTo": "card-panel",
+      "description": "Policy and jobs card. Flat panel, hairline, no shadow.",
+      "html": "<article class=\"ds-card\"><h2>What you are buying</h2><p>Vinyl sticker base price A$12.99. Shipping is A$5.99.</p></article>",
+      "css": ".ds-card { background: #181a25; color: #e2e8f0; border: 1px solid #1e293b; border-radius: 4px; padding: 16px; max-width: 36rem; } .ds-card h2 { margin: 0 0 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 16px; font-weight: 400; color: #f472b6; } .ds-card p { margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 1.625; color: #cbd5e1; }"
+    },
+    {
+      "name": "Studio Header",
+      "kind": "nav",
+      "refersTo": "button-primary",
+      "description": "Customer studio header. Wordmark, info, and the mode switch.",
+      "html": "<header class=\"ds-nav\"><span class=\"ds-word\">West Vinyl Studio</span><a href=\"/policies\">Info</a><div class=\"ds-modes\"><button class=\"ds-mode is-on\">Design</button><button class=\"ds-mode\">Product Preview</button></div></header>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 16px; min-height: 56px; padding: 0 16px; background: #181a25; color: #e2e8f0; border-bottom: 1px solid #1e293b; font-family: ui-sans-serif, system-ui, sans-serif; } .ds-word { font-size: 14px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; } .ds-nav a { color: #94a3b8; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; } .ds-nav a:hover { color: #f472b6; } .ds-modes { display: flex; gap: 4px; padding: 4px; border-radius: 8px; background: rgb(100 116 139 / 0.05); } .ds-mode { height: 28px; padding: 0 8px; border: none; border-radius: 4px; background: transparent; color: #cbd5e1; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; } .ds-mode.is-on { background: #FF1493; color: #000; } .ds-mode:focus-visible, .ds-nav a:focus-visible { outline: 2px solid #FF1493; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Night Cutting Mat",
+    "overview": "The studio is a dark bench. The mat is where the knife will read the file. Panels around it hold tools, layers, and the order. Hot pink is the registration mark: it shows the active tool, the selected mode, and the action that buys the sticker. Emerald is reserved for the apparel purchase, so the two products do not share one button.\n\nDensity is high on purpose. This is an editor, not a brochure. Labels are small, uppercase, and tracked. Reading copy appears on the policy pages and inside checkout, in sentence case, at a normal body size. Depth comes from stacked surfaces (void, panel, mat, floating bar), not from soft cards.\n\nThe name of the north star is inferred from the implemented chrome. It is not a line the shop has published.",
+    "keyCharacteristics": [
+      "Dark void, darker panels, a slightly lighter cutting mat.",
+      "One hot-pink accent for selection and the vinyl purchase.",
+      "A separate emerald action for apparel.",
+      "Uppercase tracked labels in the tool chrome; mono for prices, sizes, and policy titles.",
+      "Flat panels with hairline borders. Shadows only on floating bars and the inspector edge.",
+      "Touch targets in the tool dock stay at least 44px."
+    ],
+    "rules": [
+      { "name": "The Registration Pink Rule", "body": "Pink marks one active thing and the vinyl purchase. It does not fill the page.", "section": "colors" },
+      { "name": "The Two Purchases Rule", "body": "Vinyl is pink. Apparel is emerald. Do not merge them into one generic checkout button.", "section": "colors" },
+      { "name": "The Unused Violet Rule", "body": "theme-color and the manifest name #863bff, but no studio surface uses it. Do not introduce violet as a second accent until that value is confirmed or removed.", "section": "colors" },
+      { "name": "The Small Label Rule", "body": "Editor chrome may be 10px and uppercase. Explanations, errors, and prices the customer must trust are at least 12px and may be sentence case.", "section": "typography" },
+      { "name": "The Mono Is Data Rule", "body": "Use monospace for sizes, money, and quantities. Do not set ordinary buttons in mono.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Panels and policy cards are flat, with a 1px hairline. A shadow means the thing is floating over the mat or pressing into it as the active tool.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep the mat at #2a2e3c, panels at #181a25, and the void at #0f111a.",
+      "Do use #FF1493 for the active tool and the vinyl purchase, and #10b981 for apparel.",
+      "Do show money as AUD, including the shipping line the policies page already states.",
+      "Do keep dock tools at least 44px on the short side.",
+      "Do leave the jobs board off the customer header."
+    ],
+    "donts": [
+      "Don't introduce a light theme for the studio. The work happens on a dark mat.",
+      "Don't paint large areas registration pink.",
+      "Don't use #863bff as an accent. It is only in the PWA theme color.",
+      "Don't set explanatory copy at 10px. That size is for chrome labels.",
+      "Don't restyle Stripe checkout, the order API, or the admin session from a visual pass."
+    ]
+  }
+}
