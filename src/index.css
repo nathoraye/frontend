@@ -24,13 +24,14 @@ body,
   margin: 0;
 }
 
+/* Natural document scroll (viewport), not a nested html overflow box —
+ * overflow-x:hidden on html breaks position:sticky in several engines. */
 html.wvs-document-scroll {
   height: auto;
   min-height: 100%;
   min-height: 100dvh;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
+  overflow: visible;
+  overscroll-behavior-y: auto;
 }
 
 html.wvs-document-scroll body,
@@ -40,7 +41,7 @@ html.wvs-document-scroll #root {
   min-height: 100dvh;
   max-height: none;
   overflow: visible;
-  overscroll-behavior-y: contain;
+  overscroll-behavior-y: auto;
 }
 
 /* Fabric paints its own wrapper; keep it clear so the studio mat color shows through. */

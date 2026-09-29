@@ -474,8 +474,9 @@ export function JobsBoard() {
 
         {needsLogin ? null : (
         <div
-          className="sticky top-0 z-20 -mx-4 mt-6 space-y-1 border-b border-slate-800/80 bg-[#0f111a]/px-4 py-3 font-mono text-xs text-slate-500"
+          className="sticky top-0 z-20 -mx-4 mt-6 space-y-1 border-b border-slate-800 bg-[#0f111a] px-4 py-3 font-mono text-xs text-slate-500 shadow-[0_8px_16px_-8px_rgba(0,0,0,0.65)]"
           data-testid="jobs-board-filters"
+          style={{ backgroundColor: '#0f111a' }}
         >
           {store ? (
             <p>
