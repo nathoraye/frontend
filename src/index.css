@@ -3,6 +3,8 @@
 /*
  * Phone browsers: lock the app to the dynamic viewport so the studio
  * does not scroll under the URL bar / home indicator.
+ * Document routes (jobs board, order success/cancel, info pages) opt out via
+ * .wvs-document-scroll so tall content can scroll the page normally.
  */
 html {
   height: 100%;
@@ -20,6 +22,25 @@ body,
   overscroll-behavior: none;
   touch-action: manipulation;
   margin: 0;
+}
+
+html.wvs-document-scroll {
+  height: auto;
+  min-height: 100%;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+html.wvs-document-scroll body,
+html.wvs-document-scroll #root {
+  height: auto;
+  min-height: 100%;
+  min-height: 100dvh;
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior-y: contain;
 }
 
 /* Fabric paints its own wrapper; keep it clear so the studio mat color shows through. */
