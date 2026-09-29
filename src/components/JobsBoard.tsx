@@ -398,9 +398,9 @@ export function JobsBoard() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#0f111a] px-4 py-6 text-slate-200" data-testid="jobs-board">
-      <div className="mx-auto w-full max-w-4xl space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="min-h-[100dvh] bg-[#0f111a] text-slate-200" data-testid="jobs-board">
+      <div className="mx-auto w-full max-w-4xl px-4 pb-8">
+        <div className="flex flex-wrap items-end justify-between gap-3 pt-6">
           <div>
             <p className="text-xs font-black tracking-widest text-pink-400 uppercase">
               West Vinyl Studio
@@ -432,7 +432,7 @@ export function JobsBoard() {
 
         {needsLogin ? (
           <form
-            className="space-y-3 rounded border border-slate-800 bg-[#181a25] p-4"
+            className="mt-6 space-y-3 rounded border border-slate-800 bg-[#181a25] p-4"
             data-testid="jobs-login"
             onSubmit={(event) => {
               event.preventDefault();
@@ -473,13 +473,17 @@ export function JobsBoard() {
         ) : null}
 
         {needsLogin ? null : (
-        <div className="space-y-1 font-mono text-xs text-slate-500">
+        <div
+          className="sticky top-0 z-20 -mx-4 mt-6 space-y-1 border-b border-slate-800 bg-[#0f111a] px-4 py-3 font-mono text-xs text-slate-500 shadow-[0_8px_16px_-8px_rgba(0,0,0,0.65)]"
+          data-testid="jobs-board-filters"
+          style={{ backgroundColor: '#0f111a' }}
+        >
           {store ? (
             <p>
               Store: {describeStore(store)} · {toMake.length} to make · {shipped.length} shipped
             </p>
           ) : null}
-          <div className="flex flex-wrap gap-2 pt-2">
+          <div className="flex flex-wrap gap-2 pt-1">
             {(
               [
                 ['make', `To make (${toMake.length})`],
@@ -508,20 +512,20 @@ export function JobsBoard() {
         </div>
         )}
 
-        {actionError ? <p className="font-mono text-sm text-red-400">{actionError}</p> : null}
+        {actionError ? <p className="mt-4 font-mono text-sm text-red-400">{actionError}</p> : null}
 
         {needsLogin ? null : loading ? (
-          <p className="font-mono text-sm text-slate-400">Loading jobs…</p>
+          <p className="mt-4 font-mono text-sm text-slate-400">Loading jobs…</p>
         ) : error ? (
-          <div className="space-y-1">
+          <div className="mt-4 space-y-1">
             <p className="font-mono text-sm text-red-400">{error}</p>
           </div>
         ) : visible.length === 0 ? (
-          <p className="font-mono text-sm text-slate-400">
+          <p className="mt-4 font-mono text-sm text-slate-400">
             {filter === 'make' ? 'Nothing to make right now.' : 'No jobs in this view.'}
           </p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="mt-4 space-y-3">
             {visible.map((order) => {
               const open = openId === order.id;
               const dashboard = stripeDashboardHref(order.paymentIntentId);
