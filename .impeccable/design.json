@@ -13,7 +13,7 @@
       "registration-pink-hover": {
         "role": "primary",
         "displayName": "Registration Pink Hover",
-        "canonical": "#ff4da6",
+        "canonical": "#d41270",
         "tonalRamp": ["#4a0528", "#7a0a40", "#c2186a", "#ff1493", "#ff4da6", "#ff7abb", "#ffadd2", "#ffd6ec"]
       },
       "void": {
@@ -79,7 +79,7 @@
       "apparel-hover": {
         "role": "secondary",
         "displayName": "Apparel Green Hover",
-        "canonical": "#34d399",
+        "canonical": "#047857",
         "tonalRamp": ["#022c22", "#064e3b", "#059669", "#10b981", "#34d399", "#6ee7b7", "#a7f3d0", "#ecfdf5"]
       },
       "weeding-cyan": {
@@ -142,16 +142,16 @@
       "kind": "button",
       "refersTo": "button-primary",
       "description": "Vinyl purchase and selected mode. Black label on registration pink.",
-      "html": "<button class=\"ds-btn-primary\">Buy Sticker</button>",
-      "css": ".ds-btn-primary { background: #FF1493; color: #000; height: 44px; padding: 0 16px; border: none; border-radius: 6px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; } .ds-btn-primary:hover { background: #ff4da6; } .ds-btn-primary:focus-visible { outline: 2px solid #ff4da6; outline-offset: 2px; }"
+      "html": "<button class=\"ds-btn-primary\">Buy sticker</button>",
+      "css": ".ds-btn-primary { background: #FF1493; color: #000; height: 40px; padding: 0 14px; border: none; border-radius: 6px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; } .ds-btn-primary:hover { background: #d41270; } .ds-btn-primary:focus-visible { outline: 2px solid #FF1493; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.4; pointer-events: none; }"
     },
     {
       "name": "Apparel Button",
       "kind": "button",
       "refersTo": "button-apparel",
       "description": "Apparel purchase. Black label on emerald, never pink.",
-      "html": "<button class=\"ds-btn-apparel\">Buy Apparel</button>",
-      "css": ".ds-btn-apparel { background: #10b981; color: #000; height: 44px; padding: 0 16px; border: none; border-radius: 6px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; } .ds-btn-apparel:hover { background: #34d399; } .ds-btn-apparel:focus-visible { outline: 2px solid #ff1493; outline-offset: 2px; }"
+      "html": "<button class=\"ds-btn-apparel\">Buy apparel</button>",
+      "css": ".ds-btn-apparel { background: #10b981; color: #000; height: 40px; padding: 0 14px; border: none; border-radius: 6px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; } .ds-btn-apparel:hover { background: #047857; } .ds-btn-apparel:focus-visible { outline: 2px solid #FF1493; outline-offset: 2px; } .ds-btn-apparel:disabled { opacity: 0.4; pointer-events: none; }"
     },
     {
       "name": "Secondary Button",
@@ -159,7 +159,7 @@
       "refersTo": "button-secondary",
       "description": "Secondary studio actions such as export and reset.",
       "html": "<button class=\"ds-btn-secondary\">Export SVG</button>",
-      "css": ".ds-btn-secondary { background: #334155; color: #e2e8f0; height: 32px; padding: 0 12px; border: 1px solid #475569; border-radius: 6px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 10px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; } .ds-btn-secondary:hover { background: #475569; } .ds-btn-secondary:focus-visible { outline: 2px solid #FF1493; outline-offset: 2px; }"
+      "css": ".ds-btn-secondary { background: transparent; color: #f1f5f9; height: 40px; padding: 0 14px; border: 1px solid #475569; border-radius: 6px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; } .ds-btn-secondary:hover { background: #1e293b; } .ds-btn-secondary:focus-visible { outline: 2px solid #FF1493; outline-offset: 2px; } .ds-btn-secondary:disabled { opacity: 0.4; pointer-events: none; }"
     },
     {
       "name": "Tool Button",
@@ -183,7 +183,7 @@
       "refersTo": "chip-selected",
       "description": "Selected product view such as Front or Back.",
       "html": "<button class=\"ds-chip\">Front</button>",
-      "css": ".ds-chip { background: #FF1493; color: #000; border: none; border-radius: 4px; padding: 4px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; } .ds-chip:hover { background: #ff4da6; } .ds-chip:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }"
+      "css": ".ds-chip { background: #FF1493; color: #000; border: none; border-radius: 6px; height: 40px; padding: 0 14px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; } .ds-chip:hover { background: #d41270; } .ds-chip:focus-visible { outline: 2px solid #FF1493; outline-offset: 2px; }"
     },
     {
       "name": "Panel Card",
@@ -199,7 +199,7 @@
       "refersTo": "button-primary",
       "description": "Customer studio header. Wordmark, info, and the mode switch.",
       "html": "<header class=\"ds-nav\"><span class=\"ds-word\">West Vinyl Studio</span><a href=\"/policies\">Info</a><div class=\"ds-modes\"><button class=\"ds-mode is-on\">Design</button><button class=\"ds-mode\">Product Preview</button></div></header>",
-      "css": ".ds-nav { display: flex; align-items: center; gap: 16px; min-height: 56px; padding: 0 16px; background: #181a25; color: #e2e8f0; border-bottom: 1px solid #1e293b; font-family: ui-sans-serif, system-ui, sans-serif; } .ds-word { font-size: 14px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; } .ds-nav a { color: #94a3b8; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; } .ds-nav a:hover { color: #f472b6; } .ds-modes { display: flex; gap: 4px; padding: 4px; border-radius: 8px; background: rgb(100 116 139 / 0.05); } .ds-mode { height: 28px; padding: 0 8px; border: none; border-radius: 4px; background: transparent; color: #cbd5e1; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; } .ds-mode.is-on { background: #FF1493; color: #000; } .ds-mode:focus-visible, .ds-nav a:focus-visible { outline: 2px solid #FF1493; outline-offset: 2px; }"
+      "css": ".ds-nav { display: flex; align-items: center; gap: 16px; min-height: 56px; padding: 0 16px; background: #181a25; color: #e2e8f0; border-bottom: 1px solid #1e293b; font-family: ui-sans-serif, system-ui, sans-serif; } .ds-word { font-size: 14px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; } .ds-nav a { color: #94a3b8; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; } .ds-nav a:hover { color: #f472b6; } .ds-modes { display: flex; gap: 4px; } .ds-mode { height: 40px; padding: 0 14px; border: none; border-radius: 6px; background: transparent; color: #cbd5e1; font-size: 14px; font-weight: 600; cursor: pointer; } .ds-mode:hover { background: #1e293b; color: #fff; } .ds-mode.is-on { background: #FF1493; color: #000; } .ds-mode.is-on:hover { background: #d41270; } .ds-mode:focus-visible, .ds-nav a:focus-visible { outline: 2px solid #FF1493; outline-offset: 2px; }"
     }
   ],
   "narrative": {
@@ -226,6 +226,7 @@
       "Do use #FF1493 for the active tool and the vinyl purchase, and #10b981 for apparel.",
       "Do show money as AUD, including the shipping line the policies page already states.",
       "Do keep dock tools at least 44px on the short side.",
+      "Do keep the cutting mat clear of instructions.",
       "Do leave the jobs board off the customer header."
     ],
     "donts": [
@@ -233,6 +234,8 @@
       "Don't paint large areas registration pink.",
       "Don't use #863bff as an accent. It is only in the PWA theme color.",
       "Don't set explanatory copy at 10px. That size is for chrome labels.",
+      "Don't put step copy or hint bars on the mat.",
+      "Don't set purchase or preview buttons in uppercase, wide tracking, gradients, glows, or drop shadows.",
       "Don't restyle Stripe checkout, the order API, or the admin session from a visual pass."
     ]
   }

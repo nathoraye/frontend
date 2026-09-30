@@ -22,7 +22,7 @@ They can add type or a photo, open Product Preview, and see Buy Sticker and Buy 
 THESIS: The mat tells you the next step, and the purchase sits on its own row. This refuses a blank canvas with the buy buttons buried in a wrapping toolbar.
 OWN-WORLD: Night cutting mat. Void `#0f111a`, panel `#181a25`, mat `#2a2e3c`, registration pink for vinyl, emerald for apparel.
 STORY: Design the cut, preview it on a product, then pay the price already printed on the policies page.
-FIRST VIEWPORT: Empty mat centers "Design the cut." with Add text, Import image, and Preview & order. Header mode reads Design / Product Preview. Product Preview pins Buy Sticker and Buy Apparel to a footer that does not scroll away.
+FIRST VIEWPORT: The mat is empty of instructions. Header mode reads Design / Product Preview. Product Preview pins Buy sticker and Buy apparel on a footer that does not scroll away.
 FORM: Extension of the incumbent studio. No new visual world. Seed was not rolled because this is a local path inside an established surface.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
 

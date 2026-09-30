@@ -45,6 +45,12 @@ type ViewMode = 'sticker' | 'product';
 const CANVAS_BG = '#2a2e3c';
 const VINYL_FROM = moneyString(UNIT_PRICES.vinyl + SHIPPING_COST);
 const APPAREL_FROM = moneyString(UNIT_PRICES.product + SHIPPING_COST);
+const BTN =
+  'inline-flex h-10 shrink-0 items-center justify-center rounded-md px-3.5 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-40';
+const BTN_PRIMARY = `${BTN} bg-[#FF1493] text-black hover:bg-[#d41270]`;
+const BTN_APPAREL = `${BTN} bg-[#10b981] text-black hover:bg-[#047857]`;
+const BTN_SECONDARY = `${BTN} border border-slate-600 bg-transparent text-slate-100 hover:bg-slate-800`;
+const BTN_QUIET = `${BTN} text-slate-300 hover:bg-slate-800 hover:text-white`;
 
 export default function App() {
   const { canvasRef, containerRef, canvas } = useCanvasEngine();
@@ -480,14 +486,14 @@ export default function App() {
                   setActiveTab('design');
                 }}
               />
-              <button disabled={isGenerating} onClick={handleAIGeneration} className="flex h-8 items-center gap-2 rounded-md border border-slate-700 bg-[#181a25] px-2 py-1.5 text-[10px] font-bold tracking-wider text-white uppercase transition-colors hover:bg-slate-800 touch-manipulation sm:px-3">{isGenerating ? '…' : <><span className="sm:hidden">AI</span><span className="hidden sm:inline">Generate AI</span></>}</button>
+              <button disabled={isGenerating} onClick={handleAIGeneration} className={`${BTN_SECONDARY} touch-manipulation`}>{isGenerating ? 'Generating…' : <><span className="sm:hidden">AI</span><span className="hidden sm:inline">Generate AI</span></>}</button>
 
-              <div className="flex items-center gap-1 rounded-lg bg-slate-500/5 p-1">
-                <button onClick={() => setViewMode('sticker')} className={`h-9 rounded px-2 text-[10px] font-bold tracking-wider uppercase transition-colors touch-manipulation sm:h-8 ${viewMode === 'sticker' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}>Design</button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setViewMode('sticker')} className={`touch-manipulation ${viewMode === 'sticker' ? BTN_PRIMARY : BTN_QUIET}`}>Design</button>
                 <button
                   type="button"
                   onClick={openProductPreview}
-                  className={`h-9 rounded px-2 text-[10px] font-bold tracking-wider uppercase transition-colors touch-manipulation sm:h-8 ${viewMode === 'product' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}
+                  className={`touch-manipulation ${viewMode === 'product' ? BTN_PRIMARY : BTN_QUIET}`}
                 >
                   <span className="sm:hidden">Product</span>
                   <span className="hidden sm:inline">Product Preview</span>
@@ -542,60 +548,6 @@ export default function App() {
                   <canvas ref={canvasRef} />
                 </div>
 
-                {viewMode === 'sticker' && canvasObjects.length === 0 && (
-                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6">
-                    <div className="pointer-events-auto w-full max-w-md text-center">
-                      <h1 className="text-balance text-2xl font-black tracking-tight text-slate-100 sm:text-3xl">
-                        Design the cut.
-                      </h1>
-                      <p className="mx-auto mt-3 max-w-[42ch] text-sm leading-relaxed text-slate-300">
-                        Add type or a photo on the mat. Preview it on a sticker or garment, then check out.
-                        Made in Wentworth, NSW. Vinyl from A${VINYL_FROM} with shipping.
-                      </p>
-                      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-                        <button
-                          type="button"
-                          onClick={addText}
-                          className="h-11 rounded-md bg-slate-700 px-4 text-xs font-bold text-white hover:bg-slate-600"
-                        >
-                          Add text
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="h-11 rounded-md bg-slate-700 px-4 text-xs font-bold text-white hover:bg-slate-600"
-                        >
-                          Import image
-                        </button>
-                        <button
-                          type="button"
-                          onClick={openProductPreview}
-                          className="h-11 rounded-md bg-[#FF1493] px-4 text-xs font-black uppercase tracking-wider text-black hover:bg-[#ff4da6]"
-                        >
-                          Preview & order
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {viewMode === 'sticker' && canvasObjects.length > 0 && !isNodeEditing && tool !== 'wand' && tool !== 'track-line' && tool !== 'eraser' && (
-                  <div className={`pointer-events-none absolute inset-x-3 z-20 flex justify-center ${isMobileLayout ? 'bottom-16' : 'bottom-4'}`}>
-                    <div className="pointer-events-auto flex max-w-xl flex-wrap items-center justify-center gap-3 rounded-xl border border-slate-700 bg-[#1e2230]/95 px-3 py-2 shadow-xl shadow-black/30">
-                      <p className="text-xs leading-snug text-slate-200">
-                        Preview this on a sticker or garment before you pay.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={openProductPreview}
-                        className="h-10 rounded-md bg-[#FF1493] px-3 text-xs font-black uppercase tracking-wider text-black hover:bg-[#ff4da6]"
-                      >
-                        Product Preview
-                      </button>
-                    </div>
-                  </div>
-                )}
-
                 {viewMode === 'sticker' && tool === 'wand' && (
                   <div className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-fuchsia-500/30 bg-[#1e2230]/95 p-1 shadow-xl touch-manipulation">
                     <button type="button" onClick={() => setWandMode('erase')} className={`min-h-10 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'erase' ? 'bg-fuchsia-500 text-black' : 'text-slate-300 hover:text-white'}`}>Erase Color</button>
@@ -649,11 +601,11 @@ export default function App() {
 
                       <div className="flex items-center gap-1">
                         {PRODUCT_CATALOG[selectedProduct].views.map((v) => (
-                          <button key={v.id} onClick={() => setActiveProductView(v.id)} className={`px-2 py-1 rounded text-[10px] font-mono uppercase ${activeProductView === v.id ? 'bg-[#FF1493] text-black' : 'bg-slate-800 text-slate-300'}`}>{v.label}</button>
+                          <button key={v.id} type="button" onClick={() => setActiveProductView(v.id)} className={activeProductView === v.id ? BTN_PRIMARY : BTN_QUIET}>{v.label}</button>
                         ))}
                       </div>
 
-                      <button onClick={applyDesignToProduct} className="h-8 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-black uppercase tracking-wider">Apply Design</button>
+                      <button type="button" onClick={applyDesignToProduct} className={BTN_SECONDARY}>Apply design</button>
 
                       {isSizedProduct(selectedProduct) && (
                         <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
@@ -689,12 +641,12 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setProductPlacement({ posX: 0, posY: 0, scale: 1, rotationDeg: 0 })}
-                        className="h-8 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[10px] font-black uppercase tracking-wider border border-slate-600"
+                        className={BTN_SECONDARY}
                       >
                         Reset place
                       </button>
 
-                      <button onClick={handleSafeSVGExport} className="h-8 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-black uppercase tracking-wider">Export SVG</button>
+                      <button type="button" onClick={handleSafeSVGExport} className={BTN_SECONDARY}>Export SVG</button>
                       <p className="w-full text-xs leading-relaxed text-slate-300">Drag the print. Pink corners scale it. The green handle rotates it.</p>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-800 bg-[#181a25] px-3 py-2">
@@ -704,8 +656,8 @@ export default function App() {
                         Both include shipping.
                       </p>
                       <div className="flex flex-wrap items-center gap-2">
-                        <button onClick={() => setActiveOrderTab('vinyl')} className="h-11 px-4 bg-[#FF1493] hover:bg-[#ff4da6] text-black rounded-md text-xs font-black uppercase tracking-wider">Buy Sticker</button>
-                        <button onClick={() => setActiveOrderTab('apparel')} className="h-11 px-4 bg-emerald-500 hover:bg-emerald-400 text-black rounded-md text-xs font-black uppercase tracking-wider">Buy Apparel</button>
+                        <button type="button" onClick={() => setActiveOrderTab('vinyl')} className={BTN_PRIMARY}>Buy sticker</button>
+                        <button type="button" onClick={() => setActiveOrderTab('apparel')} className={BTN_APPAREL}>Buy apparel</button>
                       </div>
                     </div>
                   </div>

@@ -3,7 +3,7 @@ name: West Vinyl Studio
 description: Dark cutting-mat studio for designing and ordering custom vinyl and iron-on goods.
 colors:
   registration-pink: "#FF1493"
-  registration-pink-hover: "#ff4da6"
+  registration-pink-hover: "#d41270"
   void: "#0f111a"
   panel: "#181a25"
   mat: "#2a2e3c"
@@ -14,7 +14,7 @@ colors:
   hairline: "#1e293b"
   field: "#1e293b"
   apparel: "#10b981"
-  apparel-hover: "#34d399"
+  apparel-hover: "#047857"
   weeding-cyan: "#00FFFF"
   warning: "#fbbf24"
   danger: "#ef4444"
@@ -68,8 +68,8 @@ components:
     backgroundColor: "{colors.registration-pink}"
     textColor: "#000000"
     rounded: "{rounded.md}"
-    padding: "0 16px"
-    height: "44px"
+    padding: "0 14px"
+    height: "40px"
   button-primary-hover:
     backgroundColor: "{colors.registration-pink-hover}"
     textColor: "#000000"
@@ -80,17 +80,20 @@ components:
     padding: "12px"
     size: "44px"
   button-secondary:
-    backgroundColor: "{colors.field}"
+    backgroundColor: "transparent"
     textColor: "{colors.ink}"
     rounded: "{rounded.md}"
-    padding: "8px 12px"
-    height: "32px"
+    padding: "0 14px"
+    height: "40px"
   button-apparel:
     backgroundColor: "{colors.apparel}"
     textColor: "#000000"
     rounded: "{rounded.md}"
-    padding: "0 16px"
-    height: "44px"
+    padding: "0 14px"
+    height: "40px"
+  button-apparel-hover:
+    backgroundColor: "{colors.apparel-hover}"
+    textColor: "#000000"
   input-field:
     backgroundColor: "{colors.field}"
     textColor: "{colors.ink}"
@@ -99,8 +102,9 @@ components:
   chip-selected:
     backgroundColor: "{colors.registration-pink}"
     textColor: "#000000"
-    rounded: "{rounded.sm}"
-    padding: "4px 8px"
+    rounded: "{rounded.md}"
+    padding: "0 14px"
+    height: "40px"
   card-panel:
     backgroundColor: "{colors.panel}"
     textColor: "{colors.ink}"
@@ -135,11 +139,11 @@ The palette is a night bench plus a plotter's registration pink. A second satura
 
 ### Primary
 
-- **Registration Pink** (`#FF1493`): Active tool, selected Design or Product Preview mode, vinyl buy button, inspector tab underline, focus of range inputs, and links' hover on the wordmark row. Hover moves to `#ff4da6`.
+- **Registration Pink** (`#FF1493`): Active tool, selected Design or Product Preview mode, vinyl buy button, inspector tab underline, focus of range inputs, and links' hover on the wordmark row. Purchase and preview hovers darken to `#d41270`.
 
 ### Secondary
 
-- **Apparel Green** (`#10b981`): The Buy Apparel button and the "cut ready" confirmation. Hover is `#34d399`. It is not a general success wash.
+- **Apparel Green** (`#10b981`): The Buy apparel button and the "cut ready" confirmation. Hover darkens to `#047857`. It is not a general success wash.
 
 ### Tertiary
 
@@ -180,7 +184,7 @@ Notices use tinted slabs rather than the pink: error `#2a151c`, warning `#2a2415
 - **Headline** (mono, 30px, pink): Page titles on policies, privacy, terms, and contact.
 - **Title** (weight 700, 11px, uppercase, tracked): Inspector section labels and tab labels.
 - **Body** (weight 400, 14px, line-height about 1.625): Policy and checkout explanations. Keep reading lines inside a `max-w-2xl` column on those pages.
-- **Label** (weight 700, 10px, uppercase, tracked): Tool chrome, mode switch, buy buttons, and the cut-ready badge.
+- **Label** (weight 700, 10px, uppercase, tracked): Inspector chrome and the cut-ready badge. Purchase and preview actions are sentence case at 14px, not this label style.
 
 ### Named Rules
 
@@ -224,15 +228,18 @@ Borders are 1px. The pink tab underline in the inspector is 2px and is a selecti
 
 ### Buttons
 
-- **Shape:** 6px on the header and buy actions, 8px on modal confirms, 12px on dock tools.
-- **Primary:** Registration pink, black label, 12px uppercase, 44px tall on Buy Sticker. Modal confirms use the same pink with white text, heavier padding, and a slight lift on hover. The header mode switch stays shorter so the bar does not grow.
-- **Hover / Focus:** Pink hover is `#ff4da6`. Dock tools lighten to slate on hover. Focus is a 2px registration-pink ring, offset 2px.
-- **Secondary:** Slate field, white or slate-200 label, used for Apply Design, Export SVG, and Reset place.
-- **Apparel:** Emerald fill, black label. Do not restyle it as pink.
+- **Shape:** 6px radius and 40px height on purchase, preview, and mode actions. Modal confirms stay 8px. Dock tools stay 12px.
+- **Primary:** Solid registration pink, black 14px semibold label, sentence case ("Buy sticker"). No shadow, no tracking, no lift.
+- **Hover / Focus / Disabled:** Primary hover is `#d41270`. Apparel hover is `#047857`. Outline buttons fill with slate on hover. Focus is a 2px registration-pink ring, offset 2px. Disabled actions drop to 40% opacity and ignore pointer events.
+- **Secondary:** Transparent fill, 1px slate-600 outline, slate-100 label. Used for Generate AI, Apply design, Export SVG, and Reset place.
+- **Quiet:** No fill and no border until hover. Used for the unselected Design / Product Preview mode and unselected garment views.
+- **Apparel:** Solid emerald, black label, same size and weight as primary. Do not restyle it as pink.
+
+**The Quiet Button Rule.** Purchase and preview actions share one height, radius, padding, and weight. Colour carries the hierarchy. The mat stays free of instructional overlays.
 
 ### Chips
 
-- **Style:** Mode switch and view chips (Front, Back, Face, Wrap) sit in a slate-tinted group. Unselected text is slate-300. Selected fill is registration pink with black text.
+- **Style:** Design / Product Preview and garment views (Front, Back, Face, Wrap) use the same 40px button as purchases. Unselected is quiet. Selected is the primary fill.
 - **State:** The cut-ready badge is a status chip: emerald when ready, amber when blocked, slate when it is only a warning.
 
 ### Cards / Containers
@@ -274,6 +281,7 @@ A full-screen dark layer over the studio. It is a protected two-step task (optio
 - **Do** show money as AUD, including the shipping line the policies page already states.
 - **Do** keep dock tools at least 44px on the short side.
 - **Do** leave the jobs board off the customer header.
+- **Do** keep the cutting mat clear of instructions. Tools and the product preview bar carry the next step.
 
 ### Don't:
 
@@ -282,3 +290,5 @@ A full-screen dark layer over the studio. It is a protected two-step task (optio
 - **Don't** use `#863bff` as an accent. It is only in the PWA theme color.
 - **Don't** set explanatory copy at 10px. That size is for chrome labels.
 - **Don't** restyle Stripe checkout, the order API, or the admin session from a visual pass.
+- **Don't** put step copy, empty-state prompts, or hint bars on the mat.
+- **Don't** set purchase or preview buttons in uppercase, wide tracking, gradients, glows, or drop shadows.
