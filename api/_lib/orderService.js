@@ -1,15 +1,13 @@
 import {
   calculateOrderTotal,
+  catalogIdForProduct,
   checkoutChargeAmount,
   clampQuantity,
-  coercePositiveNumber,
   jobSummary,
   moneyString,
   ORDER_CURRENCY,
-  PERMANENT_SURCHARGE,
-  SHIPPING_COST,
+  quoteOrder,
   smokeCheckoutAmountCents,
-  UNIT_PRICES,
 } from './orderPricing.js';
 import {
   allowUnverifiedOrders,
@@ -67,7 +65,7 @@ export async function handleHealth() {
     checkout: {
       stripe: stripeConfigured(),
       unverifiedAllowed: allowUnverifiedOrders(),
-      // Temporary live smoke-test total. Unset → retail (e.g. A$18.98 vinyl).
+      // Temporary live smoke-test total. Unset → the shared size/design quote.
       smokeAmountCents,
       smokeAmountInvalid,
       // Non-secret key shape only — never includes the key value.
@@ -111,27 +109,42 @@ export function normalizeCustomer(customer = {}) {
 }
 
 /**
- * Normalize checkout orderConfig and always persist size fields for new jobs.
- * Vinyl defaults to 10×10 cm (matches checkout UI) when the client omits dims.
+ * Normalize checkout orderConfig from the shared quote.
+ * Client amount / unitAmount / quote totals are discarded and recomputed.
  * Apparel keeps productSize when present; sized garments default to M if omitted.
  */
 export function normalizeOrderConfig(orderConfig = {}) {
-  const orderType = orderConfig.orderType === 'product' ? 'product' : 'vinyl';
+  const result = quoteOrder(orderConfig);
+  if (!result.ok) {
+    throw Object.assign(new Error(result.error), { status: 400 });
+  }
+  const { input, quote } = result;
   const quantity = clampQuantity(orderConfig.quantity);
+  const orderType = input.product === 'decal' ? 'vinyl' : 'product';
   const vinylPermanent = Boolean(orderConfig.vinylPermanent);
   const next = {
     ...orderConfig,
     orderType,
     quantity,
     vinylPermanent,
+    productType: input.product,
+    widthCm: input.widthCm,
+    heightCm: input.heightCm,
+    designType: input.designType,
+    textDensity: input.textDensity,
+    shippingOption: input.shippingOption,
+    requiresPrep: input.requiresPrep,
+    quote,
   };
+  delete next.amount;
+  delete next.unitAmount;
+  delete next.total;
+  delete next.price;
+  delete next.grandTotal;
 
   if (orderType === 'vinyl') {
-    // Clamp to the same 2–30 cm window as the checkout sticker-size inputs.
-    const width = coercePositiveNumber(orderConfig.vinylWidthCm, 10);
-    const height = coercePositiveNumber(orderConfig.vinylHeightCm, 10);
-    next.vinylWidthCm = Math.max(2, Math.min(30, width));
-    next.vinylHeightCm = Math.max(2, Math.min(30, height));
+    next.vinylWidthCm = input.widthCm;
+    next.vinylHeightCm = input.heightCm;
     if (vinylPermanent) {
       const finish =
         typeof orderConfig.vinylFinish === 'string' && orderConfig.vinylFinish.trim()
@@ -140,9 +153,8 @@ export function normalizeOrderConfig(orderConfig = {}) {
       next.vinylFinish = finish;
     }
   } else {
-    if (typeof orderConfig.productId === 'string' && orderConfig.productId.trim()) {
-      next.productId = orderConfig.productId.trim();
-    }
+    const catalogId = catalogIdForProduct(input.product, orderConfig.productId);
+    if (catalogId) next.productId = catalogId;
     if (typeof orderConfig.productColor === 'string' && orderConfig.productColor.trim()) {
       next.productColor = orderConfig.productColor.trim();
     }
@@ -151,8 +163,7 @@ export function normalizeOrderConfig(orderConfig = {}) {
       typeof orderConfig.productSize === 'string' ? orderConfig.productSize.trim() : '';
     if (rawSize) {
       next.productSize = rawSize;
-    } else if (sizedIds.has(String(orderConfig.productId || ''))) {
-      // Checkout UI defaults sized garments to M; persist that so the board never blanks.
+    } else if (sizedIds.has(String(next.productId || ''))) {
       next.productSize = 'M';
     }
   }
@@ -679,8 +690,5 @@ export {
   jobSummary,
   moneyString,
   ORDER_CURRENCY,
-  PERMANENT_SURCHARGE,
-  SHIPPING_COST,
   smokeCheckoutAmountCents,
-  UNIT_PRICES,
 };

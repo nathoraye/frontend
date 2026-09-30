@@ -69,7 +69,8 @@ function stripeDashboardHref(paymentIntentId?: string | null) {
 function JobSizeLine({ orderConfig }: { orderConfig?: Record<string, unknown> | null }) {
   const orderType = orderConfig?.orderType === 'product' ? 'product' : 'vinyl';
   const size = formatOrderSize(orderConfig);
-  const label = orderType === 'product' ? 'Garment size' : 'Vinyl size';
+  const quoted = Boolean(orderConfig?.productType || orderConfig?.designType);
+  const label = quoted ? 'Print size' : orderType === 'product' ? 'Garment size' : 'Vinyl size';
   return (
     <p className="font-mono text-sm text-slate-200" data-testid="job-size">
       <span className="text-slate-500">{label} · </span>
@@ -78,6 +79,21 @@ function JobSizeLine({ orderConfig }: { orderConfig?: Record<string, unknown> | 
       ) : (
         <span className="text-amber-400/90">not set (legacy order)</span>
       )}
+    </p>
+  );
+}
+
+function JobQuoteLine({ orderConfig }: { orderConfig?: Record<string, unknown> | null }) {
+  const quote = orderConfig?.quote;
+  if (!quote || typeof quote !== 'object') return null;
+  const row = quote as Record<string, unknown>;
+  if (typeof row.subtotal !== 'number' || typeof row.shipping !== 'number') return null;
+  const prep = typeof row.prep === 'number' ? row.prep : 0;
+  return (
+    <p className="font-mono text-xs text-slate-400" data-testid="job-quote">
+      Item ${moneyString(row.subtotal)} · Shipping ${moneyString(row.shipping)}
+      {prep > 0 ? ` · Prep $${moneyString(prep)}` : ''}
+      {typeof row.designType === 'string' ? ` · ${row.designType}` : ''}
     </p>
   );
 }
@@ -253,6 +269,7 @@ function JobDesignPanel({ orderId, token }: { orderId: string; token: string }) 
   return (
     <div className="mt-4 space-y-3 border-t border-slate-800 pt-4">
       <JobSizeLine orderConfig={detail.orderConfig} />
+      <JobQuoteLine orderConfig={detail.orderConfig} />
       <div className="rounded border border-slate-700 bg-white p-3">
         {previewUrl ? (
           <img
@@ -555,6 +572,7 @@ export function JobsBoard() {
                         </span>
                       </div>
                       <JobSizeLine orderConfig={order.orderConfig} />
+                      <JobQuoteLine orderConfig={order.orderConfig} />
                       <p className="font-mono text-xs text-slate-400">{order.id}</p>
                       <p className="text-sm text-slate-200">
                         {order.customer?.fullName || 'Unknown customer'}

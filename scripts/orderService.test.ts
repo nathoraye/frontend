@@ -30,37 +30,79 @@ const customer = {
 
 const designSvg = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20"/></svg>';
 
-test('normalizeOrderConfig always persists vinyl and apparel sizes', () => {
+const decalConfig = {
+  orderType: 'vinyl',
+  productType: 'decal',
+  widthCm: 10,
+  heightCm: 10,
+  designType: 'graphic',
+  shippingOption: 'untracked',
+  quantity: 1,
+};
+
+test('normalizeOrderConfig persists the server quote and ignores client prices', () => {
   const vinyl = normalizeOrderConfig({
     orderType: 'vinyl',
     quantity: 2,
-    vinylWidthCm: '15.5',
-    vinylHeightCm: 8,
+    widthCm: '15.5',
+    heightCm: 8,
+    designType: 'graphic',
+    shippingOption: 'tracked',
     vinylPermanent: true,
+    amount: 1,
+    unitAmount: 5,
   });
   assert.equal(vinyl.orderType, 'vinyl');
   assert.equal(vinyl.vinylWidthCm, 15.5);
   assert.equal(vinyl.vinylHeightCm, 8);
   assert.equal(vinyl.vinylFinish, 'matte');
+  assert.equal(vinyl.productType, 'decal');
+  assert.equal(vinyl.requiresPrep, false);
+  assert.equal(vinyl.quote.shipping, 10);
+  assert.equal(vinyl.quote.total, 30.5);
+  assert.equal(vinyl.amount, undefined);
+  assert.equal(vinyl.unitAmount, undefined);
 
-  const vinylDefault = normalizeOrderConfig({ orderType: 'vinyl', quantity: 1 });
-  assert.equal(vinylDefault.vinylWidthCm, 10);
-  assert.equal(vinylDefault.vinylHeightCm, 10);
+  assert.throws(
+    () => normalizeOrderConfig({ orderType: 'vinyl', quantity: 1 }),
+    (err) => err.status === 400,
+  );
 
   const apparel = normalizeOrderConfig({
     orderType: 'product',
     productId: 'tshirt',
     productColor: '#ffffff',
+    widthCm: 20,
+    heightCm: 20,
+    designType: 'text',
+    textDensity: 'standard',
   });
   assert.equal(apparel.productSize, 'M');
+  assert.equal(apparel.productType, 'tee');
+  assert.equal(apparel.quote.total, 44);
 
   const apparelSized = normalizeOrderConfig({
     orderType: 'product',
     productId: 'hoodie',
     productSize: 'XL',
     productColor: '#000000',
+    widthCm: 20,
+    heightCm: 20,
+    designType: 'text',
   });
   assert.equal(apparelSized.productSize, 'XL');
+  assert.equal(apparelSized.productType, 'hoodie');
+
+  const sloppy = normalizeOrderConfig({
+    productId: 'sloppyJoe',
+    productSize: 'L',
+    widthCm: 10,
+    heightCm: 10,
+    designType: 'graphic',
+  });
+  assert.equal(sloppy.productId, 'sloppyJoe');
+  assert.equal(sloppy.productType, 'hoodie');
+  assert.equal(sloppy.quote.base, 52);
 });
 
 test('unverified local checkout creates and lists an order', async () => {
@@ -72,16 +114,16 @@ test('unverified local checkout creates and lists an order', async () => {
   delete process.env.STRIPE_SECRET_KEY;
 
   const created = await handleCreatePaymentIntent({
-    orderConfig: { orderType: 'vinyl', quantity: 1 },
+    orderConfig: decalConfig,
   });
   assert.ok(created.id.startsWith('LOCAL-'));
   assert.equal(created.unverified, true);
-  assert.equal(created.amount, '18.98');
+  assert.equal(created.amount, '22.00');
 
   const submitted = await handleSubmitOrder({
     paymentIntentId: created.id,
     customer,
-    orderConfig: { orderType: 'vinyl', quantity: 1 },
+    orderConfig: decalConfig,
     designSvg,
   });
   assert.equal(submitted.order.status, 'unverified');
@@ -90,7 +132,7 @@ test('unverified local checkout creates and lists an order', async () => {
   const again = await handleSubmitOrder({
     paymentIntentId: created.id,
     customer,
-    orderConfig: { orderType: 'vinyl', quantity: 1 },
+    orderConfig: decalConfig,
     designSvg,
   });
   assert.equal(again.duplicate, true);
@@ -142,7 +184,7 @@ test('checkout session persists an unverified job and success status', async () 
   const created = await handleCreateCheckoutSession(
     {
       customer,
-      orderConfig: { orderType: 'vinyl', quantity: 1, vinylWidthCm: 10, vinylHeightCm: 10 },
+      orderConfig: decalConfig,
       designSvg,
       origin: 'http://127.0.0.1:5173',
     },
@@ -181,7 +223,7 @@ test('webhook fulfill marks a pending job paid and is idempotent', async () => {
 
   const created = await handleCreateCheckoutSession({
     customer,
-    orderConfig: { orderType: 'vinyl', quantity: 1 },
+    orderConfig: decalConfig,
     designSvg,
     origin: 'http://localhost:5173',
   });
@@ -230,7 +272,15 @@ test('expired checkout session cancels a pending job only', async () => {
 
   const created = await handleCreateCheckoutSession({
     customer,
-    orderConfig: { orderType: 'product', quantity: 1, productId: 'tshirt' },
+    orderConfig: {
+        orderType: 'product',
+        productId: 'tshirt',
+        widthCm: 20,
+        heightCm: 20,
+        designType: 'text',
+        textDensity: 'standard',
+        quantity: 1,
+      },
     designSvg,
     origin: 'http://localhost:5173',
   });
@@ -273,8 +323,10 @@ test('createCheckoutSession uses mocked Stripe when configured', async () => {
           assert.match(params.success_url, /\/order\/success\?session_id=\{CHECKOUT_SESSION_ID\}$/);
           assert.match(params.cancel_url, /\/order\/cancel\?orderId=/);
           assert.equal(params.line_items.length, 2);
-          assert.equal(params.line_items[0].price_data.unit_amount, 1299);
-          assert.equal(params.line_items[1].price_data.unit_amount, 599);
+          assert.equal(params.line_items[0].price_data.unit_amount, 1800);
+          assert.equal(params.line_items[0].price_data.product_data.name, 'Custom decal');
+          assert.equal(params.line_items[1].price_data.unit_amount, 400);
+          assert.equal(params.line_items[1].price_data.product_data.name, 'Untracked Rigid Post');
           return { id: 'cs_test_live', url: 'https://checkout.stripe.com/c/pay/cs_test_live' };
         },
       },
@@ -284,7 +336,7 @@ test('createCheckoutSession uses mocked Stripe when configured', async () => {
   const created = await handleCreateCheckoutSession(
     {
       customer,
-      orderConfig: { orderType: 'vinyl', quantity: 1 },
+      orderConfig: decalConfig,
       designSvg,
       origin: 'https://frontendwvs-westvinylstudio.vercel.app',
       amount: 1,
@@ -296,13 +348,16 @@ test('createCheckoutSession uses mocked Stripe when configured', async () => {
   assert.equal(created.url, 'https://checkout.stripe.com/c/pay/cs_test_live');
   assert.equal(created.sessionId, 'cs_test_live');
   assert.equal(created.unverified, undefined);
-  assert.equal(created.amount, '18.98');
+  assert.equal(created.amount, '22.00');
 
   process.env.ALLOW_PUBLIC_ORDER_LIST = '1';
   const listed = await handleListOrders({ headers: {} });
   assert.equal(listed.orders[0].status, 'pending');
   assert.equal(listed.orders[0].checkoutSessionId, 'cs_test_live');
-  assert.equal(listed.orders[0].amount, 18.98);
+  assert.equal(listed.orders[0].amount, 22);
+  assert.equal(listed.orders[0].orderConfig.quote.subtotal, 18);
+  assert.equal(listed.orders[0].orderConfig.quote.shipping, 4);
+  assert.equal(listed.orders[0].orderConfig.amount, undefined);
 
   delete process.env.STRIPE_SECRET_KEY;
   await fs.unlink(file).catch(() => {});
@@ -340,7 +395,7 @@ test('SMOKE_CHECKOUT_AMOUNT_CENTS=100 charges A$1.00 and webhook still fulfills'
     const created = await handleCreateCheckoutSession(
       {
         customer,
-        orderConfig: { orderType: 'vinyl', quantity: 2, vinylPermanent: true },
+        orderConfig: { ...decalConfig, quantity: 2, vinylPermanent: true },
         designSvg,
         origin: 'https://frontendwvs-westvinylstudio.vercel.app',
         amount: 1898,
@@ -406,7 +461,7 @@ test('paid jobs can move new → making → shipped without a second fulfill', a
     const created = await handleCreateCheckoutSession(
       {
         customer,
-        orderConfig: { orderType: 'vinyl', quantity: 1 },
+        orderConfig: decalConfig,
         designSvg,
         origin: 'http://127.0.0.1:5173',
       },
@@ -463,7 +518,7 @@ test('submit rejects tiny design payloads', async () => {
       handleSubmitOrder({
         paymentIntentId: 'LOCAL-1',
         customer,
-        orderConfig: { orderType: 'vinyl', quantity: 1 },
+        orderConfig: decalConfig,
         designSvg: '<svg/>',
       }),
     (err) => err.status === 400,

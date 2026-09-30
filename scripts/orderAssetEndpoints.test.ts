@@ -36,7 +36,15 @@ test('jobs board can fetch design SVG and product preview as authenticated asset
 
   const created = await handleCreateCheckoutSession({
     customer,
-    orderConfig: { orderType: 'vinyl', quantity: 1 },
+    orderConfig: {
+      orderType: 'vinyl',
+      productType: 'decal',
+      widthCm: 10,
+      heightCm: 10,
+      designType: 'graphic',
+      shippingOption: 'untracked',
+      quantity: 1,
+    },
     designSvg,
     designPreviewPng,
     origin: 'http://localhost:5173',
