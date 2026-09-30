@@ -34,6 +34,7 @@ import {
   type ProductId,
 } from './three/productCatalog';
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
+import { moneyString, SHIPPING_COST, UNIT_PRICES } from './utils/orderPricing';
 import { tracedSvgToObject } from './utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
 import { imageDataToPngDataUrl } from './utils/imageDataPng';
@@ -42,6 +43,14 @@ type AppTool = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
 type ViewMode = 'sticker' | 'product';
 
 const CANVAS_BG = '#2a2e3c';
+const VINYL_FROM = moneyString(UNIT_PRICES.vinyl + SHIPPING_COST);
+const APPAREL_FROM = moneyString(UNIT_PRICES.product + SHIPPING_COST);
+const BTN =
+  'inline-flex h-10 shrink-0 items-center justify-center rounded-md px-3.5 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-40';
+const BTN_PRIMARY = `${BTN} bg-[#FF1493] text-black hover:bg-[#d41270]`;
+const BTN_APPAREL = `${BTN} bg-[#10b981] text-black hover:bg-[#047857]`;
+const BTN_SECONDARY = `${BTN} border border-slate-600 bg-transparent text-slate-100 hover:bg-slate-800`;
+const BTN_QUIET = `${BTN} text-slate-300 hover:bg-slate-800 hover:text-white`;
 
 export default function App() {
   const { canvasRef, containerRef, canvas } = useCanvasEngine();
@@ -122,6 +131,11 @@ export default function App() {
     const next = snapshotDesignAsDataURL(canvas);
     if (next) setDesignSnapshot(next);
   }, [canvas]);
+
+  const openProductPreview = useCallback(() => {
+    applyDesignToProduct();
+    setViewMode('product');
+  }, [applyDesignToProduct]);
 
   const { saveHistorySnapshot, handleUndo, handleRedo } = useHistoryEngine({ setCanvasObjects });
   const clipboard = useRef<fabric.Object | null>(null);
@@ -472,17 +486,14 @@ export default function App() {
                   setActiveTab('design');
                 }}
               />
-              <button disabled={isGenerating} onClick={handleAIGeneration} className="flex h-8 items-center gap-2 rounded-md border border-slate-700 bg-[#181a25] px-2 py-1.5 text-[10px] font-bold tracking-wider text-white uppercase transition-colors hover:bg-slate-800 touch-manipulation sm:px-3">{isGenerating ? '…' : <><span className="sm:hidden">AI</span><span className="hidden sm:inline">Generate AI</span></>}</button>
+              <button disabled={isGenerating} onClick={handleAIGeneration} className={`${BTN_SECONDARY} touch-manipulation`}>{isGenerating ? 'Generating…' : <><span className="sm:hidden">AI</span><span className="hidden sm:inline">Generate AI</span></>}</button>
 
-              <div className="flex items-center gap-1 rounded-lg bg-slate-500/5 p-1">
-                <button onClick={() => setViewMode('sticker')} className={`h-7 rounded px-2 text-[10px] font-bold tracking-wider uppercase transition-colors touch-manipulation sm:h-6 ${viewMode === 'sticker' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}>2D</button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setViewMode('sticker')} className={`touch-manipulation ${viewMode === 'sticker' ? BTN_PRIMARY : BTN_QUIET}`}>Design</button>
                 <button
                   type="button"
-                  onClick={() => {
-                    applyDesignToProduct();
-                    setViewMode('product');
-                  }}
-                  className={`h-7 rounded px-2 text-[10px] font-bold tracking-wider uppercase transition-colors touch-manipulation sm:h-6 ${viewMode === 'product' ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:text-white'}`}
+                  onClick={openProductPreview}
+                  className={`touch-manipulation ${viewMode === 'product' ? BTN_PRIMARY : BTN_QUIET}`}
                 >
                   <span className="sm:hidden">Product</span>
                   <span className="hidden sm:inline">Product Preview</span>
@@ -569,7 +580,7 @@ export default function App() {
                         onPlacementChange={setProductPlacement}
                       />
                     </div>
-                    <div className="flex max-h-[42%] shrink-0 flex-wrap items-center gap-2 overflow-y-auto border-t border-slate-800 bg-[#181a25] p-2 sm:max-h-none sm:gap-3 sm:p-3">
+                    <div className="flex max-h-[34%] shrink-0 flex-wrap items-center gap-2 overflow-y-auto border-t border-slate-800 bg-[#181a25] p-2 sm:max-h-none sm:gap-3 sm:p-3">
                       <select
                         id="preview-product"
                         aria-label="Product"
@@ -584,20 +595,20 @@ export default function App() {
 
                       <div className="flex items-center gap-1">
                         {PRODUCT_CATALOG[selectedProduct].colorOptions.map((c) => (
-                          <button key={c} onClick={() => setProductColor(c)} className={`w-5 h-5 rounded-full border-2 ${productColor === c ? 'border-[#FF1493]' : 'border-slate-700'}`} style={{ backgroundColor: c }} title={c} aria-label={`Colour ${c}`} />
+                          <button key={c} onClick={() => setProductColor(c)} className={`h-8 w-8 rounded-full border-2 ${productColor === c ? 'border-[#FF1493]' : 'border-slate-700'}`} style={{ backgroundColor: c }} title={c} aria-label={`Colour ${c}`} />
                         ))}
                       </div>
 
                       <div className="flex items-center gap-1">
                         {PRODUCT_CATALOG[selectedProduct].views.map((v) => (
-                          <button key={v.id} onClick={() => setActiveProductView(v.id)} className={`px-2 py-1 rounded text-[10px] font-mono uppercase ${activeProductView === v.id ? 'bg-[#FF1493] text-black' : 'bg-slate-800 text-slate-300'}`}>{v.label}</button>
+                          <button key={v.id} type="button" onClick={() => setActiveProductView(v.id)} className={activeProductView === v.id ? BTN_PRIMARY : BTN_QUIET}>{v.label}</button>
                         ))}
                       </div>
 
-                      <button onClick={applyDesignToProduct} className="h-8 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-black uppercase tracking-wider">Apply Design</button>
+                      <button type="button" onClick={applyDesignToProduct} className={BTN_SECONDARY}>Apply design</button>
 
                       {isSizedProduct(selectedProduct) && (
-                        <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
                           Garment
                           <select
                             id="preview-garment-size"
@@ -613,7 +624,7 @@ export default function App() {
                         </label>
                       )}
 
-                      <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
                         Print scale
                         <input
                           type="range"
@@ -630,17 +641,24 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setProductPlacement({ posX: 0, posY: 0, scale: 1, rotationDeg: 0 })}
-                        className="h-8 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[10px] font-black uppercase tracking-wider border border-slate-600"
+                        className={BTN_SECONDARY}
                       >
                         Reset place
                       </button>
 
-                      <div className="ml-auto flex flex-wrap items-center gap-2">
-                        <button onClick={handleSafeSVGExport} className="h-8 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-black uppercase tracking-wider">Export SVG</button>
-                        <button onClick={() => setActiveOrderTab('vinyl')} className="h-8 px-3 bg-[#FF1493] hover:bg-[#ff4da6] text-black rounded text-[10px] font-black uppercase tracking-wider shadow-sm">Buy Sticker</button>
-                        <button onClick={() => setActiveOrderTab('apparel')} className="h-8 px-3 bg-emerald-500 hover:bg-emerald-400 text-black rounded text-[10px] font-black uppercase tracking-wider">Buy Apparel</button>
+                      <button type="button" onClick={handleSafeSVGExport} className={BTN_SECONDARY}>Export SVG</button>
+                      <p className="w-full text-xs leading-relaxed text-slate-300">Drag the print. Pink corners scale it. The green handle rotates it.</p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-800 bg-[#181a25] px-3 py-2">
+                      <p className="max-w-md text-xs leading-relaxed text-slate-200">
+                        Vinyl from <span className="font-mono text-[#FF1493]">A${VINYL_FROM}</span>.
+                        Apparel from <span className="font-mono text-emerald-300">A${APPAREL_FROM}</span>.
+                        Both include shipping.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button type="button" onClick={() => setActiveOrderTab('vinyl')} className={BTN_PRIMARY}>Buy sticker</button>
+                        <button type="button" onClick={() => setActiveOrderTab('apparel')} className={BTN_APPAREL}>Buy apparel</button>
                       </div>
-                      <p className="w-full text-[10px] font-mono text-slate-300">Final edit before checkout: colour, garment size, and placement. Drag the print; pink corners scale; green handle rotates.</p>
                     </div>
                   </div>
                 )}
@@ -736,7 +754,7 @@ export default function App() {
                     )}
                   </div>
                 </div>
-                {!showRightPanel && (
+                {!showRightPanel && viewMode !== 'product' && (
                   <button type="button" onClick={() => setShowRightPanel(true)} className="absolute bottom-3 right-3 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-[#181a25]/95 text-[#FF1493] shadow-lg shadow-black/30 transition-transform hover:scale-105 touch-manipulation sm:bottom-4 sm:right-4" aria-label="Open inspector">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
                   </button>

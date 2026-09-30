@@ -56,3 +56,41 @@ html.wvs-document-scroll #root {
   -webkit-user-select: none;
   user-select: none;
 }
+
+::selection {
+  background: #ff1493;
+  color: #0f111a;
+}
+
+input,
+textarea {
+  caret-color: #ff1493;
+}
+
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #ff1493;
+  outline-offset: 2px;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #0f111a;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #0f111a;
+}
