@@ -2,3 +2,5 @@ User-agent: *
 Allow: /
 Disallow: /admin/orders
 Disallow: /jobs
+
+Sitemap: https://westvinylstudio.com/sitemap.xml
