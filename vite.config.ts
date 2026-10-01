@@ -31,7 +31,7 @@ export default defineConfig({
         // Static assets: serve from cache, refresh in background
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff2}'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/sitemap\.xml$/, /^\/robots\.txt$/],
         runtimeCaching: [
           {
             // Fonts and any external assets: cache-first with 30-day expiry
