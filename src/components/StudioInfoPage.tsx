@@ -67,9 +67,14 @@ function OfferSummary() {
         paid, the job is cut or pressed and shipped to the address you entered.
       </p>
       <ul className="list-disc space-y-1 pl-5">
-        <li>Vinyl sticker base price A$12.99. A permanent finish adds A$6.00.</li>
-        <li>Iron-on apparel base price A$24.99.</li>
-        <li>Shipping is a separate flat line of A$5.99. A standard vinyl sticker totals A$18.98.</li>
+        <li>
+          The price depends on the product, print size, and design. Decals start from a vinyl floor
+          of A$8.50 before labour. There is no GST line. West Vinyl Studio is not GST registered.
+        </li>
+        <li>
+          Decal shipping is Untracked Rigid Post (A$4.00) or Tracked Parcel Mailer (A$10.00).
+          Everything else ships as a Standard AusPost Parcel (A$12.00).
+        </li>
         <li>Prices are AUD. The Stripe total is the amount charged. The browser cannot set the price.</li>
       </ul>
     </section>
@@ -110,7 +115,8 @@ function TermsBody() {
         <p>
           Orders are made in Wentworth, NSW, Australia. Checkout collects a shipping address in
           Australia, the United States, the United Kingdom, Canada, New Zealand, or another
-          country, and adds flat shipping of A$5.99. Delivery time depends on that address. We do
+          country. Decals ship untracked or tracked; other products ship as a tracked AusPost parcel.
+          Delivery time depends on that address. We do
           not promise a courier window.
         </p>
       </section>

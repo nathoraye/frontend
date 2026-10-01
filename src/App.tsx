@@ -34,7 +34,7 @@ import {
   type ProductId,
 } from './three/productCatalog';
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
-import { moneyString, SHIPPING_COST, UNIT_PRICES } from './utils/orderPricing';
+import { chargedTotal, moneyString, quoteOrder } from './utils/orderPricing';
 import { tracedSvgToObject } from './utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
 import { imageDataToPngDataUrl } from './utils/imageDataPng';
@@ -43,8 +43,25 @@ type AppTool = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
 type ViewMode = 'sticker' | 'product';
 
 const CANVAS_BG = '#2a2e3c';
-const VINYL_FROM = moneyString(UNIT_PRICES.vinyl + SHIPPING_COST);
-const APPAREL_FROM = moneyString(UNIT_PRICES.product + SHIPPING_COST);
+function startingPrice(source: Record<string, unknown>) {
+  const result = quoteOrder(source);
+  if (!result.ok) throw new Error(result.error);
+  return moneyString(chargedTotal(result.quote, 1));
+}
+
+const VINYL_FROM = startingPrice({
+  productType: 'decal',
+  widthCm: 2,
+  heightCm: 2,
+  designType: 'text',
+  shippingOption: 'untracked',
+});
+const APPAREL_FROM = startingPrice({
+  productType: 'baby',
+  widthCm: 10,
+  heightCm: 10,
+  designType: 'text',
+});
 const BTN =
   'inline-flex h-10 shrink-0 items-center justify-center rounded-md px-3.5 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-40';
 const BTN_PRIMARY = `${BTN} bg-[#FF1493] text-black hover:bg-[#d41270]`;

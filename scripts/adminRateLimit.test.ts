@@ -182,7 +182,15 @@ describe('admin auth rate limit', { concurrency: 1 }, () => {
       const checkout = await handleCreateCheckoutSession(
         {
           customer,
-          orderConfig: { orderType: 'vinyl', quantity: 1 },
+          orderConfig: {
+            orderType: 'vinyl',
+            productType: 'decal',
+            widthCm: 10,
+            heightCm: 10,
+            designType: 'graphic',
+            shippingOption: 'untracked',
+            quantity: 1,
+          },
           designSvg,
           origin: 'http://localhost:5173',
         },

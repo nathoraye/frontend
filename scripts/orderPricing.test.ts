@@ -16,12 +16,37 @@ test('clampQuantity bounds quantity to 1..100', () => {
   assert.equal(clampQuantity(2.9), 2);
 });
 
-test('vinyl and product totals include shipping', () => {
+const decal10 = {
+  orderType: 'vinyl',
+  productType: 'decal',
+  widthCm: 10,
+  heightCm: 10,
+  designType: 'graphic',
+  shippingOption: 'untracked',
+  quantity: 1,
+};
+
+test('quoted totals ignore client prices and flat legacy amounts', () => {
   assert.equal(ORDER_CURRENCY, 'AUD');
-  assert.equal(calculateOrderTotal({ orderType: 'vinyl', quantity: 1 }), 18.98);
-  assert.equal(calculateOrderTotal({ orderType: 'vinyl', quantity: 1, vinylPermanent: true }), 24.98);
-  assert.equal(calculateOrderTotal({ orderType: 'product', quantity: 2 }), 55.97);
-  assert.equal(moneyString(18.98), '18.98');
+  assert.equal(calculateOrderTotal(decal10), 22);
+  assert.equal(calculateOrderTotal({ ...decal10, amount: 1, unitAmount: 100, quantity: 2 }), 40);
+  assert.equal(
+    calculateOrderTotal({
+      orderType: 'product',
+      productId: 'tshirt',
+      widthCm: 20,
+      heightCm: 30,
+      designType: 'text',
+      textDensity: 'standard',
+      quantity: 1,
+    }),
+    44,
+  );
+  assert.equal(moneyString(22), '22.00');
+  assert.throws(
+    () => calculateOrderTotal({ orderType: 'vinyl', quantity: 1 }),
+    (err) => err.status === 400 && /centimetres/.test(err.message),
+  );
 });
 
 test('smokeCheckoutAmountCents is unset by default and accepts 100', () => {
@@ -33,10 +58,10 @@ test('smokeCheckoutAmountCents is unset by default and accepts 100', () => {
     assert.equal(smokeCheckoutAmountCents('100'), 100);
     assert.equal(smokeCheckoutAmountCents(' 100 '), 100);
     process.env.SMOKE_CHECKOUT_AMOUNT_CENTS = '100';
-    assert.equal(checkoutChargeAmount({ orderType: 'vinyl', quantity: 1 }), 1);
-    assert.equal(calculateOrderTotal({ orderType: 'vinyl', quantity: 1 }), 18.98);
+    assert.equal(checkoutChargeAmount(decal10), 1);
+    assert.equal(calculateOrderTotal(decal10), 22);
     delete process.env.SMOKE_CHECKOUT_AMOUNT_CENTS;
-    assert.equal(checkoutChargeAmount({ orderType: 'vinyl', quantity: 1 }), 18.98);
+    assert.equal(checkoutChargeAmount(decal10), 22);
     assert.throws(
       () => smokeCheckoutAmountCents('1'),
       (err) => err.status === 503 && /between 50 and 100000/.test(err.message),
