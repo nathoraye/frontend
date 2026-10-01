@@ -1,4 +1,4 @@
-import { errorStatus, sendBinary, sendJson } from '../../_lib/http.js';
+import { sendBinary, sendJson, sendRouteError } from '../../_lib/http.js';
 import { handleGetOrderAsset } from '../../_lib/orderService.js';
 
 export default async function handler(req, res) {
@@ -26,8 +26,6 @@ export default async function handler(req, res) {
       download: asset.download,
     });
   } catch (error) {
-    sendJson(res, errorStatus(error), {
-      error: error instanceof Error ? error.message : 'Failed to load preview',
-    });
+    sendRouteError(res, error, 'Failed to load preview');
   }
 }

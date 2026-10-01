@@ -26,6 +26,18 @@ export function RootPage() {
     }
   }, [documentScroll])
 
+  useEffect(() => {
+    const admin = path === '/admin/orders' || path === '/jobs'
+    if (!admin) return
+    const meta = document.createElement('meta')
+    meta.name = 'robots'
+    meta.content = 'noindex, nofollow'
+    document.head.appendChild(meta)
+    return () => {
+      meta.remove()
+    }
+  }, [path])
+
   if (path === '/admin/orders' || path === '/jobs') return <JobsBoard />
   if (path === '/order/success') return <OrderSuccessPage />
   if (path === '/order/cancel') return <OrderCancelPage />

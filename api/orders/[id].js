@@ -1,4 +1,4 @@
-import { errorStatus, readJsonBody, sendJson } from '../_lib/http.js';
+import { readJsonBody, sendJson, sendRouteError } from '../_lib/http.js';
 import { handleGetOrder, handleSetFulfillment } from '../_lib/orderService.js';
 
 export default async function handler(req, res) {
@@ -27,8 +27,6 @@ export default async function handler(req, res) {
     const payload = await handleGetOrder(req, orderId);
     sendJson(res, 200, payload);
   } catch (error) {
-    sendJson(res, errorStatus(error), {
-      error: error instanceof Error ? error.message : 'Failed to load order',
-    });
+    sendRouteError(res, error, 'Failed to load order');
   }
 }

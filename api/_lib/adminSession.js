@@ -1,4 +1,5 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { consumeFailedAdminAttempt } from './adminRateLimit.js';
 
 const SESSION_PREFIX = 'wvs1';
 const MAX_AGE_SECONDS = 14 * 24 * 60 * 60;
@@ -15,11 +16,15 @@ function signingKey() {
   return String(process.env.ORDERS_ADMIN_TOKEN || '').trim() || readPass();
 }
 
-function safeEqual(left, right) {
-  const a = Buffer.from(String(left));
-  const b = Buffer.from(String(right));
-  if (a.length !== b.length) return false;
+/** Compare secrets without leaking length or a matching prefix. */
+export function secretEqual(left, right) {
+  const a = createHash('sha256').update(String(left), 'utf8').digest();
+  const b = createHash('sha256').update(String(right), 'utf8').digest();
   return timingSafeEqual(a, b);
+}
+
+function safeEqual(left, right) {
+  return secretEqual(left, right);
 }
 
 export function jobsAdminConfigured() {
@@ -71,13 +76,14 @@ export function sessionTokenValid(token, nowMs = Date.now()) {
   return true;
 }
 
-export function handleAdminLogin(body) {
+export async function handleAdminLogin(body, req = {}) {
   if (!jobsAdminConfigured()) {
     throw Object.assign(new Error('Admin login is not set up on this server'), { status: 503 });
   }
   const username = String(body?.username || '');
   const password = String(body?.password || '');
   if (!credentialsMatch(username, password)) {
+    await consumeFailedAdminAttempt(req);
     throw Object.assign(new Error('Wrong username or password'), { status: 401 });
   }
   return { ok: true, token: issueSessionToken(username.trim()) };

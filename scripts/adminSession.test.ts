@@ -68,7 +68,7 @@ test('shop password issues a session and does not accept the password as a beare
       (err) => err.status === 401,
     );
 
-    const session = handleAdminLogin({
+    const session = await handleAdminLogin({
       username: '  shop-admin  ',
       password: 'test-password-value',
     });
@@ -139,7 +139,7 @@ test('fulfillment updates accept the signed session', async () => {
   await fs.writeFile(file, JSON.stringify([order]), 'utf8');
 
   try {
-    const session = handleAdminLogin({ username: 'shop-admin', password: 'test-password-value' });
+    const session = await handleAdminLogin({ username: 'shop-admin', password: 'test-password-value' });
     const shipped = await handleSetFulfillment(
       { headers: { authorization: `Bearer ${session.token}` } },
       order.id,
@@ -152,13 +152,13 @@ test('fulfillment updates accept the signed session', async () => {
   }
 });
 
-test('login stays closed when the shop username or password is unset', () => {
+test('login stays closed when the shop username or password is unset', async () => {
   const prev = snapshotEnv(['JOBS_ADMIN_USERNAME', 'JOBS_ADMIN_PASSWORD', 'ORDERS_ADMIN_TOKEN']);
   delete process.env.JOBS_ADMIN_USERNAME;
   delete process.env.JOBS_ADMIN_PASSWORD;
   process.env.ORDERS_ADMIN_TOKEN = 'server-token-not-the-password';
   try {
-    assert.throws(
+    await assert.rejects(
       () => handleAdminLogin({ username: 'shop-admin', password: 'test-password-value' }),
       (err) => err.status === 503 && /not set up/i.test(err.message),
     );

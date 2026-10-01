@@ -1,5 +1,5 @@
 import { handleAdminLogin } from '../_lib/adminSession.js';
-import { errorStatus, readJsonBody, sendJson } from '../_lib/http.js';
+import { readJsonBody, sendJson, sendRouteError } from '../_lib/http.js';
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -14,10 +14,8 @@ export default async function handler(req, res) {
 
   try {
     const body = await readJsonBody(req);
-    sendJson(res, 200, handleAdminLogin(body));
+    sendJson(res, 200, await handleAdminLogin(body, req));
   } catch (error) {
-    sendJson(res, errorStatus(error), {
-      error: error instanceof Error ? error.message : 'Sign-in failed',
-    });
+    sendRouteError(res, error, 'Sign-in failed');
   }
 }
