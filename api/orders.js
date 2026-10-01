@@ -1,4 +1,4 @@
-import { errorStatus, readJsonBody, sendBinary, sendJson } from './_lib/http.js';
+import { readJsonBody, sendBinary, sendJson, sendRouteError } from './_lib/http.js';
 import {
   handleCreateCheckoutSession,
   handleCreatePaymentIntent,
@@ -77,8 +77,6 @@ export default async function handler(req, res) {
 
     sendJson(res, 405, { error: 'Method not allowed' });
   } catch (error) {
-    sendJson(res, errorStatus(error), {
-      error: error instanceof Error ? error.message : 'Order request failed',
-    });
+    sendRouteError(res, error, 'Order request failed');
   }
 }

@@ -23,7 +23,8 @@ import {
   toStripeAmount,
   verifyPaymentIntent,
 } from './stripe.js';
-import { sessionTokenValid } from './adminSession.js';
+import { secretEqual, sessionTokenValid } from './adminSession.js';
+import { consumeFailedAdminAttempt } from './adminRateLimit.js';
 import {
   appendOrder,
   fulfillmentOrderView,
@@ -38,17 +39,23 @@ import {
 } from './orderStore.js';
 import { getPrivateOrderAsset, persistOrderDesignAssets } from './orderAssets.js';
 
-export function adminAuthorized(req) {
+function presentedBearer(req) {
   const header = String(req.headers?.authorization || req.headers?.Authorization || '');
   const prefix = 'Bearer ';
-  if (!header.startsWith(prefix)) return false;
+  if (!header.startsWith(prefix)) return '';
   // Trim both sides: Vercel/.env values often include a trailing newline, and the
   // jobs board trims values before sending Bearer.
-  const presented = header.slice(prefix.length).trim();
+  return header.slice(prefix.length).trim();
+}
+
+export function adminAuthorized(req) {
+  const presented = presentedBearer(req);
   if (!presented) return false;
   const token = String(process.env.ORDERS_ADMIN_TOKEN || '').trim();
-  if (token && presented === token) return true;
-  return sessionTokenValid(presented);
+  // Always run both checks so a matching admin token does not return early.
+  const tokenOk = Boolean(token) && secretEqual(presented, token);
+  const sessionOk = sessionTokenValid(presented);
+  return tokenOk || sessionOk;
 }
 
 export async function handleHealth() {
@@ -553,14 +560,14 @@ export async function handleSubmitOrder(payload = {}) {
   };
 }
 
-function requireAdminOrPublicList(req) {
-  if (!adminAuthorized(req) && process.env.ALLOW_PUBLIC_ORDER_LIST !== '1') {
-    throw Object.assign(new Error('Unauthorized'), { status: 401 });
-  }
+async function requireAdminOrPublicList(req) {
+  if (adminAuthorized(req) || process.env.ALLOW_PUBLIC_ORDER_LIST === '1') return;
+  if (presentedBearer(req)) await consumeFailedAdminAttempt(req);
+  throw Object.assign(new Error('Unauthorized'), { status: 401 });
 }
 
 export async function handleListOrders(req) {
-  requireAdminOrPublicList(req);
+  await requireAdminOrPublicList(req);
   const orders = await listOrders();
   return {
     orders: orders.map((entry) => fulfillmentOrderView(entry, { includeDesign: false })),
@@ -569,7 +576,7 @@ export async function handleListOrders(req) {
 }
 
 export async function handleGetOrder(req, orderId) {
-  requireAdminOrPublicList(req);
+  await requireAdminOrPublicList(req);
   const order = await getOrderById(orderId);
   if (!order) throw Object.assign(new Error('Order not found'), { status: 404 });
   return { order: fulfillmentOrderView(order, { includeDesign: true }) };
@@ -580,7 +587,7 @@ export async function handleGetOrder(req, orderId) {
  * Prefer private Blob get(); fall back to inline fields for local/legacy orders.
  */
 export async function handleGetOrderAsset(req, orderId, kind, { download = false } = {}) {
-  requireAdminOrPublicList(req);
+  await requireAdminOrPublicList(req);
   const order = await getOrderById(orderId);
   if (!order) throw Object.assign(new Error('Order not found'), { status: 404 });
 
@@ -650,6 +657,7 @@ function fulfillmentWriteAuthorized(req) {
 /** Move a paid job through the shop: new → making → shipped. */
 export async function handleSetFulfillment(req, orderId, payload = {}) {
   if (!fulfillmentWriteAuthorized(req)) {
+    if (presentedBearer(req)) await consumeFailedAdminAttempt(req);
     throw Object.assign(new Error('Unauthorized'), { status: 401 });
   }
   const nextStatus = String(payload.fulfillmentStatus || '').trim();

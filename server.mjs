@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { handleTraceRequest } from './api/trace.js';
 import ordersHandler from './api/orders.js';
-import { errorStatus, readJsonBody, readRawBody, sendBinary, sendJson } from './api/_lib/http.js';
+import { readJsonBody, readRawBody, sendBinary, sendJson, sendRouteError } from './api/_lib/http.js';
 import {
   handleCreateCheckoutSession,
   handleCreatePaymentIntent,
@@ -68,7 +68,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/admin/login') {
       const body = await readJsonBody(req);
-      return sendJson(res, 200, handleAdminLogin(body));
+      return sendJson(res, 200, await handleAdminLogin(body, req));
     }
 
     // Same handler Vercel runs for /api/orders, including ?id=&asset= design reads.
@@ -106,9 +106,7 @@ const server = http.createServer(async (req, res) => {
 
     return sendJson(res, 404, { error: 'Not found' });
   } catch (error) {
-    return sendJson(res, errorStatus(error), {
-      error: error instanceof Error ? error.message : 'Request failed',
-    });
+    return sendRouteError(res, error, 'Request failed');
   }
 });
 

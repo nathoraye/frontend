@@ -4,6 +4,18 @@ export function setCors(res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
+export function sendRouteError(res, error, fallback) {
+  if (Number(error?.status) === 429) {
+    const seconds = Number(error.retryAfterSeconds);
+    if (Number.isFinite(seconds) && seconds > 0) {
+      res.setHeader('Retry-After', String(Math.ceil(seconds)));
+    }
+  }
+  sendJson(res, errorStatus(error), {
+    error: error instanceof Error ? error.message : fallback,
+  });
+}
+
 export function sendJson(res, status, payload) {
   setCors(res);
   if (typeof res.status === 'function' && typeof res.json === 'function') {

@@ -36,6 +36,15 @@ function blobAuthOptions() {
   throw new Error('BLOB_STORE_ID or BLOB_READ_WRITE_TOKEN is required for blob order storage');
 }
 
+/** Same private-blob credentials the order index uses. */
+export function blobClientOptions() {
+  return blobAuthOptions();
+}
+
+export function orderStoreMode() {
+  return mode();
+}
+
 function blobAuthLabel() {
   if (String(process.env.BLOB_STORE_ID || '').trim()) return 'oidc-or-store-id';
   if (String(process.env.BLOB_READ_WRITE_TOKEN || '').trim()) return 'read-write-token';
