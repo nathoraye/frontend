@@ -50,7 +50,8 @@ test('Product Preview → Buy Sticker → local checkout → jobs board', async 
   const jobCard = page.getByTestId('job-card').filter({ hasText: orderId! });
   await expect(jobCard).toBeVisible();
   await expect(jobCard.getByText(/Ada Vinyl/)).toBeVisible();
-  await expect(jobCard.getByText(/vinyl 10×10cm removable/i)).toBeVisible();
+  await expect(jobCard.getByText(/decal 10×10cm graphic/i)).toBeVisible();
+  await expect(jobCard.getByTestId('job-quote')).toContainText(/Item \$18\.00/);
 
   await jobCard.getByRole('button', { name: /show design/i }).click();
   await expect(page.getByTestId('job-preview-image')).toBeVisible({
@@ -80,10 +81,10 @@ test('Product Preview → Buy Apparel inherits colour/size/placement', async ({ 
 
   const checkout = page.getByTestId('order-checkout');
   await expect(checkout.getByText(/review your apparel/i)).toBeVisible({ timeout: 10_000 });
-  await expect(checkout.getByText('T-Shirt', { exact: true })).toBeVisible();
+  await expect(checkout.locator('span.text-pink-400', { hasText: /^T-Shirt$/ })).toBeVisible();
   await expect(checkout.getByText('Garment size', { exact: true })).toBeVisible();
   await expect(checkout.locator('span.text-pink-400', { hasText: /^L$/ })).toBeVisible();
-  await expect(checkout.getByLabel('Product')).toHaveCount(0);
+  await expect(checkout.getByTestId('vinyl-pricing-calculator')).toBeVisible();
   await expect(checkout.getByLabel('Garment size')).toHaveCount(0);
   await expect(checkout.getByLabel('Print scale')).toHaveCount(0);
 
@@ -111,5 +112,5 @@ test('Orders board routes and cancel page render', async ({ page }) => {
   await expect(page.getByText(/nathanriant@gmail.com/i)).toBeVisible();
   await page.goto('/terms');
   await expect(page.getByRole('heading', { name: /terms, shipping and returns/i })).toBeVisible();
-  await expect(page.getByText(/A\$18\.98/)).toBeVisible();
+  await expect(page.getByText(/not GST registered/i)).toBeVisible();
 });
