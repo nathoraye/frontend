@@ -62,7 +62,6 @@ function initialQuote(productId?: ProductId): { draft: QuoteDraft; result: Quote
     designType: 'graphic',
     textDensity: 'standard',
     shippingOption: 'untracked',
-    requiresPrep: false,
   };
   return { draft, result: quoteOrder(draft) };
 }
@@ -521,7 +520,6 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
           designType: draft.designType,
           textDensity: draft.textDensity,
           shippingOption: draft.shippingOption,
-          requiresPrep: draft.requiresPrep,
           productId: pricedProductId,
           productColor: config.productColor,
           productSize: config.productSize,

@@ -81,7 +81,7 @@ test('Product Preview → Buy Apparel inherits colour/size/placement', async ({ 
 
   const checkout = page.getByTestId('order-checkout');
   await expect(checkout.getByText(/review your apparel/i)).toBeVisible({ timeout: 10_000 });
-  await expect(checkout.getByText('T-Shirt', { exact: true })).toBeVisible();
+  await expect(checkout.locator('span.text-pink-400', { hasText: /^T-Shirt$/ })).toBeVisible();
   await expect(checkout.getByText('Garment size', { exact: true })).toBeVisible();
   await expect(checkout.locator('span.text-pink-400', { hasText: /^L$/ })).toBeVisible();
   await expect(checkout.getByTestId('vinyl-pricing-calculator')).toBeVisible();

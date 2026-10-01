@@ -46,7 +46,6 @@ test('10×10 graphic decal untracked and tracked', () => {
     widthCm: 10,
     heightCm: 10,
     designType: 'graphic',
-    requiresPrep: true,
     amount: 1,
     unitAmount: 100,
   };
@@ -56,8 +55,6 @@ test('10×10 graphic decal untracked and tracked', () => {
   assert.equal(untracked.quote.rawAreaCost, 13);
   assert.equal(untracked.quote.vinyl, 13);
   assert.equal(untracked.quote.labour, 5);
-  assert.equal(untracked.quote.prep, 0);
-  assert.equal(untracked.input.requiresPrep, false);
   assert.equal(untracked.quote.subtotal, 18);
   assert.equal(untracked.quote.shipping, 4);
   assert.equal(untracked.quote.total, 22);
@@ -128,24 +125,22 @@ test('bottle 15×5 graphic and either orientation', () => {
   }
 });
 
-test('30×60 intricate decal adds area over 300 and optional prep', () => {
-  const plain = mustQuote({
+test('30×60 intricate decal adds area over 300', () => {
+  const untracked = mustQuote({
     productType: 'decal',
     widthCm: 30,
     heightCm: 60,
     designType: 'intricate',
     shippingOption: 'untracked',
-    requiresPrep: false,
   });
-  assert.equal(plain.quote.areaCm2, 1800);
-  assert.equal(plain.quote.rawAreaCost, 63);
-  assert.equal(plain.quote.vinyl, 63);
-  assert.equal(plain.quote.labour, 12);
-  assert.equal(plain.quote.prep, 0);
-  assert.equal(plain.quote.subtotal, 75);
-  assert.equal(plain.quote.total, 79);
+  assert.equal(untracked.quote.areaCm2, 1800);
+  assert.equal(untracked.quote.rawAreaCost, 63);
+  assert.equal(untracked.quote.vinyl, 63);
+  assert.equal(untracked.quote.labour, 12);
+  assert.equal(untracked.quote.subtotal, 75);
+  assert.equal(untracked.quote.total, 79);
 
-  const prepped = mustQuote({
+  const tracked = mustQuote({
     productType: 'decal',
     widthCm: 60,
     heightCm: 30,
@@ -153,13 +148,14 @@ test('30×60 intricate decal adds area over 300 and optional prep', () => {
     shippingOption: 'tracked',
     requiresPrep: true,
   });
-  assert.equal(prepped.quote.prep, 10);
-  assert.equal(prepped.quote.subtotal, 85);
-  assert.equal(prepped.quote.shipping, 10);
-  assert.equal(prepped.quote.total, 95);
+  assert.equal(tracked.quote.subtotal, 75);
+  assert.equal(tracked.quote.shipping, 10);
+  assert.equal(tracked.quote.total, 85);
+  assert.equal('prep' in tracked.quote, false);
+  assert.equal('requiresPrep' in tracked.input, false);
 });
 
-test('prep is charged only when area is over 300', () => {
+test('area 300 and 301 use the raw area rate and ignore a prep flag', () => {
   const atCap = mustQuote({
     productType: 'decal',
     widthCm: 10,
@@ -169,8 +165,10 @@ test('prep is charged only when area is over 300', () => {
     requiresPrep: true,
   });
   assert.equal(atCap.quote.areaCm2, 300);
-  assert.equal(atCap.quote.prep, 0);
-  assert.equal(atCap.input.requiresPrep, false);
+  assert.equal(atCap.quote.rawAreaCost, 33);
+  assert.equal(atCap.quote.vinyl, 33);
+  assert.equal(atCap.quote.subtotal, 38);
+  assert.equal(atCap.quote.total, 42);
 
   const over = mustQuote({
     productType: 'decal',
@@ -178,12 +176,14 @@ test('prep is charged only when area is over 300', () => {
     heightCm: 43,
     designType: 'graphic',
     shippingOption: 'untracked',
-    requiresPrep: true,
+    prep: true,
   });
   assert.equal(over.quote.areaCm2, 301);
   assert.equal(over.quote.rawAreaCost, 33.02);
-  assert.equal(over.quote.prep, 10);
-  assert.equal(over.input.requiresPrep, true);
+  assert.equal(over.quote.vinyl, 33.02);
+  assert.equal(over.quote.subtotal, 38.02);
+  assert.equal(over.quote.total, 42.02);
+  assert.equal('prep' in over.quote, false);
 });
 
 test('tee and baby area thresholds stay on the included-print boundary', () => {
@@ -195,7 +195,6 @@ test('tee and baby area thresholds stay on the included-print boundary', () => {
   });
   assert.equal(teeIncluded.quote.areaCm2, 900);
   assert.equal(teeIncluded.quote.vinyl, 0);
-  assert.equal(teeIncluded.quote.prep, 0);
 
   const teeOver = mustQuote({
     productType: 'tee',
@@ -206,11 +205,10 @@ test('tee and baby area thresholds stay on the included-print boundary', () => {
   });
   assert.equal(teeOver.quote.areaCm2, 901);
   assert.equal(teeOver.quote.vinyl, 0.02);
-  assert.equal(teeOver.quote.prep, 10);
   assert.equal(teeOver.quote.base, 32);
   assert.equal(teeOver.quote.labour, 5);
-  assert.equal(teeOver.quote.subtotal, 47.02);
-  assert.equal(teeOver.quote.total, 59.02);
+  assert.equal(teeOver.quote.subtotal, 37.02);
+  assert.equal(teeOver.quote.total, 49.02);
 
   const babyCap = mustQuote({
     productType: 'baby',

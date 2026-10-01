@@ -272,7 +272,6 @@ export async function createCheckoutSession(
         designType: input.designType,
         ...(input.textDensity ? { textDensity: input.textDensity } : {}),
         ...(input.shippingOption ? { shippingOption: input.shippingOption } : {}),
-        requiresPrep: input.requiresPrep ? '1' : '0',
         ...(orderType === 'vinyl'
           ? {
               vinylWidthCm: String(input.widthCm),

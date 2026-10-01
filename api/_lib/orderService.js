@@ -133,7 +133,6 @@ export function normalizeOrderConfig(orderConfig = {}) {
     designType: input.designType,
     textDensity: input.textDensity,
     shippingOption: input.shippingOption,
-    requiresPrep: input.requiresPrep,
     quote,
   };
   delete next.amount;
@@ -141,6 +140,8 @@ export function normalizeOrderConfig(orderConfig = {}) {
   delete next.total;
   delete next.price;
   delete next.grandTotal;
+  delete next.requiresPrep;
+  delete next.prep;
 
   if (orderType === 'vinyl') {
     next.vinylWidthCm = input.widthCm;

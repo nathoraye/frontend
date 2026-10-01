@@ -21,8 +21,6 @@ export type ShippingOption = (typeof SHIPPING_OPTIONS)[number];
 export const MIN_DIMENSION_CM = 2;
 export const MIN_DIMENSION_ERROR = 'Minimum dimensions are 2cm x 2cm.';
 
-export const PREP_FEE = 10;
-export const PREP_AREA_CM2 = 300;
 export const DECAL_VINYL_FLOOR = 8.5;
 
 const BASE_PRICE: Record<ProductType, number> = {
@@ -50,7 +48,6 @@ export interface NormalizedQuoteInput {
   designType: DesignType;
   textDensity: TextDensity | null;
   shippingOption: ShippingOption | null;
-  requiresPrep: boolean;
 }
 
 export interface PriceQuote {
@@ -61,12 +58,10 @@ export interface PriceQuote {
   designType: DesignType;
   textDensity: TextDensity | null;
   shippingOption: ShippingOption | null;
-  requiresPrep: boolean;
   base: number;
   rawAreaCost: number;
   vinyl: number;
   labour: number;
-  prep: number;
   subtotal: number;
   shipping: number;
   shippingLabel: string;
@@ -122,10 +117,6 @@ export function labourCost(designType: DesignType, textDensity: TextDensity | nu
   if (designType === 'graphic') return 5;
   if (designType === 'text' && textDensity === 'dense') return 5;
   return 0;
-}
-
-export function prepCost(area: number, requiresPrep: boolean): number {
-  return area > PREP_AREA_CM2 && requiresPrep ? PREP_FEE : 0;
 }
 
 export function shippingAmount(product: ProductType, shippingOption: ShippingOption | null): number {
@@ -280,10 +271,6 @@ function isShipping(value: unknown): value is ShippingOption {
   return typeof value === 'string' && (SHIPPING_OPTIONS as readonly string[]).includes(value);
 }
 
-function readPrep(value: unknown): boolean {
-  return value === true || value === 1 || value === 'true' || value === '1';
-}
-
 function resolveProduct(source: Record<string, unknown>): { product: ProductType } | { error: string } {
   const explicit = readField(source, ['productType', 'product']);
   if (explicit != null) {
@@ -340,13 +327,11 @@ export function quoteOrder(source: unknown): QuoteResult {
   }
 
   const areaCm2 = widthCm * heightCm;
-  const requiresPrep = areaCm2 > PREP_AREA_CM2 && readPrep(readField(source, ['requiresPrep', 'prep']));
   const base = BASE_PRICE[product];
   const areaRaw = rawAreaCost(areaCm2);
   const vinyl = vinylCost(product, areaCm2);
   const labour = labourCost(designType, textDensity);
-  const prep = prepCost(areaCm2, requiresPrep);
-  const subtotal = round2(base + vinyl + labour + prep);
+  const subtotal = round2(base + vinyl + labour);
   const shipping = shippingAmount(product, shippingOption);
   const total = round2(subtotal + shipping);
 
@@ -357,7 +342,6 @@ export function quoteOrder(source: unknown): QuoteResult {
     designType,
     textDensity,
     shippingOption,
-    requiresPrep,
   };
 
   return {
@@ -370,7 +354,6 @@ export function quoteOrder(source: unknown): QuoteResult {
       rawAreaCost: areaRaw,
       vinyl,
       labour,
-      prep,
       subtotal,
       shipping,
       shippingLabel: shippingChoiceLabel(product, shippingOption),

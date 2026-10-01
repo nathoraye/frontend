@@ -88,11 +88,9 @@ function JobQuoteLine({ orderConfig }: { orderConfig?: Record<string, unknown> |
   if (!quote || typeof quote !== 'object') return null;
   const row = quote as Record<string, unknown>;
   if (typeof row.subtotal !== 'number' || typeof row.shipping !== 'number') return null;
-  const prep = typeof row.prep === 'number' ? row.prep : 0;
   return (
     <p className="font-mono text-xs text-slate-400" data-testid="job-quote">
       Item ${moneyString(row.subtotal)} · Shipping ${moneyString(row.shipping)}
-      {prep > 0 ? ` · Prep $${moneyString(prep)}` : ''}
       {typeof row.designType === 'string' ? ` · ${row.designType}` : ''}
     </p>
   );

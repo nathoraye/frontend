@@ -57,7 +57,7 @@ test('normalizeOrderConfig persists the server quote and ignores client prices',
   assert.equal(vinyl.vinylHeightCm, 8);
   assert.equal(vinyl.vinylFinish, 'matte');
   assert.equal(vinyl.productType, 'decal');
-  assert.equal(vinyl.requiresPrep, false);
+  assert.equal(vinyl.requiresPrep, undefined);
   assert.equal(vinyl.quote.shipping, 10);
   assert.equal(vinyl.quote.total, 30.5);
   assert.equal(vinyl.amount, undefined);

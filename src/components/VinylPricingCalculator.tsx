@@ -20,7 +20,6 @@ export interface QuoteDraft {
   designType: DesignType;
   textDensity: TextDensity;
   shippingOption: ShippingOption;
-  requiresPrep: boolean;
 }
 
 interface VinylPricingCalculatorProps {
@@ -44,18 +43,7 @@ export function VinylPricingCalculator({
   const [heightCm, setHeightCm] = useState(() => defaultSizeCm(initialProduct).heightCm);
   const [designType, setDesignType] = useState<DesignType>('graphic');
   const [textDensity, setTextDensity] = useState<TextDensity>('standard');
-  const [requiresPrep, setRequiresPrep] = useState(false);
   const [shippingOption, setShippingOption] = useState<ShippingOption>('untracked');
-
-  const area = widthCm * heightCm;
-
-  useEffect(() => {
-    if (Number.isFinite(area) && area <= 300) {
-      // Quote spec: prep is only valid above 300 cm², so clear it when the area drops.
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- required reset when area changes
-      setRequiresPrep(false);
-    }
-  }, [area]);
 
   const draft = useMemo<QuoteDraft>(
     () => ({
@@ -65,9 +53,8 @@ export function VinylPricingCalculator({
       designType,
       textDensity,
       shippingOption,
-      requiresPrep,
     }),
-    [product, widthCm, heightCm, designType, textDensity, shippingOption, requiresPrep],
+    [product, widthCm, heightCm, designType, textDensity, shippingOption],
   );
 
   const pricing = useMemo(() => quoteOrder(draft), [draft]);
@@ -75,8 +62,6 @@ export function VinylPricingCalculator({
   useEffect(() => {
     onQuote?.({ draft, result: pricing });
   }, [draft, pricing, onQuote]);
-
-  const showPrep = pricing.ok && pricing.quote.areaCm2 > 300;
 
   return (
     <section
@@ -175,18 +160,6 @@ export function VinylPricingCalculator({
               <option value="standard">Standard Text (2cm+ tall, under 15 words)</option>
               <option value="dense">Dense Text (15+ words / high cut count) +$5 Labor</option>
             </select>
-          </label>
-        ) : null}
-
-        {showPrep ? (
-          <label className="flex items-center gap-2 text-sm text-slate-200">
-            <input
-              type="checkbox"
-              checked={requiresPrep}
-              onChange={(event) => setRequiresPrep(event.target.checked)}
-              className="accent-[#FF1493]"
-            />
-            Requires Substrate Prep (+$10)
           </label>
         ) : null}
 
