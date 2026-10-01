@@ -1,11 +1,13 @@
 import Stripe from 'stripe';
 import {
+  clampQuantity,
   jobSummary,
   moneyString,
   ORDER_CURRENCY,
-  SHIPPING_COST,
+  productCheckoutName,
+  quoteOrder,
+  shippingLineName,
   smokeCheckoutAmountCents,
-  unitPriceForConfig,
 } from './orderPricing.js';
 
 let stripeClient = null;
@@ -188,13 +190,15 @@ export async function createCheckoutSession(
   stripeClientOverride = null,
 ) {
   const stripe = stripeClientOverride || getStripe();
-  const orderType = orderConfig.orderType === 'product' ? 'product' : 'vinyl';
-  const quantity = Number(orderConfig.quantity) || 1;
-  const unit = unitPriceForConfig(orderConfig);
-  const productName =
-    orderType === 'product'
-      ? `Custom ${String(orderConfig.productId || 'apparel')}`
-      : 'Custom vinyl sticker';
+  const quoted = quoteOrder(orderConfig);
+  if (!quoted.ok) {
+    throw Object.assign(new Error(quoted.error), { status: 400 });
+  }
+  const { input, quote } = quoted;
+  const orderType = input.product === 'decal' ? 'vinyl' : 'product';
+  const quantity = clampQuantity(orderConfig.quantity);
+  const productName = productCheckoutName(input.product);
+  const description = jobSummary(orderConfig).slice(0, 500);
   const smokeCents = smokeCheckoutAmountCents();
   const lineItems =
     smokeCents != null
@@ -206,7 +210,7 @@ export async function createCheckoutSession(
               unit_amount: smokeCents,
               product_data: {
                 name: productName,
-                description: jobSummary(orderConfig).slice(0, 500),
+                description,
               },
             },
           },
@@ -216,10 +220,10 @@ export async function createCheckoutSession(
             quantity,
             price_data: {
               currency: ORDER_CURRENCY.toLowerCase(),
-              unit_amount: toStripeAmount(unit),
+              unit_amount: toStripeAmount(quote.subtotal),
               product_data: {
                 name: productName,
-                description: jobSummary(orderConfig).slice(0, 500),
+                description,
               },
             },
           },
@@ -227,8 +231,8 @@ export async function createCheckoutSession(
             quantity: 1,
             price_data: {
               currency: ORDER_CURRENCY.toLowerCase(),
-              unit_amount: toStripeAmount(SHIPPING_COST),
-              product_data: { name: 'Shipping' },
+              unit_amount: toStripeAmount(quote.shipping),
+              product_data: { name: shippingLineName(input.product, input.shippingOption) },
             },
           },
         ];
@@ -262,10 +266,16 @@ export async function createCheckoutSession(
         quantity: String(quantity),
         // Size on Stripe metadata so Dashboard / receipts show cut or garment size
         // even if someone only opens the PaymentIntent (jobs board still uses Blob).
+        productType: input.product,
+        widthCm: String(input.widthCm),
+        heightCm: String(input.heightCm),
+        designType: input.designType,
+        ...(input.textDensity ? { textDensity: input.textDensity } : {}),
+        ...(input.shippingOption ? { shippingOption: input.shippingOption } : {}),
         ...(orderType === 'vinyl'
           ? {
-              vinylWidthCm: String(orderConfig.vinylWidthCm ?? 10),
-              vinylHeightCm: String(orderConfig.vinylHeightCm ?? 10),
+              vinylWidthCm: String(input.widthCm),
+              vinylHeightCm: String(input.heightCm),
             }
           : {
               ...(orderConfig.productId
@@ -283,10 +293,14 @@ export async function createCheckoutSession(
         metadata: {
           orderId,
           orderType,
+          productType: input.product,
+          widthCm: String(input.widthCm),
+          heightCm: String(input.heightCm),
+          designType: input.designType,
           ...(orderType === 'vinyl'
             ? {
-                vinylWidthCm: String(orderConfig.vinylWidthCm ?? 10),
-                vinylHeightCm: String(orderConfig.vinylHeightCm ?? 10),
+                vinylWidthCm: String(input.widthCm),
+                vinylHeightCm: String(input.heightCm),
               }
             : {
                 ...(orderConfig.productSize

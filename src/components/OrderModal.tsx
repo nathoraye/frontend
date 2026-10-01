@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as fabric from 'fabric';
 import { createCheckoutSession, fetchCheckoutHealth } from '../services/orderService';
@@ -6,14 +6,16 @@ import { notifyStudio } from '../utils/studioNotice';
 import { snapshotDesignAsDataURL } from '../utils/designSnapshot';
 import { serializeDesignSvgForOrder } from '../utils/orderDesignSerialize';
 import {
-  calculateOrderTotal,
-  PERMANENT_SURCHARGE,
-  SHIPPING_COST,
-  UNIT_PRICES,
-} from '../utils/orderPricing';
+  catalogIdForProduct,
+  chargedTotal,
+  defaultSizeCm,
+  productTypeFromCatalog,
+  quoteOrder,
+  type QuoteResult,
+} from '../lib/pricing';
 import type { ProductPlacement } from '../utils/apparelPlacement';
 import { ApparelMockupViewer } from './ApparelMockupViewer';
-import { VinylSizePreview } from './VinylSizePreview';
+import { VinylPricingCalculator, type QuoteDraft } from './VinylPricingCalculator';
 import {
   isSizedProduct,
   PRODUCT_CATALOG,
@@ -43,15 +45,25 @@ interface CustomerFormValues {
 
 interface OrderConfig {
   orderType: OrderType;
-  vinylWidthCm?: number;
-  vinylHeightCm?: number;
-  vinylPermanent?: boolean;
-  vinylFinish?: string;
   productId?: ProductId;
   productColor?: string;
   productSize?: string;
   printConfigs: Record<string, PrintConfig>;
   quantity: number;
+}
+
+function initialQuote(productId?: ProductId): { draft: QuoteDraft; result: QuoteResult } {
+  const product = productId ? productTypeFromCatalog(productId) ?? 'tee' : 'decal';
+  const size = defaultSizeCm(product);
+  const draft: QuoteDraft = {
+    product,
+    widthCm: size.widthCm,
+    heightCm: size.heightCm,
+    designType: 'graphic',
+    textDensity: 'standard',
+    shippingOption: 'untracked',
+  };
+  return { draft, result: quoteOrder(draft) };
 }
 
 /** Snapshot of Product Preview when opening checkout. */
@@ -85,14 +97,6 @@ const COUNTRIES = [
   'New Zealand',
   'Other',
 ];
-
-function calculatePrice(config: OrderConfig): number {
-  return calculateOrderTotal({
-    orderType: config.orderType,
-    quantity: config.quantity,
-    vinylPermanent: config.vinylPermanent,
-  });
-}
 
 function printConfigsForProduct(
   productId: ProductId,
@@ -144,85 +148,30 @@ function StepVinylOptions({
   config,
   onConfigChange,
   designDataUrl,
+  initialProduct,
+  onQuote,
 }: {
   config: OrderConfig;
   onConfigChange: (config: OrderConfig) => void;
   designDataUrl: string | null;
+  initialProduct: QuoteDraft['product'];
+  onQuote: (state: { draft: QuoteDraft; result: QuoteResult }) => void;
 }) {
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-mono text-pink-500">Sticker options</h3>
       <p className="text-xs font-mono text-gray-400">
-        Set vinyl size and finish. Artwork comes from your studio design.
+        Set the cut size and design category. Artwork comes from your studio design. The server
+        prices the job again before Stripe.
       </p>
-
-      <div className="space-y-4">
-        <label className="block text-sm font-mono text-gray-300">Size (cm)</label>
-        <div className="flex gap-4 items-center">
-          <input
-            type="number"
-            min="2"
-            max="30"
-            value={config.vinylWidthCm || 10}
-            onChange={(e) =>
-              onConfigChange({ ...config, vinylWidthCm: parseFloat(e.target.value) })
-            }
-            className="w-20 px-2 py-1 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
-            placeholder="W"
-          />
-          <span className="text-gray-500">×</span>
-          <input
-            type="number"
-            min="2"
-            max="30"
-            value={config.vinylHeightCm || 10}
-            onChange={(e) =>
-              onConfigChange({ ...config, vinylHeightCm: parseFloat(e.target.value) })
-            }
-            className="w-20 px-2 py-1 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
-            placeholder="H"
-          />
-        </div>
-
-        <label className="flex items-center gap-2 text-sm font-mono text-gray-300">
-          <input
-            type="checkbox"
-            checked={config.vinylPermanent ?? false}
-            onChange={(e) => onConfigChange({ ...config, vinylPermanent: e.target.checked })}
-          />
-          Permanent adhesive (+${PERMANENT_SURCHARGE.toFixed(2)})
-        </label>
-
-        {config.vinylPermanent && (
-          <>
-            <label htmlFor="order-vinyl-finish" className="block text-sm font-mono text-gray-300">
-              Finish
-            </label>
-            <select
-              id="order-vinyl-finish"
-              value={config.vinylFinish || 'matte'}
-              onChange={(e) => onConfigChange({ ...config, vinylFinish: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-800 text-gray-100 font-mono text-sm border border-gray-700 rounded"
-            >
-              <option value="matte">Matte</option>
-              <option value="gloss">Gloss</option>
-              <option value="metallic">Metallic</option>
-            </select>
-          </>
-        )}
-      </div>
-
-      <div className="bg-gray-900 rounded border border-gray-700 p-3">
-        <VinylSizePreview
-          designDataUrl={designDataUrl}
-          widthCm={config.vinylWidthCm || 10}
-          heightCm={config.vinylHeightCm || 10}
-          onSizeChange={(widthCm, heightCm) =>
-            onConfigChange({ ...config, vinylWidthCm: widthCm, vinylHeightCm: heightCm })
-          }
+      {designDataUrl ? (
+        <img
+          src={designDataUrl}
+          alt="Studio design"
+          className="mx-auto max-h-28 rounded border border-slate-800 bg-[#0f111a] object-contain"
         />
-      </div>
-
+      ) : null}
+      <VinylPricingCalculator initialProduct={initialProduct} onQuote={onQuote} />
       <QuantityControls
         quantity={config.quantity}
         onChange={(quantity) => onConfigChange({ ...config, quantity })}
@@ -236,11 +185,15 @@ function StepApparelReview({
   onConfigChange,
   designDataUrl,
   activeView,
+  initialProduct,
+  onQuote,
 }: {
   config: OrderConfig;
   onConfigChange: (config: OrderConfig) => void;
   designDataUrl: string | null;
   activeView: string;
+  initialProduct: QuoteDraft['product'];
+  onQuote: (state: { draft: QuoteDraft; result: QuoteResult }) => void;
 }) {
   const product = config.productId ? PRODUCT_CATALOG[config.productId] : undefined;
   if (!product) return null;
@@ -297,16 +250,20 @@ function StepApparelReview({
         quantity={config.quantity}
         onChange={(quantity) => onConfigChange({ ...config, quantity })}
       />
+
+      <VinylPricingCalculator initialProduct={initialProduct} onQuote={onQuote} />
     </div>
   );
 }
 
 function StepShippingPayment({
   config,
+  quote,
   onConfirm,
   isProcessing,
 }: {
   config: OrderConfig;
+  quote: QuoteResult;
   onConfirm: (customer: CustomerFormValues) => Promise<void>;
   isProcessing: boolean;
 }) {
@@ -316,10 +273,9 @@ function StepShippingPayment({
     getValues,
   } = useForm<CustomerFormValues>({ mode: 'onChange' });
 
-  const totalPrice = calculatePrice(config);
-  const unitPrice =
-    UNIT_PRICES[config.orderType] +
-    (config.orderType === 'vinyl' && config.vinylPermanent ? PERMANENT_SURCHARGE : 0);
+  const item = quote.ok ? quote.quote.subtotal : 0;
+  const shipping = quote.ok ? quote.quote.shipping : 0;
+  const totalPrice = quote.ok ? chargedTotal(quote.quote, config.quantity) : 0;
   const [stripeReady, setStripeReady] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -341,26 +297,28 @@ function StepShippingPayment({
       <h3 className="text-lg font-mono text-pink-500">Shipping & Payment</h3>
 
       <div className="bg-gray-800 p-4 rounded border border-gray-700 space-y-2 text-sm font-mono">
-        <div className="flex justify-between text-gray-300">
-          <span>Unit Price:</span>
-          <span>${unitPrice.toFixed(2)} AUD</span>
-        </div>
-        <div className="flex justify-between text-gray-300">
-          <span>Qty:</span>
-          <span>{config.quantity}×</span>
-        </div>
-        <div className="flex justify-between text-gray-300">
-          <span>Subtotal:</span>
-          <span>${(unitPrice * config.quantity).toFixed(2)} AUD</span>
-        </div>
-        <div className="border-t border-gray-700 pt-2 flex justify-between text-gray-300">
-          <span>Shipping:</span>
-          <span>${SHIPPING_COST.toFixed(2)} AUD</span>
-        </div>
-        <div className="border-t border-gray-700 pt-2 flex justify-between text-pink-500 text-lg font-bold">
-          <span>Total:</span>
-          <span>${totalPrice.toFixed(2)} AUD</span>
-        </div>
+        {quote.ok ? (
+          <>
+            <div className="flex justify-between text-gray-300">
+              <span>Product / customisation:</span>
+              <span>${item.toFixed(2)} AUD</span>
+            </div>
+            <div className="flex justify-between text-gray-300">
+              <span>Qty:</span>
+              <span>{config.quantity}×</span>
+            </div>
+            <div className="flex justify-between text-gray-300">
+              <span>Shipping:</span>
+              <span>${shipping.toFixed(2)} AUD</span>
+            </div>
+            <div className="border-t border-gray-700 pt-2 flex justify-between text-pink-500 text-lg font-bold">
+              <span>Grand Total:</span>
+              <span>${totalPrice.toFixed(2)} AUD</span>
+            </div>
+          </>
+        ) : (
+          <p className="font-bold text-red-500">{quote.error}</p>
+        )}
       </div>
 
       {/* Div, not a form: Chrome's "Save address?" prompt treats a form submit as a
@@ -438,13 +396,15 @@ function StepShippingPayment({
         </div>
 
         <div className="sticky bottom-0 z-10 -mx-6 border-t border-gray-800 bg-gray-900 px-6 pt-3">
-          {!isValid || isProcessing ? (
+          {!quote.ok || !isValid || isProcessing ? (
             <div className="p-3 bg-red-900 bg-opacity-20 border border-red-700 rounded text-red-400 text-sm font-mono">
               {isProcessing
                 ? stripeReady === false
                   ? 'Saving job…'
                   : 'Redirecting to Stripe Checkout…'
-                : 'Please fill in all required fields to proceed to payment.'}
+                : !quote.ok
+                  ? quote.error
+                  : 'Please fill in all required fields to proceed to payment.'}
             </div>
           ) : (
             <div className="space-y-2">
@@ -508,11 +468,15 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
     return {
       orderType: 'vinyl',
       quantity: 1,
-      vinylWidthCm: 10,
-      vinylHeightCm: 10,
       printConfigs: {},
     };
   });
+  const [quoteState, setQuoteState] = useState(() =>
+    initialQuote(isApparel ? preview?.productId ?? 'tshirt' : undefined),
+  );
+  const onQuote = useCallback((state: { draft: QuoteDraft; result: QuoteResult }) => {
+    setQuoteState(state);
+  }, []);
 
   const designDataUrl = useMemo(() => {
     try {
@@ -526,8 +490,16 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
   const handleConfirm = async (customer: CustomerFormValues) => {
     setIsProcessing(true);
     try {
+      if (!quoteState.result.ok) {
+        throw new Error(quoteState.result.error);
+      }
+      const draft = quoteState.draft;
       const designSvg = await serializeDesignSvgForOrder(canvas);
       const designPreviewPng = designDataUrl || snapshotDesignAsDataURL(canvas) || undefined;
+      const pricedProductId =
+        draft.product === 'decal'
+          ? undefined
+          : catalogIdForProduct(draft.product, config.productId);
       const result = await createCheckoutSession({
         customer: {
           fullName: customer.fullName,
@@ -540,13 +512,15 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
           country: customer.country,
         },
         orderConfig: {
-          orderType: config.orderType,
+          orderType: draft.product === 'decal' ? 'vinyl' : 'product',
           quantity: config.quantity,
-          vinylPermanent: config.vinylPermanent,
-          vinylWidthCm: config.vinylWidthCm,
-          vinylHeightCm: config.vinylHeightCm,
-          vinylFinish: config.vinylFinish,
-          productId: config.productId,
+          productType: draft.product,
+          widthCm: draft.widthCm,
+          heightCm: draft.heightCm,
+          designType: draft.designType,
+          textDensity: draft.textDensity,
+          shippingOption: draft.shippingOption,
+          productId: pricedProductId,
           productColor: config.productColor,
           productSize: config.productSize,
           printConfigs: config.printConfigs,
@@ -608,24 +582,30 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
-          {step === 1 &&
-            (isApparel ? (
+          <div className={step === 1 ? 'block' : 'hidden'}>
+            {isApparel ? (
               <StepApparelReview
                 config={config}
                 onConfigChange={setConfig}
                 designDataUrl={designDataUrl}
                 activeView={activeView}
+                initialProduct={quoteState.draft.product}
+                onQuote={onQuote}
               />
             ) : (
               <StepVinylOptions
                 config={config}
                 onConfigChange={setConfig}
                 designDataUrl={designDataUrl}
+                initialProduct="decal"
+                onQuote={onQuote}
               />
-            ))}
+            )}
+          </div>
           {step === 2 && (
             <StepShippingPayment
               config={config}
+              quote={quoteState.result}
               onConfirm={handleConfirm}
               isProcessing={isProcessing}
             />
@@ -646,7 +626,8 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
           {step < 2 ? (
             <button
               onClick={() => setStep(2)}
-              className="min-h-11 rounded bg-pink-500 px-4 py-2 font-mono text-sm text-gray-900 transition hover:bg-pink-600 touch-manipulation sm:px-6"
+              disabled={!quoteState.result.ok}
+              className="min-h-11 rounded bg-pink-500 px-4 py-2 font-mono text-sm text-gray-900 transition hover:bg-pink-600 touch-manipulation disabled:cursor-not-allowed disabled:opacity-50 sm:px-6"
             >
               Next →
             </button>
