@@ -244,11 +244,11 @@ Borders are 1px. The pink tab underline in the inspector is 2px and is a selecti
 
 ### Cards / Containers
 
-- **Corner Style:** 4px on policy and jobs cards. 12px on inspector groups and the cut-ready panel.
+- **Corner Style:** 4px on policy and jobs cards. 12px on inspector groups.
 - **Background:** Panel `#181a25` for cards. Inset wells inside the inspector use void `#0f111a`.
 - **Shadow Strategy:** None at rest. See Elevation.
 - **Border:** 1px hairline.
-- **Internal Padding:** 12px in the cut-ready panel, 16px in policy cards and inspector groups.
+- **Internal Padding:** 16px in policy cards and inspector groups.
 
 ### Inputs / Fields
 
