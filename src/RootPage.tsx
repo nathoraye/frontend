@@ -4,6 +4,8 @@ import { JobsBoard } from './components/JobsBoard.tsx'
 import { OrderCancelPage } from './components/OrderCancelPage.tsx'
 import { OrderSuccessPage } from './components/OrderSuccessPage.tsx'
 import { StudioInfoPage, type InfoPageId } from './components/StudioInfoPage.tsx'
+import { trackPageView } from './analytics/track'
+import { isTrackerBlockedPath } from './analytics/config'
 
 function currentPath() {
   return window.location.pathname.replace(/\/$/, '') || '/'
@@ -25,6 +27,11 @@ export function RootPage() {
       root.classList.remove('wvs-document-scroll')
     }
   }, [documentScroll])
+
+  useEffect(() => {
+    if (isTrackerBlockedPath(path)) return
+    trackPageView()
+  }, [path])
 
   useEffect(() => {
     const admin = path === '/admin/orders' || path === '/jobs'

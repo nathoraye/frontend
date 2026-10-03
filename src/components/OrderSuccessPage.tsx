@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchSessionStatus, type SessionStatusResult } from '../services/orderService';
+import { trackPurchase } from '../analytics/track';
 
 function money(amount?: number, currency?: string) {
   if (typeof amount !== 'number') return '';
@@ -20,6 +21,22 @@ export function OrderSuccessPage() {
         setError(err instanceof Error ? err.message : 'Could not load order status');
       });
   }, []);
+
+  useEffect(() => {
+    if (!status || status.status !== 'paid' || status.unverified) return;
+    if (typeof status.amount !== 'number') return;
+    trackPurchase({
+      transactionId: status.orderId,
+      eventId: status.eventId || status.orderId,
+      value: status.amount,
+      item: {
+        itemId: status.orderType || 'custom',
+        itemName: status.orderType === 'product' ? 'Custom apparel' : 'Custom decal',
+        quantity: 1,
+        value: status.amount,
+      },
+    });
+  }, [status]);
 
   return (
     <div className="min-h-[100dvh] bg-[#0f111a] px-4 py-10 text-slate-200">

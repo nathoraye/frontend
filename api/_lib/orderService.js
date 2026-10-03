@@ -36,6 +36,10 @@ import {
   updateOrder,
 } from './orderStore.js';
 import { getPrivateOrderAsset, persistOrderDesignAssets } from './orderAssets.js';
+import {
+  normalizeCheckoutAnalytics,
+  reportPurchaseConversions,
+} from './analyticsConversions.js';
 
 function presentedBearer(req) {
   const header = String(req.headers?.authorization || req.headers?.Authorization || '');
@@ -320,6 +324,7 @@ export async function handleCreateCheckoutSession(payload = {}, req = {}, stripe
   const designPreviewPng = normalizeDesignPreviewPng(payload.designPreviewPng);
   const origin = checkoutReturnOrigin(req, payload);
   const amount = checkoutChargeAmount(orderConfig);
+  const analytics = normalizeCheckoutAnalytics(payload.analytics, req);
 
   if (!stripeConfigured()) {
     if (allowUnverifiedOrders()) {
@@ -329,7 +334,12 @@ export async function handleCreateCheckoutSession(payload = {}, req = {}, stripe
         designSvg,
         designPreviewPng,
         status: 'unverified',
-        extra: { amount, paymentIntentId: `LOCAL-${Date.now()}` },
+        extra: {
+          amount,
+          paymentIntentId: `LOCAL-${Date.now()}`,
+          analyticsEventId: analytics.eventId,
+          analytics: analytics.stored,
+        },
       });
       const saved = await appendOrder(order);
       if (!saved.duplicate) {
@@ -342,6 +352,7 @@ export async function handleCreateCheckoutSession(payload = {}, req = {}, stripe
         amount: moneyString(amount),
         currency: ORDER_CURRENCY,
         unverified: true,
+        eventId: analytics.eventId,
       };
     }
     // Present-but-wrong prefixes (e.g. whsec_) get a specific 503 from getStripe().
@@ -358,7 +369,11 @@ export async function handleCreateCheckoutSession(payload = {}, req = {}, stripe
     designSvg,
     designPreviewPng,
     status: 'pending',
-    extra: { amount },
+    extra: {
+      amount,
+      analyticsEventId: analytics.eventId,
+      analytics: analytics.stored,
+    },
   });
   const saved = await appendOrder(order);
   if (!saved.duplicate) {
@@ -372,6 +387,7 @@ export async function handleCreateCheckoutSession(payload = {}, req = {}, stripe
       customerEmail: customer.email,
       successUrl: `${origin}/order/success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${origin}/order/cancel?orderId=${encodeURIComponent(saved.order.id)}`,
+      metadata: analytics.metadata,
     },
     stripeClient,
   );
@@ -384,6 +400,7 @@ export async function handleCreateCheckoutSession(payload = {}, req = {}, stripe
     orderId: saved.order.id,
     amount: moneyString(amount),
     currency: ORDER_CURRENCY,
+    eventId: analytics.eventId,
   };
 }
 
@@ -444,7 +461,20 @@ export async function fulfillCheckoutSession(session) {
       session.customer_details?.email || session.customer_email || order.payerEmail || null,
   });
 
-  return { order: updated, duplicate: false };
+  // First transition to paid is the dedupe. Webhook retries and the success-page
+  // session retrieve both call this function; only the call that marks the job
+  // paid reports the purchase. Reporting failures must not fail the webhook.
+  let analyticsReport = { ga4: 'skipped', meta: 'skipped' };
+  try {
+    analyticsReport = await reportPurchaseConversions({ order: updated, session });
+  } catch (error) {
+    console.error(
+      '[analytics] purchase reporting failed:',
+      error instanceof Error ? error.message : 'unknown error',
+    );
+  }
+
+  return { order: updated, duplicate: false, analytics: analyticsReport };
 }
 
 export async function expireCheckoutSession(session) {

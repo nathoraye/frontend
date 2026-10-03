@@ -231,5 +231,6 @@ export function publicConfirmation(order) {
     createdAt: order.createdAt,
     paidAt: order.paidAt || null,
     unverified: order.status === 'unverified',
+    eventId: order.analyticsEventId || order.analytics?.eventId || null,
   };
 }
