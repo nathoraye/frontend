@@ -320,6 +320,7 @@ test('createCheckoutSession uses mocked Stripe when configured', async () => {
           assert.ok(!('payment_method_types' in params));
           assert.equal(params.branding_settings.display_name, 'West Vinyl Studio');
           assert.equal(params.branding_settings.button_color, '#7A1040');
+          assert.match(params.custom_text.submit.message, /Questions: westvinylco@gmail.com/);
           assert.match(params.success_url, /\/order\/success\?session_id=\{CHECKOUT_SESSION_ID\}$/);
           assert.match(params.cancel_url, /\/order\/cancel\?orderId=/);
           assert.equal(params.line_items.length, 2);
