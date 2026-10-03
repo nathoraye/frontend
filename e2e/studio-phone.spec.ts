@@ -13,9 +13,9 @@ test.describe('phone studio smoke', () => {
     await expect(badge).toContainText(/cut check/i);
 
     await badge.click();
-    const panel = page.getByTestId('cut-ready-panel');
-    await expect(panel).toBeVisible();
-    await expect(panel).toContainText(/weeding box/i);
+    await expect(page.getByTestId('cut-ready-panel')).toHaveCount(0);
+    await expect(page.getByText(/almost ready/i)).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Alignment & Ops' })).toBeVisible();
 
     page.on('dialog', async (dialog) => {
       if (dialog.type() === 'beforeunload') {

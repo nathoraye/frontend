@@ -766,7 +766,7 @@ export default function App() {
                         lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
                         performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} handleStackedVectorTrace={handleStackedVectorTrace}
                         isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)} handleUngroup={handleUngroup}
-                        saveHistorySnapshot={saveHistorySnapshot} cutReport={cutReport} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
+                        saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
                       />
                     )}
                   </div>
@@ -787,7 +787,7 @@ export default function App() {
                 lineHeight={lineHeight} setLineHeight={setLineHeight} isTracing={isTracing} offsetSize={offsetSize} setOffsetSize={setOffsetSize} handleCreateOffset={handleCreateOffset}
                 performBoolean={performBoolean} handlePropChange={handlePropChange} alignObject={alignObject} applyTextCurve={applyTextCurve} explodeText={explodeText} handleVectorTrace={handleVectorTrace} handleStackedVectorTrace={handleStackedVectorTrace}
                 isNodeEditing={isNodeEditing} canNodeEdit={canEditActive} toggleNodeEdit={() => toggleNodeEdit(activeObj)} handleUngroup={handleUngroup}
-                saveHistorySnapshot={saveHistorySnapshot} cutReport={cutReport} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
+                saveHistorySnapshot={saveHistorySnapshot} borderCol="border-slate-800" bgPanel="bg-[#181a25]" isDark={true} textMuted="text-slate-400" textMain="text-slate-200" btnHover="hover:bg-slate-700/50"
               />
             ) : null}
         </div>
