@@ -44,7 +44,7 @@ Public pages for the offer, privacy, terms, and contact are `/policies`, `/priva
 
 ## Brand Commitments
 
-The name is West Vinyl Studio. The short name is West Vinyl. Product copy states prices in AUD, names Wentworth as the place of making, and treats every sticker and garment as custom work made from the submitted artwork. The privacy contact is nathanriant@gmail.com. Identity in the interface is the wordmark plus the PWA icons. No separate logo lockup or tagline was found.
+The name is West Vinyl Studio. The short name is West Vinyl. Product copy states prices in AUD, names Wentworth as the place of making, and treats every sticker and garment as custom work made from the submitted artwork. The privacy contact is westvinylco@gmail.com. Identity in the interface is the wordmark plus the PWA icons. No separate logo lockup or tagline was found.
 
 ## Evidence on Hand
 

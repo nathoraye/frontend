@@ -256,7 +256,7 @@ export async function createCheckoutSession(
       custom_text: {
         submit: {
           message:
-            'Custom vinyl and iron-on orders are made after payment. Questions: nathanriant@gmail.com',
+            'Custom vinyl and iron-on orders are made after payment. Questions: westvinylco@gmail.com',
         },
       },
       line_items: lineItems,

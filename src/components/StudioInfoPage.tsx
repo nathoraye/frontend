@@ -96,8 +96,8 @@ function PrivacyBody() {
       </p>
       <p>
         To ask for a copy or deletion of an order record, email{' '}
-        <a className="text-pink-300 hover:text-pink-200" href="mailto:nathanriant@gmail.com">
-          nathanriant@gmail.com
+        <a className="text-pink-300 hover:text-pink-200" href="mailto:westvinylco@gmail.com">
+          westvinylco@gmail.com
         </a>{' '}
         with the order id from your receipt. Payment records Stripe must keep for tax and disputes
         stay with Stripe.
@@ -150,8 +150,8 @@ function ContactBody() {
       <p>West Vinyl Studio · Wentworth NSW 2648, Australia</p>
       <p>
         Email{' '}
-        <a className="text-pink-300 hover:text-pink-200" href="mailto:nathanriant@gmail.com">
-          nathanriant@gmail.com
+        <a className="text-pink-300 hover:text-pink-200" href="mailto:westvinylco@gmail.com">
+          westvinylco@gmail.com
         </a>
       </p>
       <p>

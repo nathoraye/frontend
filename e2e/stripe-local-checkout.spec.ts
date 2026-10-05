@@ -109,7 +109,7 @@ test('Orders board routes and cancel page render', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /^policies$/i })).toBeVisible();
   await page.getByRole('link', { name: /^privacy$/i }).click();
   await expect(page.getByRole('heading', { name: /^privacy$/i })).toBeVisible();
-  await expect(page.getByText(/nathanriant@gmail.com/i)).toBeVisible();
+  await expect(page.getByText(/westvinylco@gmail.com/i)).toBeVisible();
   await page.goto('/terms');
   await expect(page.getByRole('heading', { name: /terms, shipping and returns/i })).toBeVisible();
   await expect(page.getByText(/not GST registered/i)).toBeVisible();
