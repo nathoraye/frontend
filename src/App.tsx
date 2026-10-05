@@ -38,6 +38,7 @@ import { chargedTotal, moneyString, quoteOrder } from './utils/orderPricing';
 import { tracedSvgToObject } from './utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
 import { imageDataToPngDataUrl } from './utils/imageDataPng';
+import { trackViewItem } from './analytics/track';
 
 type AppTool = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
 type ViewMode = 'sticker' | 'product';
@@ -153,6 +154,12 @@ export default function App() {
     applyDesignToProduct();
     setViewMode('product');
   }, [applyDesignToProduct]);
+
+  useEffect(() => {
+    if (viewMode !== 'product') return;
+    const product = PRODUCT_CATALOG[selectedProduct];
+    trackViewItem({ itemId: selectedProduct, itemName: product.label });
+  }, [viewMode, selectedProduct]);
 
   const { saveHistorySnapshot, handleUndo, handleRedo } = useHistoryEngine({ setCanvasObjects });
   const clipboard = useRef<fabric.Object | null>(null);

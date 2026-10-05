@@ -40,6 +40,20 @@ export interface CreatePaymentIntentResult {
   unverified?: boolean;
 }
 
+export interface CheckoutAnalyticsPayload {
+  eventId: string;
+  gaClientId?: string;
+  gclid?: string;
+  fbclid?: string;
+  fbc?: string;
+  fbp?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
+}
+
 export interface CreateCheckoutSessionPayload {
   customer: OrderCustomer;
   orderConfig: Record<string, unknown>;
@@ -47,6 +61,8 @@ export interface CreateCheckoutSessionPayload {
   /** Optional PNG data URL for the jobs-board product preview. */
   designPreviewPng?: string;
   origin?: string;
+  /** Click ids and the shared checkout event id. Omitted fields are ignored. */
+  analytics?: CheckoutAnalyticsPayload;
 }
 
 export interface CreateCheckoutSessionResult {
@@ -56,6 +72,8 @@ export interface CreateCheckoutSessionResult {
   amount?: string;
   currency?: string;
   unverified?: boolean;
+  /** Shared with browser begin_checkout and the server purchase event. */
+  eventId?: string;
 }
 
 export interface CheckoutHealth {
@@ -82,6 +100,8 @@ export interface SessionStatusResult {
   unverified?: boolean;
   sessionStatus?: string;
   paymentStatus?: string;
+  /** Present when checkout stored an analytics event id. */
+  eventId?: string | null;
 }
 
 export interface FulfillmentOrder {

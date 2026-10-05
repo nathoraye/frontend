@@ -52,6 +52,12 @@ function PageShell({
           </a>
         </nav>
         <div className="space-y-4 text-sm leading-relaxed text-slate-300">{children}</div>
+        <footer className="border-t border-slate-800 pt-4 text-xs leading-relaxed text-slate-500">
+          Analytics and advertising cookies are used only when measurement is switched on.{' '}
+          <a className="hover:text-pink-300" href="/privacy">
+            Privacy
+          </a>
+        </footer>
       </article>
     </div>
   );
@@ -91,8 +97,11 @@ function PrivacyBody() {
       </p>
       <p>
         Paid and pending jobs are stored in a private order file on Vercel Blob so the shop can
-        open the artwork after payment. We do not sell personal information and this site does not
-        run third-party advertising pixels.
+        open the artwork after payment. We do not sell personal information.
+      </p>
+      <p>
+        When analytics or ads measurement is switched on, Google and Meta may set cookies to
+        measure page views and purchases. Those cookies are not set while measurement is off.
       </p>
       <p>
         To ask for a copy or deletion of an order record, email{' '}

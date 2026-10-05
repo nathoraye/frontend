@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as fabric from 'fabric';
 import { createCheckoutSession, fetchCheckoutHealth } from '../services/orderService';
@@ -21,6 +21,8 @@ import {
   PRODUCT_CATALOG,
   type ProductId,
 } from '../three/productCatalog';
+import { checkoutAnalyticsPayload, newEventId } from '../analytics/attribution';
+import { trackAddToCart, trackBeginCheckout, trackViewItem } from '../analytics/track';
 
 type OrderType = 'vinyl' | 'product';
 type CheckoutStep = 1 | 2;
@@ -474,6 +476,19 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
   const [quoteState, setQuoteState] = useState(() =>
     initialQuote(isApparel ? preview?.productId ?? 'tshirt' : undefined),
   );
+  const cartTracked = useRef(false);
+  useEffect(() => {
+    if (cartTracked.current || !quoteState.result.ok) return;
+    cartTracked.current = true;
+    const itemId = isApparel ? (config.productId ?? 'apparel') : 'decal';
+    const itemName = isApparel
+      ? PRODUCT_CATALOG[config.productId ?? 'tshirt'].label
+      : 'Custom decal';
+    const value = chargedTotal(quoteState.result.quote, config.quantity);
+    const item = { itemId, itemName, value, quantity: config.quantity };
+    trackViewItem(item);
+    trackAddToCart(item);
+  }, [config.productId, config.quantity, isApparel, quoteState.result]);
   const onQuote = useCallback((state: { draft: QuoteDraft; result: QuoteResult }) => {
     setQuoteState(state);
   }, []);
@@ -500,7 +515,9 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
         draft.product === 'decal'
           ? undefined
           : catalogIdForProduct(draft.product, config.productId);
+      const eventId = newEventId();
       const result = await createCheckoutSession({
+        analytics: checkoutAnalyticsPayload(eventId),
         customer: {
           fullName: customer.fullName,
           email: customer.email,
@@ -532,7 +549,25 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
       if (!result.url) {
         throw new Error('Checkout did not return a redirect URL');
       }
-      window.location.assign(result.url);
+      const go = () => window.location.assign(result.url);
+      if (result.unverified) {
+        go();
+        return;
+      }
+      const amount = Number(result.amount);
+      const itemId = draft.product === 'decal' ? 'decal' : String(pricedProductId || draft.product);
+      const itemName =
+        draft.product === 'decal'
+          ? 'Custom decal'
+          : PRODUCT_CATALOG[config.productId ?? 'tshirt'].label;
+      trackBeginCheckout(
+        {
+          eventId: result.eventId || eventId,
+          value: amount,
+          item: { itemId, itemName, quantity: config.quantity, value: amount },
+        },
+        go,
+      );
     } catch (error) {
       console.error('Checkout session failed:', error);
       notifyStudio({

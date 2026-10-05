@@ -136,6 +136,37 @@ Set on the Vercel project (Preview + Production). Do not commit secrets.
 - Leave `ALLOW_UNVERIFIED_ORDERS` and `ALLOW_PUBLIC_ORDER_LIST` unset in production
 - `SMOKE_CHECKOUT_AMOUNT_CENTS` — **temporary live smoke test only**. Set to `100` on Production to charge **A$1.00** for new Checkout Sessions (single line item). Unset, Checkout uses the shared size-and-design quote (item and shipping as separate lines). **Remove/unset the variable and redeploy** to charge that quote. Client `amount` / `unitAmount` fields are ignored. `GET /api/health` reports `checkout.smokeAmountCents`.
 
+### Ads and analytics (optional)
+
+Tracking is off until these are set. Unset variables do not load tags and do not call Google or Meta. `/admin/orders` and `/jobs` never load tags.
+
+The browser reads `VITE_` values at build time. The webhook reads the server values at runtime. Set both groups on Vercel project `frontendwvs` when you are ready, then redeploy so the browser bundle picks up the `VITE_` ids.
+
+| Variable | Where it runs | Where to copy it from |
+| --- | --- | --- |
+| `VITE_GA4_MEASUREMENT_ID` | Browser. Sends page and ecommerce events to that GA4 stream. | GA4 Admin → Data streams → your web stream → Measurement ID (`G-…`) |
+| `VITE_GOOGLE_ADS_ID` | Browser, optional. Loads the Google tag for Ads. Use `AW-…` or the full `AW-…/label`. | Google Ads → Goals → Conversions → your purchase conversion → Tag setup |
+| `VITE_GOOGLE_ADS_CONVERSION_LABEL` | Browser, optional. Only if `VITE_GOOGLE_ADS_ID` is the `AW-` id without a slash. | The label after `AW-#########/` in that conversion’s event snippet |
+| `VITE_META_PIXEL_ID` | Browser. Loads the Meta Pixel. | Meta Events Manager → Data sources → your pixel → Pixel ID |
+| `GA4_MEASUREMENT_ID` | Server. Same `G-` id as above. | GA4 Admin → Data streams |
+| `GA4_API_SECRET` | Server. Measurement Protocol secret. | GA4 Admin → Data streams → your stream → Measurement Protocol API secrets → Create |
+| `META_PIXEL_ID` | Server. Same pixel id as `VITE_META_PIXEL_ID`. | Events Manager → Data sources |
+| `META_CAPI_ACCESS_TOKEN` | Server. Conversions API token. | Events Manager → pixel → Settings → Conversions API → Generate access token |
+| `META_TEST_EVENT_CODE` | Server, optional. Marks purchases as test events. Leave unset in production. | Events Manager → Test events |
+| `GA4_DEBUG` | Server, optional. Set to `1` for DebugView. | — |
+
+What gets recorded when the ids are set:
+
+- Page views on customer pages (not the jobs board).
+- A product view when Product Preview is open, and again for the decal or garment when checkout opens.
+- Add to cart when the checkout modal opens.
+- Begin checkout, with the AUD total, immediately before the redirect to Stripe.
+- A purchase when Stripe reports the Checkout Session paid. The browser success page sends the same purchase with the same event id. GA4 dedupes on the order id (`transaction_id`). Meta dedupes on that event id. The first time the job is marked paid sends the server event; a replayed webhook does not send it again. A reporting failure is logged and still returns HTTP 200 so the order is saved.
+
+Landing URLs keep `utm_*`, `gclid`, `fbclid`, and the Meta `fbc` / `fbp` cookies in first-party storage and copy them onto the Checkout Session metadata for the server purchase.
+
+Google Ads: either import the GA4 `purchase` event, or set the Ads conversion id/label so the success page fires an Ads conversion. Doing both counts the sale twice.
+
 ### Manual test (test mode)
 
 1. Start `node server.mjs` and `npm run dev -- --host 0.0.0.0 --port 5173`.

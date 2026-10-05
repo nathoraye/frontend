@@ -1,0 +1,18 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "src/components/OrderModal.tsx",
+          "src/components/OrderSuccessPage.tsx"
+        ],
+        "createdAt": "2026-10-03T14:59:41.682Z",
+        "reason": "Pre-existing checkout buttons use near-black text-gray-900 on pink and emerald for label contrast. DESIGN.md says not to redraw checkout. gray-on-color has no value-level ignore."
+      }
+    ]
+  }
+}
