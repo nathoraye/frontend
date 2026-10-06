@@ -4,8 +4,6 @@ import { exportCanvasToOptimizedSVG } from '../utils/exportPipeline';
 import { validateSVGForCutting } from '../utils/geometryValidation';
 import { notifyStudio } from '../utils/studioNotice';
 
-const AI_API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
-
 /** Scene-space centre so a new object lands in the visible viewport (phones included). */
 function viewportDrop(canvas: fabric.Canvas) {
   const center = canvas.getVpCenter();
@@ -19,13 +17,12 @@ interface StudioActionProps {
   activeObj: (fabric.Object & { centerH?: () => void; centerV?: () => void }) | null;
   brushColor: string;
   setTool: (t: ToolMode) => void;
-  setIsGenerating: (val: boolean) => void;
   setTextCurve: (val: number) => void;
   saveHistorySnapshot: (canvas: fabric.Canvas, immediate?: boolean) => void;
 }
 
 export function useStudioActions({
-  canvas, activeObj, brushColor, setTool, setIsGenerating, setTextCurve, saveHistorySnapshot
+  canvas, activeObj, brushColor, setTool, setTextCurve, saveHistorySnapshot
 }: StudioActionProps) {
 
   const alignObject = useCallback((position: 'centerH' | 'centerV') => {
@@ -126,41 +123,46 @@ export function useStudioActions({
     if (shape) { canvas.add(shape); canvas.setActiveObject(shape); setTool('select'); canvas.requestRenderAll(); saveHistorySnapshot(canvas, true); }
   }, [canvas, brushColor, setTool, saveHistorySnapshot]);
 
-  // --- UPGRADED AI GENERATION ENGINE ---
-  const handleAIGeneration = useCallback(async () => {
-    const userPrompt = window.prompt("What kind of sticker do you want to generate?"); 
-    if (!userPrompt) return; 
-    
-    setIsGenerating(true);
-    
-    try {
-      const response = await fetch(`${AI_API_BASE_URL || ''}/api/generate-sticker`, { 
-          method: 'POST', 
-          headers: { 'Content-Type': 'application/json' }, 
-          body: JSON.stringify({ prompt: userPrompt }) 
-      });
-      
-      const data = await response.json();
-      
-      if (data.success && canvas) {
-          // Changed to await Promise for Fabric 7 compatibility
-          const img = await fabric.Image.fromURL(data.image, { crossOrigin: 'anonymous' });
-          img.set({ left: 400, top: 400, scaleX: 600 / (img.width || 600), scaleY: 600 / (img.height || 600), cornerColor: '#FF1493', transparentCorners: false, cornerStyle: 'circle' as const, objectCaching: true });
-          
-          canvas.add(img); 
-          canvas.setActiveObject(img); 
-          setTool('select'); 
-          canvas.requestRenderAll(); 
-          saveHistorySnapshot(canvas, true);
-      } else {
-          notifyStudio({ tone: 'error', title: 'Generate failed', detail: String(data.error || 'Unknown error') });
-      }
-    } catch { 
-      notifyStudio({ tone: 'error', title: 'Generate failed', detail: 'The sticker service did not respond.' });
-    } finally { 
-      setIsGenerating(false); 
-    }
-  }, [canvas, setTool, saveHistorySnapshot, setIsGenerating]);
+  const placeGeneratedArtwork = useCallback(async (
+    dataUrl: string,
+    userPrompt: string,
+    replaceTarget: fabric.Object | null,
+  ) => {
+    if (!canvas) return;
+    const img = await fabric.Image.fromURL(dataUrl);
+    const width = img.width || 800;
+    const height = img.height || 800;
+    const maxDim = 800;
+    const fit = Math.min(1, maxDim / width, maxDim / height);
+    const onMat = Boolean(replaceTarget && canvas.getObjects().includes(replaceTarget));
+    const visualWidth = onMat && replaceTarget
+      ? Math.max(1, (replaceTarget.width || width) * (replaceTarget.scaleX || 1))
+      : width * fit;
+    const scale = visualWidth / width;
+    const drop = viewportDrop(canvas);
+    img.set({
+      left: onMat && replaceTarget ? replaceTarget.left : drop.left,
+      top: onMat && replaceTarget ? replaceTarget.top : drop.top,
+      originX: onMat && replaceTarget ? replaceTarget.originX : 'center',
+      originY: onMat && replaceTarget ? replaceTarget.originY : 'center',
+      angle: onMat && replaceTarget ? replaceTarget.angle : 0,
+      scaleX: scale,
+      scaleY: scale,
+      cornerColor: '#FF1493',
+      transparentCorners: false,
+      cornerStyle: 'circle' as const,
+      objectCaching: true,
+    });
+    const record = img as fabric.Image & { aiPrompt?: string; name?: string };
+    record.aiPrompt = userPrompt;
+    record.name = 'AI artwork';
+    if (onMat && replaceTarget) canvas.remove(replaceTarget);
+    canvas.add(img);
+    canvas.setActiveObject(img);
+    setTool('select');
+    canvas.requestRenderAll();
+    saveHistorySnapshot(canvas, true);
+  }, [canvas, setTool, saveHistorySnapshot]);
 
   const handleExportSVG = useCallback(async () => {
     if (!canvas) return;
@@ -221,5 +223,5 @@ export function useStudioActions({
     saveHistorySnapshot(canvas, true);
   }, [canvas, activeObj, saveHistorySnapshot]);
 
-  return { alignObject, applyTextCurve, explodeText, addText, handleImageUpload, addShape, handleAIGeneration, handleExportSVG, addWeedingBox };
+  return { alignObject, applyTextCurve, explodeText, addText, handleImageUpload, addShape, placeGeneratedArtwork, handleExportSVG, addWeedingBox };
 }

@@ -12,6 +12,7 @@ import { useToolEngine } from './hooks/useToolEngine';
 import { useBooleanEngine } from './hooks/useBooleanEngine';
 import { useNodeEditEngine } from './hooks/useNodeEditEngine';
 import { groupActiveSelection, isUngroupable, ungroupOnce } from './utils/groupOps';
+import { AiArtworkPanel } from './components/AiArtworkPanel';
 import { LeftDock } from './components/LeftDock';
 import { RightInspector } from './components/RightInspector';
 import { CropModal } from './components/CropModal';
@@ -39,6 +40,14 @@ import { tracedSvgToObject } from './utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
 import { imageDataToPngDataUrl } from './utils/imageDataPng';
 import { trackViewItem } from './analytics/track';
+import {
+  AiArtworkError,
+  fetchAiQuota,
+  readLocalAiQuota,
+  requestAiArtwork,
+  writeLocalAiQuota,
+  type AiQuota,
+} from './utils/aiArtwork';
 
 type AppTool = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
 type ViewMode = 'sticker' | 'product';
@@ -112,6 +121,15 @@ export default function App() {
   const [offsetSize, setOffsetSize] = useState<number>(10);
   
   const [isGenerating, setIsGenerating] = useState(false);
+  const [aiQuota, setAiQuota] = useState<AiQuota>(() => readLocalAiQuota());
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSession, setAiSession] = useState<{
+    id: number;
+    mode: 'create' | 'edit';
+    prompt: string;
+    target: fabric.Object | null;
+  } | null>(null);
+  const aiSessionSeq = useRef(0);
   const [isTracing, setIsTracing] = useState(false);
   const [canvasObjects, setCanvasObjects] = useState<fabric.Object[]>([]);
   const [quickMenu, setQuickMenu] = useState<{ top: number, left: number, show: boolean } | null>(null);
@@ -220,9 +238,78 @@ export default function App() {
     setTool: (next) => setTool(next),
   });
 
-  const { alignObject, applyTextCurve, explodeText, addText, addShape, handleAIGeneration, addWeedingBox } = useStudioActions({
-    canvas, activeObj, brushColor, setTool, setIsGenerating, setTextCurve, saveHistorySnapshot
+  const { alignObject, applyTextCurve, explodeText, addText, addShape, placeGeneratedArtwork, addWeedingBox } = useStudioActions({
+    canvas, activeObj, brushColor, setTool, setTextCurve, saveHistorySnapshot
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAiQuota()
+      .then((quota) => {
+        if (cancelled) return;
+        writeLocalAiQuota(quota);
+        setAiQuota(quota);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const openAiArtwork = useCallback(() => {
+    const selected = activeObj as (fabric.Object & { aiPrompt?: unknown }) | null;
+    const editing = Boolean(
+      selected
+      && selected.type === 'image'
+      && typeof selected.aiPrompt === 'string'
+      && selected.aiPrompt.trim(),
+    );
+    aiSessionSeq.current += 1;
+    setAiError(null);
+    setAiSession({
+      id: aiSessionSeq.current,
+      mode: editing ? 'edit' : 'create',
+      prompt: editing ? String(selected?.aiPrompt) : '',
+      target: editing ? selected : null,
+    });
+  }, [activeObj]);
+
+  const submitAiArtwork = useCallback(async (prompt: string) => {
+    if (!canvas || !aiSession || isGenerating) return;
+    setAiError(null);
+    setIsGenerating(true);
+    const previous = aiQuota;
+    const optimistic: AiQuota = { ...aiQuota, remaining: Math.max(0, aiQuota.remaining - 1) };
+    setAiQuota(optimistic);
+    writeLocalAiQuota(optimistic);
+    let accepted = false;
+    try {
+      const result = await requestAiArtwork(prompt);
+      accepted = true;
+      const nextQuota: AiQuota = {
+        remaining: result.remaining,
+        limit: result.limit,
+        resetAt: result.resetAt,
+      };
+      writeLocalAiQuota(nextQuota);
+      setAiQuota(nextQuota);
+      await placeGeneratedArtwork(result.image, prompt, aiSession.mode === 'edit' ? aiSession.target : null);
+      setAiSession(null);
+    } catch (error) {
+      const artworkError = error instanceof AiArtworkError ? error : null;
+      const message = artworkError?.message || (accepted
+        ? 'The image was generated but could not be placed on the mat.'
+        : 'Artwork could not be generated. Please try again.');
+      if (!accepted) {
+        const restored = artworkError?.quota ?? previous;
+        writeLocalAiQuota(restored);
+        setAiQuota(restored);
+      }
+      setAiError(message);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [aiQuota, aiSession, canvas, isGenerating, placeGeneratedArtwork]);
 
   const cutReport = useMemo(() => inspectObjectsForCut(canvasObjects), [canvasObjects]);
 
@@ -510,7 +597,31 @@ export default function App() {
                   setActiveTab('design');
                 }}
               />
-              <button disabled={isGenerating} onClick={handleAIGeneration} className={`${BTN_SECONDARY} touch-manipulation`}>{isGenerating ? 'Generating…' : <><span className="sm:hidden">AI</span><span className="hidden sm:inline">Generate AI</span></>}</button>
+              <button
+                type="button"
+                data-testid="ai-artwork-button"
+                aria-label="Create and edit with AI"
+                aria-haspopup="dialog"
+                aria-expanded={Boolean(aiSession)}
+                disabled={isGenerating}
+                onClick={() => {
+                  if (aiSession) {
+                    setAiSession(null);
+                    setAiError(null);
+                    return;
+                  }
+                  openAiArtwork();
+                }}
+                title={`${aiQuota.remaining} of ${aiQuota.limit} free generations left today`}
+                className={`${BTN_SECONDARY} touch-manipulation`}
+              >
+                {isGenerating ? 'Generating…' : (
+                  <>
+                    <span className="sm:hidden">AI</span>
+                    <span className="hidden sm:inline">Create and edit with AI</span>
+                  </>
+                )}
+              </button>
 
               <div className="flex items-center gap-1">
                 <button onClick={() => setViewMode('sticker')} className={`touch-manipulation ${viewMode === 'sticker' ? BTN_PRIMARY : BTN_QUIET}`}>Design</button>
@@ -756,6 +867,22 @@ export default function App() {
                         </>
                     )}
                   </div>
+                )}
+                {aiSession && (
+                  <AiArtworkPanel
+                    key={aiSession.id}
+                    mode={aiSession.mode}
+                    initialPrompt={aiSession.prompt}
+                    remaining={aiQuota.remaining}
+                    limit={aiQuota.limit}
+                    generating={isGenerating}
+                    error={aiError}
+                    onClose={() => {
+                      setAiSession(null);
+                      setAiError(null);
+                    }}
+                    onSubmit={(prompt) => { void submitAiArtwork(prompt); }}
+                  />
                 )}
             </main>
             {isMobileLayout ? (

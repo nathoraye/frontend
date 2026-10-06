@@ -1,7 +1,7 @@
 import * as fabric from 'fabric';
 
 /** Custom Fabric fields that must survive undo, redo, and autosave. */
-export const CANVAS_CUSTOM_PROPERTIES = ['name'] as const;
+export const CANVAS_CUSTOM_PROPERTIES = ['name', 'aiPrompt'] as const;
 
 export function registerCanvasCustomProperties(): void {
   const extra = [...CANVAS_CUSTOM_PROPERTIES];

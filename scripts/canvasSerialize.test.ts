@@ -15,9 +15,12 @@ test('canvas JSON with objects is detected', () => {
 test('Fabric serializes layered SVG name for undo and autosave', () => {
   registerCanvasCustomProperties();
   const sheet = new fabric.Group([]);
-  (sheet as fabric.Group & { name?: string }).name = 'Silhouette';
-  const json = sheet.toObject();
+  const named = sheet as fabric.Group & { name?: string; aiPrompt?: string };
+  named.name = 'Silhouette';
+  named.aiPrompt = 'bold star';
+  const json = sheet.toObject() as { name?: string; aiPrompt?: string };
   assert.equal(json.name, 'Silhouette');
+  assert.equal(json.aiPrompt, 'bold star');
 });
 
 test('name is omitted without customProperties registration', () => {
