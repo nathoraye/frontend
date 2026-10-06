@@ -51,12 +51,14 @@ function providerError(message, status = 502) {
 export function artworkBusyError(cause) {
   const name = cause?.name || '';
   const timedOut = name === 'TimeoutError' || name === 'AbortError';
-  return providerError(
+  const error = providerError(
     timedOut
       ? 'Artwork took too long to generate. Please try again.'
       : 'The artwork service is busy right now. Please try again in a moment.',
     502,
   );
+  error.cause = cause;
+  return error;
 }
 
 function sniffImage(bytes) {
@@ -75,12 +77,18 @@ function sniffImage(bytes) {
 
 async function readImageResponse(response) {
   if (!response?.ok) {
-    throw artworkBusyError(new Error(`provider status ${response?.status}`));
+    let snippet = '';
+    try {
+      snippet = (await response.text()).replace(/\s+/g, ' ').slice(0, 160);
+    } catch {
+      snippet = '';
+    }
+    throw artworkBusyError(new Error(`provider status ${response?.status} ${snippet}`));
   }
   const bytes = Buffer.from(await response.arrayBuffer());
   const contentType = sniffImage(bytes);
   if (!contentType) {
-    throw artworkBusyError(new Error('provider payload was not an image'));
+    throw artworkBusyError(new Error(`provider payload was not an image (${bytes.length} bytes)`));
   }
   return { bytes, contentType };
 }

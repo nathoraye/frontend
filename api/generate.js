@@ -47,7 +47,8 @@ export default async function handler(req, res) {
     sendJson(res, 200, await createArtwork(body?.prompt, req));
   } catch (error) {
     if (!error?.status || Number(error.status) >= 500) {
-      console.error('Artwork generation failed', error instanceof Error ? error.message : error);
+      const detail = error?.cause instanceof Error ? error.cause.message : '';
+      console.error('Artwork generation failed', error instanceof Error ? error.message : error, detail);
     }
     sendArtworkError(res, error);
   }
