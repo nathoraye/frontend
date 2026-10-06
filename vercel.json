@@ -22,15 +22,15 @@
     { "source": "/((?!api/|sitemap\\.xml|robots\\.txt).*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/**/*.js": {
-      "includeFiles": "src/lib/pricing.ts"
-    },
     "api/generate.js": {
       "maxDuration": 60,
       "includeFiles": "src/lib/pricing.ts"
     },
     "api/generate-sticker.js": {
       "maxDuration": 60,
+      "includeFiles": "src/lib/pricing.ts"
+    },
+    "api/**/*.js": {
       "includeFiles": "src/lib/pricing.ts"
     }
   }
