@@ -366,6 +366,19 @@ describe('artwork prompt, provider, and quota', { concurrency: 1 }, () => {
         data[i + 2] = 30;
       }
     }
+    for (const [x, y] of [[20, 22], [21, 22], [22, 23], [2, 2], [3, 2], [2, 3]]) {
+      const i = (y * width + x) * 4;
+      data[i] = 0;
+      data[i + 1] = 0;
+      data[i + 2] = 0;
+    }
+    // A stroke that enters the corner from the main shape must stay.
+    for (let y = 14; y <= 23; y += 1) {
+      const i = (y * width + 14) * 4;
+      data[i] = 0;
+      data[i + 1] = 0;
+      data[i + 2] = 0;
+    }
     const encoded = jpeg.encode({ data, width, height }, 90);
     const flat = flattenArtworkBytes(Buffer.from(encoded.data), 'image/jpeg');
     assert.equal(flat.contentType, 'image/png');
@@ -373,5 +386,11 @@ describe('artwork prompt, provider, and quota', { concurrency: 1 }, () => {
     assert.deepEqual([png.data[0], png.data[1], png.data[2]], [255, 255, 255]);
     const center = ((12 * width) + 12) * 4;
     assert.deepEqual([png.data[center], png.data[center + 1], png.data[center + 2]], [0, 0, 0]);
+    const speck = ((22 * width) + 20) * 4;
+    assert.equal(png.data[speck], 255);
+    const stray = ((2 * width) + 2) * 4;
+    assert.equal(png.data[stray], 255);
+    const joined = ((22 * width) + 14) * 4;
+    assert.equal(png.data[joined], 0);
   });
 });
