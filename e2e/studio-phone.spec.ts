@@ -47,6 +47,12 @@ async function phoneChrome(page: Page, width: number) {
 }
 
 test.describe('phone studio smoke', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('wvs-studio-tour', 'done');
+    });
+  });
+
   test('loads, flags cut-ready, autosaves, and uses toasts instead of alerts', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByText('WVS', { exact: true })).toBeVisible();

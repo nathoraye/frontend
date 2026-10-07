@@ -4,6 +4,12 @@ test.use({
   viewport: { width: 1280, height: 800 },
 });
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('wvs-studio-tour', 'done');
+  });
+});
+
 test('Product Preview → Buy Sticker → local checkout → jobs board', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText(/west vinyl studio/i)).toBeVisible();
