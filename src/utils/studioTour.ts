@@ -11,6 +11,8 @@ export type TourStep = {
   title: string;
   body: string;
   target: string;
+  /** When set, the bubble highlights every named control, not only `target`. */
+  targets?: string[];
   reveal: TourReveal;
   tab?: 'design' | 'layers';
   tool?: 'wand';
@@ -44,6 +46,7 @@ export const TOUR_STEPS: TourStep[] = [
     title: 'Trace to Razor SVG',
     body: 'Trace to Razor SVG and Trace layered SVG turn a picture into cut paths.',
     target: 'trace-svg',
+    targets: ['trace-svg', 'trace-layered'],
     reveal: 'inspector',
     tab: 'design',
   },
@@ -112,6 +115,7 @@ export function placeTourBubble(
   target: TourBox,
   bubble: { width: number; height: number },
   viewport: { width: number; height: number },
+  prefer: TourSide[] = [],
 ): TourPlacement {
   const margin = TOUR_VIEWPORT_MARGIN;
   const gap = TOUR_TARGET_GAP;
@@ -144,7 +148,14 @@ export function placeTourBubble(
 
   const ranked = sides
     .map((side, index) => ({ ...side, index }))
-    .sort((a, b) => b.room - a.room || a.index - b.index);
+    .sort((a, b) => {
+      const aPrefer = prefer.indexOf(a.side);
+      const bPrefer = prefer.indexOf(b.side);
+      const aRank = aPrefer === -1 ? prefer.length : aPrefer;
+      const bRank = bPrefer === -1 ? prefer.length : bPrefer;
+      if (aRank !== bRank) return aRank - bRank;
+      return b.room - a.room || a.index - b.index;
+    });
 
   const clamp = (top: number, left: number) => ({
     top: Math.min(Math.max(margin, top), Math.max(margin, viewport.height - bubble.height - margin)),

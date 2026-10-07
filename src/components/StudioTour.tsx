@@ -54,6 +54,24 @@ function readTarget(name: string): TourBox | null {
   return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
 }
 
+function unionBox(boxes: TourBox[]): TourBox {
+  const x = Math.min(...boxes.map((box) => box.x));
+  const y = Math.min(...boxes.map((box) => box.y));
+  const right = Math.max(...boxes.map((box) => box.x + box.width));
+  const bottom = Math.max(...boxes.map((box) => box.y + box.height));
+  return { x, y, width: right - x, height: bottom - y };
+}
+
+function readTargets(names: string[]): TourBox | null {
+  const boxes: TourBox[] = [];
+  for (const name of names) {
+    const box = readTarget(name);
+    if (!box) return null;
+    boxes.push(box);
+  }
+  return unionBox(boxes);
+}
+
 export function StudioTour({ open, stepIndex, onStep, onDismiss }: StudioTourProps) {
   const step = TOUR_STEPS[stepIndex] ?? TOUR_STEPS[0];
   const last = stepIndex >= TOUR_STEPS.length - 1;
@@ -71,7 +89,8 @@ export function StudioTour({ open, stepIndex, onStep, onDismiss }: StudioTourPro
     let cancelled = false;
     const measure = () => {
       if (cancelled) return;
-      const next = readTarget(step.target);
+      const names = step.targets?.length ? step.targets : [step.target];
+      const next = readTargets(names);
       if (next) setTarget(next);
       setViewport({ width: window.innerWidth, height: window.innerHeight });
     };
@@ -84,7 +103,7 @@ export function StudioTour({ open, stepIndex, onStep, onDismiss }: StudioTourPro
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure, true);
     };
-  }, [open, step.target, stepIndex]);
+  }, [open, step.target, step.targets, stepIndex]);
 
   useLayoutEffect(() => {
     const el = dialogRef.current;
@@ -152,8 +171,11 @@ export function StudioTour({ open, stepIndex, onStep, onDismiss }: StudioTourPro
   if (!open) return null;
 
   const width = Math.min(TOUR_BUBBLE_WIDTH, Math.max(220, viewport.width - 16));
+  const pair =
+    (step.targets?.length ?? 0) > 1 && !!target && target.width > target.height * 2;
+  const prefer: TourSide[] = pair ? ['bottom', 'top'] : [];
   const placement: TourPlacement = target
-    ? placeTourBubble(target, { width: bubbleSize.width || width, height: bubbleSize.height }, viewport)
+    ? placeTourBubble(target, { width: bubbleSize.width || width, height: bubbleSize.height }, viewport, prefer)
     : {
         top: Math.max(8, (viewport.height - bubbleSize.height) / 2),
         left: Math.max(8, (viewport.width - width) / 2),
@@ -175,6 +197,7 @@ export function StudioTour({ open, stepIndex, onStep, onDismiss }: StudioTourPro
       {spot ? (
         <div
           aria-hidden="true"
+          data-testid="studio-tour-spot"
           className="pointer-events-none absolute rounded-lg"
           style={{
             left: spot.left,

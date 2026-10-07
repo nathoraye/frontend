@@ -41,6 +41,32 @@ test('top-center bar on a 375 phone prefers below the control', () => {
   assertOnScreen(placement, target, viewport);
 });
 
+test('a side-by-side trace pair on desktop sits underneath both controls', () => {
+  const viewport = { width: 1280, height: 800 };
+  const target = { x: 981, y: 155, width: 279, height: 44 };
+  const placement = placeTourBubble(target, BUBBLE, viewport, ['bottom', 'top']);
+  assert.equal(placement.side, 'bottom');
+  assertOnScreen(placement, target, viewport);
+  const center = target.x + target.width / 2;
+  assert.ok(Math.abs(placement.left + placement.arrow - center) < 24);
+});
+
+test('a side-by-side trace pair on a 375 phone sits underneath both controls', () => {
+  const viewport = { width: 375, height: 812 };
+  const target = { x: 76, y: 196, width: 279, height: 44 };
+  const placement = placeTourBubble(target, BUBBLE, viewport, ['bottom', 'top']);
+  assert.equal(placement.side, 'bottom');
+  assertOnScreen(placement, target, viewport);
+});
+
+test('a side-by-side trace pair on a 414 phone sits underneath both controls', () => {
+  const viewport = { width: 414, height: 896 };
+  const target = { x: 115, y: 196, width: 279, height: 44 };
+  const placement = placeTourBubble(target, BUBBLE, viewport, ['bottom', 'top']);
+  assert.equal(placement.side, 'bottom');
+  assertOnScreen(placement, target, viewport);
+});
+
 test('a phone inspector control stays clear of a wide bubble', () => {
   const viewport = { width: 375, height: 700 };
   const target = { x: 215, y: 110, width: 150, height: 44 };

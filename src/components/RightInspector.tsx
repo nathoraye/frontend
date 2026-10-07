@@ -327,12 +327,13 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
 
             <div className="mt-2">
                 <h3 className={`text-[10px] uppercase font-bold tracking-widest text-blue-500 mb-3`}>Master Vector Trace</h3>
-                <div data-tour="trace-svg" className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={handleVectorTrace} disabled={!activeObj || isTracing} className="flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-2 py-2 text-center text-[11px] font-bold leading-tight text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50">
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" data-tour="trace-svg" onClick={handleVectorTrace} disabled={!activeObj || isTracing} className="flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-2 py-2 text-center text-[11px] font-bold leading-tight text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50">
                     {isTracing ? 'Calculating Paths...' : 'Trace to Razor SVG'}
                   </button>
                   <button
                     type="button"
+                    data-tour="trace-layered"
                     onClick={handleStackedVectorTrace}
                     disabled={!activeObj || isTracing}
                     className="flex min-h-11 items-center justify-center rounded-xl border border-slate-600 bg-transparent px-2 py-2 text-center text-[11px] font-bold leading-tight text-slate-100 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
