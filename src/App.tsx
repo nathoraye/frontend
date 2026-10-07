@@ -102,6 +102,9 @@ export default function App() {
   const [isMobileLayout, setIsMobileLayout] = useState<boolean>(() =>
     typeof window === 'undefined' ? false : window.matchMedia('(max-width: 1023px)').matches
   );
+  const [isPhoneLayout, setIsPhoneLayout] = useState<boolean>(() =>
+    typeof window === 'undefined' ? false : window.matchMedia('(max-width: 639px)').matches
+  );
    
   const [activeObj, setActiveObj] = useState<fabric.Object | null>(null);
   const [brushColor, setBrushColor] = useState<string>('#FF1493'); 
@@ -512,6 +515,15 @@ export default function App() {
     mediaQuery.addEventListener?.('change', updateLayout);
     return () => mediaQuery.removeEventListener?.('change', updateLayout);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const phoneQuery = window.matchMedia('(max-width: 639px)');
+    const updatePhone = () => setIsPhoneLayout(phoneQuery.matches);
+    updatePhone();
+    phoneQuery.addEventListener?.('change', updatePhone);
+    return () => phoneQuery.removeEventListener?.('change', updatePhone);
+  }, []);
  
   const deleteSelected = useCallback(() => {
     if (!canvas || isProcessingRef.current) return; 
@@ -568,6 +580,64 @@ export default function App() {
 
   return (
     <div className="relative flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-[#0f111a] font-sans text-slate-200 select-none pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
+        {isPhoneLayout ? (
+          <header data-testid="studio-header" className="z-20 flex shrink-0 flex-col border-b border-slate-800 bg-[#181a25]">
+            <div className="flex h-12 items-center gap-2 px-2">
+              <button
+                type="button"
+                onClick={() => setShowLeftPanel((prev) => !prev)}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-slate-700 text-slate-200 touch-manipulation"
+                aria-label="Open sidebar"
+                title="Tools"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+              </button>
+              <CutReadyBadge
+                className="h-11"
+                report={cutReport}
+                onClick={() => {
+                  setShowRightPanel(true);
+                  setActiveTab('design');
+                }}
+              />
+              <div className="ml-auto flex items-center gap-1">
+                <button type="button" onClick={() => setViewMode('sticker')} className={`h-11 rounded-md px-3 text-xs font-semibold touch-manipulation ${viewMode === 'sticker' ? 'bg-[#FF1493] text-black' : 'text-slate-300'}`}>Design</button>
+                <button type="button" onClick={openProductPreview} className={`h-11 rounded-md px-3 text-xs font-semibold touch-manipulation ${viewMode === 'product' ? 'bg-[#FF1493] text-black' : 'text-slate-300'}`}>Product</button>
+              </div>
+            </div>
+            <div className="flex h-12 items-center gap-0.5 border-t border-slate-800 px-1">
+              <span className="px-2 text-[10px] font-black tracking-widest text-slate-400 uppercase">WVS</span>
+              <button type="button" onClick={() => handleUndo(canvas)} className="flex h-11 w-11 items-center justify-center rounded-md text-slate-300 touch-manipulation" title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
+              <button type="button" onClick={() => handleRedo(canvas)} className="flex h-11 w-11 items-center justify-center rounded-md text-slate-300 touch-manipulation" title="Redo (Ctrl+Y)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
+              <button type="button" onClick={() => { if (canvas) { canvas.clear(); void clearSavedCanvas(); saveHistorySnapshot(canvas, true); } }} className="flex h-11 w-11 items-center justify-center rounded-md text-slate-400 touch-manipulation" title="Clear Mat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+              <a href="/policies" className="px-2 text-[10px] font-bold tracking-wider text-slate-400 uppercase">Info</a>
+              <div className="ml-auto flex items-center gap-1 pr-1">
+                <button
+                  type="button"
+                  data-testid="ai-artwork-button"
+                  aria-label="Create and edit with AI"
+                  aria-haspopup="dialog"
+                  aria-expanded={Boolean(aiSession)}
+                  disabled={isGenerating}
+                  onClick={() => {
+                    if (aiSession) {
+                      setAiSession(null);
+                      setAiError(null);
+                      return;
+                    }
+                    openAiArtwork();
+                  }}
+                  title={`${aiQuota.remaining} of ${aiQuota.limit} free generations left today`}
+                  aria-busy={isGenerating}
+                  className="inline-flex h-11 items-center rounded-md border border-slate-600 px-3 text-xs font-semibold text-slate-100 touch-manipulation disabled:opacity-40"
+                >
+                  AI
+                </button>
+                <button type="button" onClick={(e) => { e.stopPropagation(); setShowRightPanel((prev) => !prev); }} className="flex h-11 w-11 items-center justify-center rounded-md border border-slate-700 text-slate-300 touch-manipulation" title="Toggle Inspector Panel" aria-label="Toggle inspector"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
+              </div>
+            </div>
+          </header>
+        ) : (
         <header className="z-20 flex min-h-12 shrink-0 items-center justify-between gap-2 overflow-x-auto border-b border-slate-800 bg-[#181a25] px-2 shadow-sm sm:min-h-14 sm:px-4">
             <div className="flex min-w-0 items-center gap-2 sm:gap-4">
               <span className="truncate text-xs font-black tracking-widest uppercase sm:text-sm">
@@ -638,7 +708,8 @@ export default function App() {
               <button type="button" onClick={(e) => { e.stopPropagation(); setShowRightPanel((prev) => !prev); }} className={`flex h-8 min-w-8 items-center justify-center rounded-md p-1.5 transition-colors hover:bg-slate-700/50 touch-manipulation ${!showRightPanel ? 'bg-[#FF1493]/10 text-[#FF1493]' : 'text-slate-400'}`} title="Toggle Inspector Panel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
             </div>
         </header>
-        {!showLeftPanel && (
+        )}
+        {!isPhoneLayout && !showLeftPanel && (
           <button
             type="button"
             onClick={() => setShowLeftPanel(true)}
@@ -673,6 +744,7 @@ export default function App() {
             )}
             <main
               className="relative min-h-0 min-w-0 flex-1 touch-manipulation"
+              data-testid="studio-mat"
               ref={containerRef}
               style={{ backgroundColor: viewMode === 'sticker' ? CANVAS_BG : undefined }}
             >
@@ -905,7 +977,7 @@ export default function App() {
                     )}
                   </div>
                 </div>
-                {!showRightPanel && viewMode !== 'product' && (
+                {!isPhoneLayout && !showRightPanel && viewMode !== 'product' && (
                   <button type="button" onClick={() => setShowRightPanel(true)} className="absolute bottom-3 right-3 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-[#181a25]/95 text-[#FF1493] shadow-lg shadow-black/30 transition-transform hover:scale-105 touch-manipulation sm:bottom-4 sm:right-4" aria-label="Open inspector">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
                   </button>
