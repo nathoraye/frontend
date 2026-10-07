@@ -36,7 +36,14 @@ for (const viewport of [
     await expect(dialog).toContainText('Trace to Razor SVG and Trace layered SVG turn a picture into cut paths.');
 
     const spot = page.getByTestId('studio-tour-spot');
-    await expect(spot).toBeVisible();
+    const layeredButton = page.getByRole('button', { name: 'Trace layered SVG', exact: true });
+    await expect(layeredButton).toBeVisible();
+    await expect.poll(async () => {
+      const spotBox = await spot.boundingBox();
+      const layeredBox = await layeredButton.boundingBox();
+      if (!spotBox || !layeredBox) return 0;
+      return layeredBox.x + layeredBox.width <= spotBox.x + spotBox.width + 1 ? 1 : 0;
+    }).toBe(1);
     const spotBox = await spot.boundingBox();
     const razor = await page.getByRole('button', { name: 'Trace to Razor SVG', exact: true }).boundingBox();
     const layered = await page.getByRole('button', { name: 'Trace layered SVG', exact: true }).boundingBox();
