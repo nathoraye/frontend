@@ -28,6 +28,7 @@ export function activeImageProvider() {
  * Anonymous Pollinations image URL.
  * model=flux is requested as specified. As of October 2026 the keyless host
  * only lists `sana` and may ignore flux (response header x-model-used).
+ * enhance=false asks the host not to rewrite the vinyl wrap into an illustration.
  * seed and referrer follow the current image API docs.
  */
 export function buildPollinationsImageUrl(prompt, seed, model = 'flux') {
@@ -37,6 +38,7 @@ export function buildPollinationsImageUrl(prompt, seed, model = 'flux') {
     'width=1024',
     'height=1024',
     'nologo=true',
+    'enhance=false',
     `seed=${safeSeed}`,
     `referrer=${encodeURIComponent(POLLINATIONS_REFERRER)}`,
     'private=true',
