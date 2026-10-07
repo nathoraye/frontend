@@ -36,14 +36,25 @@ for (const viewport of [
     await expect(dialog).toContainText('Trace to Razor SVG and Trace layered SVG turn a picture into cut paths.');
 
     const spot = page.getByTestId('studio-tour-spot');
+    const razorButton = page.getByRole('button', { name: 'Trace to Razor SVG', exact: true });
     const layeredButton = page.getByRole('button', { name: 'Trace layered SVG', exact: true });
-    await expect(layeredButton).toBeVisible();
-    await expect.poll(async () => {
+    const holdsBoth = async () => {
       const spotBox = await spot.boundingBox();
+      const razorBox = await razorButton.boundingBox();
       const layeredBox = await layeredButton.boundingBox();
-      if (!spotBox || !layeredBox) return 0;
-      return layeredBox.x + layeredBox.width <= spotBox.x + spotBox.width + 1 ? 1 : 0;
-    }).toBe(1);
+      if (!spotBox || !razorBox || !layeredBox) return false;
+      const holds = (button: { x: number; y: number; width: number; height: number }) =>
+        button.x >= spotBox.x - 1 &&
+        button.y >= spotBox.y - 1 &&
+        button.x + button.width <= spotBox.x + spotBox.width + 1 &&
+        button.y + button.height <= spotBox.y + spotBox.height + 1;
+      return holds(razorBox) && holds(layeredBox);
+    };
+    await expect.poll(async () => {
+      if (!(await holdsBoth())) return false;
+      await page.waitForTimeout(400);
+      return holdsBoth();
+    }, { timeout: 8_000 }).toBe(true);
     const spotBox = await spot.boundingBox();
     const razor = await page.getByRole('button', { name: 'Trace to Razor SVG', exact: true }).boundingBox();
     const layered = await page.getByRole('button', { name: 'Trace layered SVG', exact: true }).boundingBox();
