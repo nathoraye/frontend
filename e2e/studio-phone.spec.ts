@@ -13,9 +13,9 @@ async function phoneChrome(page: Page, width: number) {
   await expect(page.getByRole('button', { name: 'Open sidebar' })).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Open inspector' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Toggle inspector' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Undo (Ctrl+Z)' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Design' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Product', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Undo (Ctrl+Z)' })).toHaveCount(0);
 
   const metrics = await page.evaluate(() => {
     const box = (el: Element | null) => {
@@ -25,25 +25,37 @@ async function phoneChrome(page: Page, width: number) {
     };
     const header = document.querySelector('[data-testid="studio-header"]');
     return {
+      header: box(header),
       menu: box(document.querySelector('[aria-label="Open sidebar"]')),
       badge: box(document.querySelector('[data-testid="cut-ready-badge"]')),
-      undo: box(document.querySelector('[title="Undo (Ctrl+Z)"]')),
+      design: box([...document.querySelectorAll('button')].find((el) => el.textContent?.trim() === 'Design') ?? null),
+      product: box([...document.querySelectorAll('button')].find((el) => el.textContent?.trim() === 'Product') ?? null),
+      inspector: box(document.querySelector('[aria-label="Toggle inspector"]')),
       canvas: box(document.querySelector('canvas.lower-canvas')),
       headerOverflow: header ? header.scrollWidth - header.clientWidth : 99,
     };
   });
 
+  expect(metrics.header).toBeTruthy();
+  expect(metrics.header!.height).toBeLessThanOrEqual(48);
   expect(metrics.menu).toBeTruthy();
   expect(metrics.badge).toBeTruthy();
-  expect(metrics.undo).toBeTruthy();
+  expect(metrics.design).toBeTruthy();
+  expect(metrics.product).toBeTruthy();
+  expect(metrics.inspector).toBeTruthy();
   expect(metrics.canvas).toBeTruthy();
   expect(metrics.headerOverflow).toBeLessThanOrEqual(1);
-  expect(overlaps(metrics.menu!, metrics.badge!)).toBe(false);
-  expect(overlaps(metrics.menu!, metrics.undo!)).toBe(false);
-  expect(overlaps(metrics.badge!, metrics.undo!)).toBe(false);
+  for (const pair of [
+    [metrics.menu, metrics.badge],
+    [metrics.badge, metrics.design],
+    [metrics.design, metrics.product],
+    [metrics.product, metrics.inspector],
+  ] as const) {
+    expect(overlaps(pair[0]!, pair[1]!)).toBe(false);
+  }
   expect(metrics.canvas!.width).toBeGreaterThan(width - 2);
   expect(metrics.canvas!.height).toBeGreaterThan(400);
-  expect(metrics.canvas!.y).toBeGreaterThanOrEqual(metrics.menu!.y + metrics.menu!.height - 1);
+  expect(metrics.canvas!.y).toBeGreaterThanOrEqual(metrics.header!.y + metrics.header!.height - 1);
 }
 
 test.describe('phone studio smoke', () => {
@@ -55,7 +67,11 @@ test.describe('phone studio smoke', () => {
 
   test('loads, flags cut-ready, autosaves, and uses toasts instead of alerts', async ({ page }) => {
     await page.goto('/');
+    await page.getByRole('button', { name: 'Open sidebar' }).click();
     await expect(page.getByText('WVS', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Undo (Ctrl+Z)' })).toBeVisible();
+    await expect(page.getByTestId('ai-artwork-button')).toBeVisible();
+    await page.getByRole('button', { name: 'Hide sidebar' }).click();
 
     const badge = page.getByTestId('cut-ready-badge');
     await expect(badge).toContainText(/cut issue/i);

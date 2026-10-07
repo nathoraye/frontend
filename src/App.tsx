@@ -20,6 +20,7 @@ import { ContourModal } from './components/ContourModal';
 import { TracePreviewModal } from './components/TracePreviewModal';
 import { OrderModal } from './components/OrderModal';
 import { ApparelMockupViewer } from './components/ApparelMockupViewer';
+import { PhoneStudioMenu } from './components/PhoneStudioMenu';
 import { StudioNoticeHost } from './components/StudioNoticeHost';
 import { StudioTour } from './components/StudioTour';
 import { CutReadyBadge } from './components/CutReadyPanel';
@@ -36,7 +37,9 @@ import {
   type ProductId,
 } from './three/productCatalog';
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
+import { productTypeFromCatalog } from './lib/pricing';
 import { chargedTotal, moneyString, quoteOrder } from './utils/orderPricing';
+import { formatPrintCm, printSizeCm } from './utils/printSize';
 import { tracedSvgToObject } from './utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
 import { imageDataToPngDataUrl } from './utils/imageDataPng';
@@ -55,25 +58,6 @@ type AppTool = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
 type ViewMode = 'sticker' | 'product';
 
 const CANVAS_BG = '#2a2e3c';
-function startingPrice(source: Record<string, unknown>) {
-  const result = quoteOrder(source);
-  if (!result.ok) throw new Error(result.error);
-  return moneyString(chargedTotal(result.quote, 1));
-}
-
-const VINYL_FROM = startingPrice({
-  productType: 'decal',
-  widthCm: 2,
-  heightCm: 2,
-  designType: 'text',
-  shippingOption: 'untracked',
-});
-const APPAREL_FROM = startingPrice({
-  productType: 'baby',
-  widthCm: 10,
-  heightCm: 10,
-  designType: 'text',
-});
 const BTN =
   'inline-flex h-10 shrink-0 items-center justify-center rounded-md px-3.5 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-40';
 const BTN_PRIMARY = `${BTN} bg-[#FF1493] text-black hover:bg-[#d41270]`;
@@ -635,64 +619,59 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown); return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleRedo, canvas, saveHistorySnapshot, deleteSelected, isNodeEditing, exitNodeEdit, canEditActive, toggleNodeEdit, activeObj, tourOpen]);
 
+  const livePrint = printSizeCm({
+    productId: selectedProduct,
+    viewId: activeProductView,
+    color: productColor,
+    garmentSize: productSize,
+    scale: productPlacement.scale,
+  });
+  const apparelType = productTypeFromCatalog(selectedProduct);
+  const stickerQuote = livePrint
+    ? quoteOrder({
+        productType: 'decal',
+        widthCm: livePrint.widthCm,
+        heightCm: livePrint.heightCm,
+        designType: 'graphic',
+        shippingOption: 'untracked',
+      })
+    : null;
+  const apparelQuote = livePrint && apparelType
+    ? quoteOrder({
+        productType: apparelType,
+        widthCm: livePrint.widthCm,
+        heightCm: livePrint.heightCm,
+        designType: 'graphic',
+      })
+    : null;
+  const printSizeLabel = livePrint
+    ? `${formatPrintCm(livePrint.widthCm)} × ${formatPrintCm(livePrint.heightCm)} cm`
+    : '';
+
   return (
     <div className="relative flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-[#0f111a] font-sans text-slate-200 select-none pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
         {isPhoneLayout ? (
-          <header data-testid="studio-header" className="z-20 flex shrink-0 flex-col border-b border-slate-800 bg-[#181a25]">
-            <div className="flex h-12 items-center gap-2 px-2">
-              <button
-                type="button"
-                onClick={() => setShowLeftPanel((prev) => !prev)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-slate-700 text-slate-200 touch-manipulation"
-                aria-label="Open sidebar"
-                title="Tools"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
-              </button>
-              <CutReadyBadge
-                className="h-11"
-                report={cutReport}
-                onClick={() => {
-                  setShowRightPanel(true);
-                  setActiveTab('design');
-                }}
-              />
-              <div className="ml-auto flex items-center gap-1">
-                <button type="button" onClick={() => setViewMode('sticker')} className={`h-11 rounded-md px-3 text-xs font-semibold touch-manipulation ${viewMode === 'sticker' ? 'bg-[#FF1493] text-black' : 'text-slate-300'}`}>Design</button>
-                <button type="button" onClick={openProductPreview} className={`h-11 rounded-md px-3 text-xs font-semibold touch-manipulation ${viewMode === 'product' ? 'bg-[#FF1493] text-black' : 'text-slate-300'}`}>Product</button>
-              </div>
-            </div>
-            <div className="flex h-12 items-center gap-0.5 border-t border-slate-800 px-1">
-              <span className="px-2 text-[10px] font-black tracking-widest text-slate-400 uppercase">WVS</span>
-              <button type="button" onClick={() => handleUndo(canvas)} className="flex h-11 w-11 items-center justify-center rounded-md text-slate-300 touch-manipulation" title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
-              <button type="button" onClick={() => handleRedo(canvas)} className="flex h-11 w-11 items-center justify-center rounded-md text-slate-300 touch-manipulation" title="Redo (Ctrl+Y)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
-              <button type="button" onClick={() => { if (canvas) { canvas.clear(); void clearSavedCanvas(); saveHistorySnapshot(canvas, true); } }} className="flex h-11 w-11 items-center justify-center rounded-md text-slate-400 touch-manipulation" title="Clear Mat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
-              <a href="/policies" className="px-2 text-[10px] font-bold tracking-wider text-slate-400 uppercase">Info</a>
-              <button type="button" ref={tourReplayRef} data-testid="studio-tour-replay" onClick={replayTour} className="h-11 shrink-0 px-1.5 text-[10px] font-bold text-slate-400 uppercase touch-manipulation">Tour</button>
-              <div className="ml-auto flex items-center gap-1 pr-1">
-                <button
-                  type="button"
-                  data-testid="ai-artwork-button"
-                  aria-label="Create and edit with AI"
-                  aria-haspopup="dialog"
-                  aria-expanded={Boolean(aiSession)}
-                  disabled={isGenerating}
-                  onClick={() => {
-                    if (aiSession) {
-                      setAiSession(null);
-                      setAiError(null);
-                      return;
-                    }
-                    openAiArtwork();
-                  }}
-                  title={`${aiQuota.remaining} of ${aiQuota.limit} free generations left today`}
-                  aria-busy={isGenerating}
-                  className="inline-flex h-11 items-center rounded-md border border-slate-600 px-3 text-xs font-semibold text-slate-100 touch-manipulation disabled:opacity-40"
-                >
-                  AI
-                </button>
-                <button type="button" onClick={(e) => { e.stopPropagation(); setShowRightPanel((prev) => !prev); }} className="flex h-11 w-11 items-center justify-center rounded-md border border-slate-700 text-slate-300 touch-manipulation" title="Toggle Inspector Panel" aria-label="Toggle inspector"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
-              </div>
+          <header data-testid="studio-header" className="z-20 flex h-11 shrink-0 items-center gap-1 border-b border-slate-800 bg-[#181a25] px-1.5">
+            <button
+              type="button"
+              onClick={() => setShowLeftPanel((prev) => !prev)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-700 text-slate-200 touch-manipulation"
+              aria-label="Open sidebar"
+              title="Tools"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+            </button>
+            <CutReadyBadge
+              report={cutReport}
+              onClick={() => {
+                setShowRightPanel(true);
+                setActiveTab('design');
+              }}
+            />
+            <div className="ml-auto flex shrink-0 items-center gap-0.5">
+              <button type="button" onClick={() => setViewMode('sticker')} className={`h-8 rounded-md px-2 text-[11px] font-semibold touch-manipulation ${viewMode === 'sticker' ? 'bg-[#FF1493] text-black' : 'text-slate-300'}`}>Design</button>
+              <button type="button" onClick={openProductPreview} className={`h-8 rounded-md px-2 text-[11px] font-semibold touch-manipulation ${viewMode === 'product' ? 'bg-[#FF1493] text-black' : 'text-slate-300'}`}>Product</button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); setShowRightPanel((prev) => !prev); }} className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-700 text-slate-300 touch-manipulation" title="Toggle Inspector Panel" aria-label="Toggle inspector"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
             </div>
           </header>
         ) : (
@@ -789,7 +768,33 @@ export default function App() {
                 <div
                   className={`absolute inset-y-0 left-0 z-40 transform transition-transform duration-200 ease-out ${showLeftPanel ? 'pointer-events-auto translate-x-0' : 'pointer-events-none -translate-x-full'}`}
                 >
-                  <div className="h-full" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex h-full" onClick={(e) => e.stopPropagation()}>
+                    {showLeftPanel && isPhoneLayout && (
+                      <PhoneStudioMenu
+                        tourRef={tourReplayRef}
+                        aiDisabled={isGenerating}
+                        onUndo={() => { handleUndo(canvas); setShowLeftPanel(false); }}
+                        onRedo={() => { handleRedo(canvas); setShowLeftPanel(false); }}
+                        onClear={() => {
+                          if (canvas) {
+                            canvas.clear();
+                            void clearSavedCanvas();
+                            saveHistorySnapshot(canvas, true);
+                          }
+                          setShowLeftPanel(false);
+                        }}
+                        onTour={() => { setShowLeftPanel(false); replayTour(); }}
+                        onAi={() => {
+                          setShowLeftPanel(false);
+                          if (aiSession) {
+                            setAiSession(null);
+                            setAiError(null);
+                            return;
+                          }
+                          openAiArtwork();
+                        }}
+                      />
+                    )}
                     {showLeftPanel && (
                       <LeftDock tool={tool} setTool={setTool as any} addText={addText} addShape={addShape} fileInputRef={fileInputRef} handleImageUpload={handleInterceptUpload} borderCol="border-slate-800" bgPanel="bg-[#181a25]" setShowLeftPanel={setShowLeftPanel} />
                     )}
@@ -890,20 +895,6 @@ export default function App() {
                         </label>
                       )}
 
-                      <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
-                        Print scale
-                        <input
-                          type="range"
-                          min={PLACEMENT_SCALE_MIN}
-                          max={PLACEMENT_SCALE_MAX}
-                          step={0.05}
-                          value={productPlacement.scale}
-                          onChange={(e) => setProductPlacement((prev) => ({ ...prev, scale: Number(e.target.value) }))}
-                          className="w-28 accent-[#FF1493]"
-                          aria-label="Print scale"
-                        />
-                        <span className="font-mono text-[#FF1493]">{Math.round(productPlacement.scale * 100)}%</span>
-                      </label>
                       <button
                         type="button"
                         onClick={() => setProductPlacement({ posX: 0, posY: 0, scale: 1, rotationDeg: 0 })}
@@ -915,16 +906,37 @@ export default function App() {
                       <button type="button" onClick={handleSafeSVGExport} className={BTN_SECONDARY}>Export SVG</button>
                       <p className="w-full text-xs leading-relaxed text-slate-300">Drag the print. Pink corners scale it. The green handle rotates it.</p>
                     </div>
-                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-800 bg-[#181a25] px-3 py-2">
-                      <p className="max-w-md text-xs leading-relaxed text-slate-200">
-                        Vinyl from <span className="font-mono text-[#FF1493]">A${VINYL_FROM}</span>.
-                        Apparel from <span className="font-mono text-emerald-300">A${APPAREL_FROM}</span>.
-                        Both include shipping.
+                    <div className="shrink-0 space-y-1 border-t border-slate-800 bg-[#181a25] px-2 py-2">
+                      <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+                        <span className="shrink-0">Print size</span>
+                        <input
+                          type="range"
+                          min={PLACEMENT_SCALE_MIN}
+                          max={PLACEMENT_SCALE_MAX}
+                          step={0.05}
+                          value={productPlacement.scale}
+                          onChange={(e) => setProductPlacement((prev) => ({ ...prev, scale: Number(e.target.value) }))}
+                          className="h-8 min-w-0 flex-1 accent-[#FF1493]"
+                          aria-label="Print size"
+                        />
+                        <span data-testid="print-size" className="shrink-0 whitespace-nowrap font-mono text-sm normal-case text-[#FF1493]">{printSizeLabel}</span>
+                      </label>
+                      <p data-testid="print-prices" className="flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-xs text-slate-100">
+                        {apparelQuote?.ok ? (
+                          <span data-testid="print-price-apparel">{PRODUCT_CATALOG[selectedProduct].label} A${moneyString(chargedTotal(apparelQuote.quote, 1))}</span>
+                        ) : (
+                          <span data-testid="print-price-apparel" className="text-red-400">{apparelQuote && !apparelQuote.ok ? apparelQuote.error : 'No price'}</span>
+                        )}
+                        {stickerQuote?.ok ? (
+                          <span data-testid="print-price-sticker">Sticker A${moneyString(chargedTotal(stickerQuote.quote, 1))}</span>
+                        ) : (
+                          <span data-testid="print-price-sticker" className="text-red-400">{stickerQuote && !stickerQuote.ok ? stickerQuote.error : 'No price'}</span>
+                        )}
                       </p>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button type="button" onClick={() => setActiveOrderTab('vinyl')} className={BTN_PRIMARY}>Buy sticker</button>
-                        <button type="button" onClick={() => setActiveOrderTab('apparel')} className={BTN_APPAREL}>Buy apparel</button>
-                      </div>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-800 bg-[#181a25] px-3 py-2">
+                      <button type="button" onClick={() => setActiveOrderTab('vinyl')} disabled={!stickerQuote?.ok} className={BTN_PRIMARY}>Buy sticker</button>
+                      <button type="button" onClick={() => setActiveOrderTab('apparel')} disabled={!apparelQuote?.ok} className={BTN_APPAREL}>Buy apparel</button>
                     </div>
                   </div>
                 )}
@@ -1082,13 +1094,15 @@ export default function App() {
               canvas={canvas}
               initialTab={activeOrderTab}
               preview={
-                activeOrderTab === 'apparel'
+                livePrint
                   ? {
                       productId: selectedProduct,
                       productColor,
                       productSize: isSizedProduct(selectedProduct) ? productSize : undefined,
                       activeView: activeProductView,
                       placement: productPlacement,
+                      widthCm: livePrint.widthCm,
+                      heightCm: livePrint.heightCm,
                     }
                   : undefined
               }
