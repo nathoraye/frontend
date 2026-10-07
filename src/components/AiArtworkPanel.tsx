@@ -64,7 +64,7 @@ export function AiArtworkPanel({
             <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
               {mode === 'edit'
                 ? 'Edit regenerates a new image from the revised prompt. The current picture is not sent to the generator.'
-                : 'Describe the sticker. A flat, high-contrast style is added so the result can be traced for cutting.'}
+                : 'Describe a sticker or a logo. Logos are set as a bold black wordmark. Other prompts are drawn as a flat black icon on white.'}
             </p>
           </div>
           <button
@@ -90,7 +90,7 @@ export function AiArtworkPanel({
           rows={4}
           disabled={generating}
           autoFocus
-          placeholder="A bold black cat head, simple shapes"
+          placeholder="A bold black cat head, or Hunnid Collection logo"
           onChange={(event) => setPrompt(event.target.value)}
           className="mt-1 w-full resize-none rounded-md border border-slate-600 bg-[#0f111a] px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-slate-400 disabled:opacity-60"
         />
