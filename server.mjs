@@ -13,6 +13,7 @@ import {
   handleStripeWebhookRequest,
 } from './api/_lib/orderService.js';
 import { handleAdminLogin } from './api/_lib/adminSession.js';
+import generateHandler from './api/generate.js';
 import { readTrimmedEnv } from './api/_lib/stripe.js';
 
 // Local/dev convenience when Stripe secrets are absent. Vercel stays fail-closed.
@@ -38,6 +39,13 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/api/trace') {
       return handleTraceRequest(req, res);
+    }
+
+    if (
+      (req.method === 'GET' || req.method === 'POST')
+      && (url.pathname === '/api/generate' || url.pathname === '/api/generate-sticker')
+    ) {
+      return generateHandler(req, res);
     }
 
     if (req.method === 'POST' && url.pathname === '/api/stripe/webhook') {

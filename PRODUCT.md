@@ -38,7 +38,7 @@ Public pages for the offer, privacy, terms, and contact are `/policies`, `/priva
 - Catalog: T-shirt, jumper/hoodie, sloppy joe, baby clothes, wall clock, drink bottle. Sized garments use XS–2XL.
 - Vinyl cut size in the checkout UI is 2–30 cm on each side.
 - Checkout is Stripe Checkout Sessions (`mode: payment`), completed by webhook and the success-page session check. Card numbers stay on Stripe.
-- AI image generation calls `/api/generate-sticker`. That route is a Vercel function. The local `server.mjs` does not implement it.
+- AI image generation calls `/api/generate` (the older `/api/generate-sticker` path uses the same handler). The browser does not call the image host. Local `server.mjs` implements the route. Each IP gets 5 free generations per UTC day.
 - Customer-facing design work must leave Stripe checkout, webhooks, `/api/orders`, and admin-token behaviour unchanged.
 - Canonical origin recorded in the repo is `https://westvinylstudio.com`. This frontend also deploys as Vercel project `frontendwvs`.
 
