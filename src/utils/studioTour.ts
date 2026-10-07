@@ -42,7 +42,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: 'trace',
     title: 'Trace to Razor SVG',
-    body: 'Trace to Razor SVG turns a picture into cut paths.',
+    body: 'Trace to Razor SVG and Trace layered SVG turn a picture into cut paths.',
     target: 'trace-svg',
     reveal: 'inspector',
     tab: 'design',
