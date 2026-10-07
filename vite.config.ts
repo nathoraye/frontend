@@ -16,6 +16,10 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    // Order writes must not reload the studio while checkout and phone tests run together.
+    watch: {
+      ignored: ['**/data/orders.json'],
+    },
   },
   plugins: [
     react(),

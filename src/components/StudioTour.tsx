@@ -24,10 +24,28 @@ function arrowClass(side: TourSide): string {
   return 'bottom-0 translate-y-full border-x-[7px] border-x-transparent border-t-[8px] border-t-[#FF1493]';
 }
 
+function revealInScrollParent(el: Element) {
+  let parent = el.parentElement;
+  while (parent && parent !== document.documentElement) {
+    const style = getComputedStyle(parent);
+    const canScrollY =
+      (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+      parent.scrollHeight > parent.clientHeight + 1;
+    if (canScrollY) {
+      const parentRect = parent.getBoundingClientRect();
+      const rect = el.getBoundingClientRect();
+      const pad = 8;
+      if (rect.top < parentRect.top + pad) parent.scrollTop -= parentRect.top + pad - rect.top;
+      else if (rect.bottom > parentRect.bottom - pad) parent.scrollTop += rect.bottom - (parentRect.bottom - pad);
+    }
+    parent = parent.parentElement;
+  }
+}
+
 function readTarget(name: string): TourBox | null {
   const el = document.querySelector(`[data-tour="${name}"]`);
   if (!el) return null;
-  el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  revealInScrollParent(el);
   const rect = el.getBoundingClientRect();
   if (rect.width < 8 || rect.height < 8) return null;
   if (rect.bottom < 8 || rect.right < 8 || rect.top > window.innerHeight - 8 || rect.left > window.innerWidth - 8) {
