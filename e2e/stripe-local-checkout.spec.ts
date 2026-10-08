@@ -21,7 +21,8 @@ test('Sticker → Buy Sticker → local checkout → jobs board', async ({ page 
   await expect(page.getByRole('button', { name: /buy apparel/i })).toHaveCount(0);
   await expect(page.getByText(/vinyl from/i)).toHaveCount(0);
   await expect(page.getByText(/apparel from/i)).toHaveCount(0);
-  await page.getByRole('radio', { name: /tracked/i }).check();
+  await page.getByRole('radio', { name: /^Tracked/ }).check();
+  await expect(page.getByTestId('print-price-sticker')).toHaveText(/A\$24\.00/);
   const sizeLabel = (await page.getByTestId('sticker-size').innerText()).trim();
   const stickerLabel = (await page.getByTestId('print-price-sticker').innerText()).trim();
   const stickerAmount = stickerLabel.match(/A\$([\d.]+)/)?.[1];
