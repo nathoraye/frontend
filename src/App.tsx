@@ -39,7 +39,14 @@ import {
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
 import { productTypeFromCatalog } from './lib/pricing';
 import { chargedTotal, moneyString, quoteOrder } from './utils/orderPricing';
-import { formatPrintCm, printSizeCm } from './utils/printSize';
+import {
+  CHEST_LOGO_CM,
+  formatPrintCm,
+  maxPrintCm,
+  MEDIUM_PRINT_CM,
+  printSizeCm,
+  scaleForLongestSide,
+} from './utils/printSize';
 import { tracedSvgToObject } from './utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
 import { imageDataToPngDataUrl } from './utils/imageDataPng';
@@ -913,7 +920,7 @@ export default function App() {
                           type="range"
                           min={PLACEMENT_SCALE_MIN}
                           max={PLACEMENT_SCALE_MAX}
-                          step={0.05}
+                          step={0.01}
                           value={productPlacement.scale}
                           onChange={(e) => setProductPlacement((prev) => ({ ...prev, scale: Number(e.target.value) }))}
                           className="h-8 min-w-0 flex-1 accent-[#FF1493]"
@@ -921,6 +928,37 @@ export default function App() {
                         />
                         <span data-testid="print-size" className="shrink-0 whitespace-nowrap font-mono text-sm normal-case text-[#FF1493]">{printSizeLabel}</span>
                       </label>
+                      {isSizedProduct(selectedProduct) && (
+                        <div className="flex flex-wrap gap-1">
+                          {([
+                            ['chest', 'Chest', CHEST_LOGO_CM],
+                            ['medium', 'Medium', MEDIUM_PRINT_CM],
+                            ['full', 'Full', null],
+                          ] as const).map(([id, label, target]) => {
+                            const max = maxPrintCm({
+                              productId: selectedProduct,
+                              viewId: activeProductView,
+                              garmentSize: productSize,
+                            });
+                            const scale = max
+                              ? (target == null ? PLACEMENT_SCALE_MAX : scaleForLongestSide(max, target))
+                              : PLACEMENT_SCALE_MAX;
+                            const active = Math.abs(productPlacement.scale - scale) < 0.001;
+                            return (
+                              <button
+                                key={id}
+                                type="button"
+                                data-testid={`print-preset-${id}`}
+                                title={target == null ? 'Full print area' : `Longest side ${target} cm`}
+                                onClick={() => setProductPlacement((prev) => ({ ...prev, scale }))}
+                                className={active ? BTN_PRIMARY : BTN_QUIET}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                       <p data-testid="print-prices" className="flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-xs text-slate-100">
                         {apparelQuote?.ok ? (
                           <span data-testid="print-price-apparel">{PRODUCT_CATALOG[selectedProduct].label} A${moneyString(chargedTotal(apparelQuote.quote, 1))}</span>

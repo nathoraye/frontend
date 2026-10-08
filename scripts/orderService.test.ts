@@ -59,7 +59,7 @@ test('normalizeOrderConfig persists the server quote and ignores client prices',
   assert.equal(vinyl.productType, 'decal');
   assert.equal(vinyl.requiresPrep, undefined);
   assert.equal(vinyl.quote.shipping, 10);
-  assert.equal(vinyl.quote.total, 30.5);
+  assert.equal(vinyl.quote.total, 25.05);
   assert.equal(vinyl.amount, undefined);
   assert.equal(vinyl.unitAmount, undefined);
 
@@ -118,7 +118,7 @@ test('unverified local checkout creates and lists an order', async () => {
   });
   assert.ok(created.id.startsWith('LOCAL-'));
   assert.equal(created.unverified, true);
-  assert.equal(created.amount, '22.00');
+  assert.equal(created.amount, '18.00');
 
   const submitted = await handleSubmitOrder({
     paymentIntentId: created.id,
@@ -324,7 +324,7 @@ test('createCheckoutSession uses mocked Stripe when configured', async () => {
           assert.match(params.success_url, /\/order\/success\?session_id=\{CHECKOUT_SESSION_ID\}$/);
           assert.match(params.cancel_url, /\/order\/cancel\?orderId=/);
           assert.equal(params.line_items.length, 2);
-          assert.equal(params.line_items[0].price_data.unit_amount, 1800);
+          assert.equal(params.line_items[0].price_data.unit_amount, 1400);
           assert.equal(params.line_items[0].price_data.product_data.name, 'Custom decal');
           assert.equal(params.line_items[1].price_data.unit_amount, 400);
           assert.equal(params.line_items[1].price_data.product_data.name, 'Untracked Rigid Post');
@@ -349,14 +349,14 @@ test('createCheckoutSession uses mocked Stripe when configured', async () => {
   assert.equal(created.url, 'https://checkout.stripe.com/c/pay/cs_test_live');
   assert.equal(created.sessionId, 'cs_test_live');
   assert.equal(created.unverified, undefined);
-  assert.equal(created.amount, '22.00');
+  assert.equal(created.amount, '18.00');
 
   process.env.ALLOW_PUBLIC_ORDER_LIST = '1';
   const listed = await handleListOrders({ headers: {} });
   assert.equal(listed.orders[0].status, 'pending');
   assert.equal(listed.orders[0].checkoutSessionId, 'cs_test_live');
-  assert.equal(listed.orders[0].amount, 22);
-  assert.equal(listed.orders[0].orderConfig.quote.subtotal, 18);
+  assert.equal(listed.orders[0].amount, 18);
+  assert.equal(listed.orders[0].orderConfig.quote.subtotal, 14);
   assert.equal(listed.orders[0].orderConfig.quote.shipping, 4);
   assert.equal(listed.orders[0].orderConfig.amount, undefined);
 

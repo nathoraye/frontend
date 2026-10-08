@@ -14,8 +14,8 @@ test('clamp allows offsets that reach sleeves and hem', () => {
   assert.ok(PLACEMENT_POS_RANGE >= 40, 'range must cover most of the garment');
 });
 
-test('clamp keeps scale usable from small to oversized', () => {
+test('clamp keeps scale between a small print and the full print area', () => {
   assert.equal(clampPlacement({ posX: 0, posY: 0, scale: 0.01, rotationDeg: 0 }).scale, PLACEMENT_SCALE_MIN);
   assert.equal(clampPlacement({ posX: 0, posY: 0, scale: 99, rotationDeg: 0 }).scale, PLACEMENT_SCALE_MAX);
-  assert.ok(PLACEMENT_SCALE_MAX >= 4);
+  assert.equal(PLACEMENT_SCALE_MAX, 1);
 });

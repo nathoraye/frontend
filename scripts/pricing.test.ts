@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   chargedTotal,
+  decalVinylCost,
   dimensionError,
   MIN_DIMENSION_ERROR,
   quoteOrder,
-  rawAreaCost,
   vinylCost,
 } from '../src/lib/pricing.ts';
 
@@ -16,18 +16,15 @@ function mustQuote(raw: Record<string, unknown>) {
   return result;
 }
 
-test('raw area cost hits 10, 300, and 301', () => {
-  assert.equal(rawAreaCost(10), 4);
-  assert.equal(rawAreaCost(10.1), 4.5);
-  assert.equal(rawAreaCost(300), 33);
-  assert.equal(rawAreaCost(301), 33.02);
-  assert.equal(rawAreaCost(310.4), 33.21);
-});
-
-test('decal vinyl floor is $8.50 until the raw area cost passes it', () => {
-  assert.equal(vinylCost('decal', 10), 8.5);
-  assert.equal(vinylCost('decal', 55), 8.5);
-  assert.equal(vinylCost('decal', 56), 9);
+test('single-colour decal vinyl follows the longest side', () => {
+  assert.equal(decalVinylCost(5, 5), 5.5);
+  assert.equal(decalVinylCost(7.5, 7.5), 7.25);
+  assert.equal(decalVinylCost(10, 10), 9);
+  assert.equal(decalVinylCost(15, 15), 12.5);
+  assert.equal(decalVinylCost(20, 20), 16);
+  assert.equal(decalVinylCost(30, 30), 23);
+  assert.equal(decalVinylCost(2, 2), 4);
+  assert.ok(decalVinylCost(30, 5) < decalVinylCost(30, 30));
 });
 
 test('extra vinyl starts after 900 for tee/hoodie/clock/bottle and after 225 for baby', () => {
@@ -52,16 +49,16 @@ test('10×10 graphic decal untracked and tracked', () => {
   const untracked = mustQuote({ ...shared, shippingOption: 'untracked' });
   assert.equal(untracked.quote.areaCm2, 100);
   assert.equal(untracked.quote.base, 0);
-  assert.equal(untracked.quote.rawAreaCost, 13);
-  assert.equal(untracked.quote.vinyl, 13);
+  assert.equal(untracked.quote.rawAreaCost, 9);
+  assert.equal(untracked.quote.vinyl, 9);
   assert.equal(untracked.quote.labour, 5);
-  assert.equal(untracked.quote.subtotal, 18);
+  assert.equal(untracked.quote.subtotal, 14);
   assert.equal(untracked.quote.shipping, 4);
-  assert.equal(untracked.quote.total, 22);
+  assert.equal(untracked.quote.total, 18);
 
   const tracked = mustQuote({ ...shared, shippingOption: 'tracked' });
   assert.equal(tracked.quote.shipping, 10);
-  assert.equal(tracked.quote.total, 28);
+  assert.equal(tracked.quote.total, 24);
   assert.equal(tracked.quote.shippingLabel, 'Tracked Parcel Mailer ($10.00)');
 });
 
@@ -134,11 +131,11 @@ test('30×60 intricate decal adds area over 300', () => {
     shippingOption: 'untracked',
   });
   assert.equal(untracked.quote.areaCm2, 1800);
-  assert.equal(untracked.quote.rawAreaCost, 63);
-  assert.equal(untracked.quote.vinyl, 63);
+  assert.equal(untracked.quote.rawAreaCost, 34.1);
+  assert.equal(untracked.quote.vinyl, 34.1);
   assert.equal(untracked.quote.labour, 12);
-  assert.equal(untracked.quote.subtotal, 75);
-  assert.equal(untracked.quote.total, 79);
+  assert.equal(untracked.quote.subtotal, 46.1);
+  assert.equal(untracked.quote.total, 50.1);
 
   const tracked = mustQuote({
     productType: 'decal',
@@ -148,14 +145,14 @@ test('30×60 intricate decal adds area over 300', () => {
     shippingOption: 'tracked',
     requiresPrep: true,
   });
-  assert.equal(tracked.quote.subtotal, 75);
+  assert.equal(tracked.quote.subtotal, 46.1);
   assert.equal(tracked.quote.shipping, 10);
-  assert.equal(tracked.quote.total, 85);
+  assert.equal(tracked.quote.total, 56.1);
   assert.equal('prep' in tracked.quote, false);
   assert.equal('requiresPrep' in tracked.input, false);
 });
 
-test('area 300 and 301 use the raw area rate and ignore a prep flag', () => {
+test('a thinner decal costs less than a square of the same long side', () => {
   const atCap = mustQuote({
     productType: 'decal',
     widthCm: 10,
@@ -165,10 +162,10 @@ test('area 300 and 301 use the raw area rate and ignore a prep flag', () => {
     requiresPrep: true,
   });
   assert.equal(atCap.quote.areaCm2, 300);
-  assert.equal(atCap.quote.rawAreaCost, 33);
-  assert.equal(atCap.quote.vinyl, 33);
-  assert.equal(atCap.quote.subtotal, 38);
-  assert.equal(atCap.quote.total, 42);
+  assert.equal(atCap.quote.vinyl, 16.1);
+  assert.equal(atCap.quote.subtotal, 21.1);
+  assert.equal(atCap.quote.total, 25.1);
+  assert.ok(atCap.quote.vinyl < decalVinylCost(30, 30));
 
   const over = mustQuote({
     productType: 'decal',
@@ -179,10 +176,9 @@ test('area 300 and 301 use the raw area rate and ignore a prep flag', () => {
     prep: true,
   });
   assert.equal(over.quote.areaCm2, 301);
-  assert.equal(over.quote.rawAreaCost, 33.02);
-  assert.equal(over.quote.vinyl, 33.02);
-  assert.equal(over.quote.subtotal, 38.02);
-  assert.equal(over.quote.total, 42.02);
+  assert.equal(over.quote.vinyl, 20.01);
+  assert.equal(over.quote.subtotal, 25.01);
+  assert.equal(over.quote.total, 29.01);
   assert.equal('prep' in over.quote, false);
 });
 
@@ -238,9 +234,10 @@ test('minimum 2cm and every product max cap', () => {
   assert.match(dimensionError('tee', 20, 61) || '', /60cm on the long side/);
   assert.match(dimensionError('hoodie', 40, 40) || '', /short side/);
 
-  assert.equal(dimensionError('baby', 15, 15), null);
-  assert.match(dimensionError('baby', 15.1, 10) || '', /15cm × 15cm/);
-  assert.match(dimensionError('baby', 10, 16) || '', /15cm × 15cm/);
+  assert.equal(dimensionError('baby', 23, 25), null);
+  assert.equal(dimensionError('baby', 25, 25), null);
+  assert.match(dimensionError('baby', 25.1, 10) || '', /25cm × 25cm/);
+  assert.match(dimensionError('baby', 10, 26) || '', /25cm × 25cm/);
 
   assert.equal(dimensionError('clock', 30, 30), null);
   assert.match(dimensionError('clock', 30, 30.1) || '', /30cm × 30cm/);
@@ -282,8 +279,8 @@ test('quantity multiplies the item and leaves shipping once', () => {
     designType: 'graphic',
     shippingOption: 'untracked',
   });
-  assert.equal(chargedTotal(result.quote, 2), 40);
-  assert.equal(chargedTotal(result.quote, 2.9), 40);
+  assert.equal(chargedTotal(result.quote, 2), 32);
+  assert.equal(chargedTotal(result.quote, 2.9), 32);
 });
 
 test('missing and invalid quote fields are rejected', () => {

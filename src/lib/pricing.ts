@@ -21,7 +21,8 @@ export type ShippingOption = (typeof SHIPPING_OPTIONS)[number];
 export const MIN_DIMENSION_CM = 2;
 export const MIN_DIMENSION_ERROR = 'Minimum dimensions are 2cm x 2cm.';
 
-export const DECAL_VINYL_FLOOR = 8.5;
+/** Smallest single-colour decal vinyl charge, before labour and postage. */
+export const DECAL_VINYL_MIN = 4;
 
 const BASE_PRICE: Record<ProductType, number> = {
   decal: 0,
@@ -91,19 +92,32 @@ export function chargedTotal(quote: PriceQuote, quantity?: unknown): number {
   return round2(quote.subtotal * clampQuantity(quantity) + quote.shipping);
 }
 
-export function rawAreaCost(area: number): number {
-  if (area <= 10) return 4;
-  if (area <= 300) return round2(4 + Math.ceil((area - 10) / 5) * 0.5);
-  return round2(33 + round2((area - 300) * 0.02));
+/**
+ * Single-colour decal vinyl in AUD, before labour and postage.
+ *
+ * Replaces the 1 Oct 2026 area schedule (floor A$8.50, about A$33 at 300 cm²).
+ * That schedule priced an 18×16.8 cm graphic decal at A$42.05 with untracked post.
+ * US single-colour charts are about US$1 per inch after a US$1 base (3 in US$4 through
+ * 12 in US$13). At 1.55 AUD per USD and a 15% Australian supply margin, a square is
+ * about A$0.70 per centimetre of the longest side plus A$2, and never under A$4.
+ * A thinner decal pays for the long side, then a fraction of the square for the short side.
+ */
+export function decalVinylCost(widthCm: number, heightCm: number): number {
+  const longest = Math.max(widthCm, heightCm);
+  const shortest = Math.min(widthCm, heightCm);
+  const square = round2(Math.max(DECAL_VINYL_MIN, longest * 0.7 + 2));
+  if (!(longest > 0)) return square;
+  const fill = Math.min(1, Math.max(0, shortest / longest));
+  return round2(square * (0.55 + 0.45 * fill));
 }
 
 /**
- * Decal vinyl is max($8.50, raw area cost).
  * Tee, hoodie, clock, and bottle include print up to 900 cm² (bottle's 15×5 cap is 75 cm²,
  * so its extra rate does not come into play). Baby includes print up to 225 cm².
+ * Extra print is A$0.02 per cm². Decals use decalVinylCost instead of this area rule.
  */
 export function vinylCost(product: ProductType, area: number): number {
-  if (product === 'decal') return round2(Math.max(DECAL_VINYL_FLOOR, rawAreaCost(area)));
+  if (product === 'decal') return decalVinylCost(Math.sqrt(area), Math.sqrt(area));
   if (product === 'baby') {
     if (area <= 225) return 0;
     return round2((area - 225) * 0.02);
@@ -156,7 +170,7 @@ export function productCheckoutName(product: ProductType): string {
 export function productLimitLabel(product: ProductType): string {
   switch (product) {
     case 'baby':
-      return 'Max 15×15cm';
+      return 'Max 25×25cm';
     case 'bottle':
       return 'Max 15×5cm';
     case 'clock':
@@ -214,8 +228,8 @@ export function dimensionError(product: ProductType, widthCm: number, heightCm: 
   if (widthCm < MIN_DIMENSION_CM || heightCm < MIN_DIMENSION_CM) return MIN_DIMENSION_ERROR;
   const longSide = Math.max(widthCm, heightCm);
   const shortSide = Math.min(widthCm, heightCm);
-  if (product === 'baby' && (widthCm > 15 || heightCm > 15)) {
-    return 'Baby clothes max size is 15cm × 15cm.';
+  if (product === 'baby' && (widthCm > 25 || heightCm > 25)) {
+    return 'Baby clothes max size is 25cm × 25cm.';
   }
   if (product === 'bottle' && (longSide > 15 || shortSide > 5)) {
     return 'Drink bottles max size is 15cm on the long side and 5cm on the short side.';
@@ -328,8 +342,7 @@ export function quoteOrder(source: unknown): QuoteResult {
 
   const areaCm2 = widthCm * heightCm;
   const base = BASE_PRICE[product];
-  const areaRaw = rawAreaCost(areaCm2);
-  const vinyl = vinylCost(product, areaCm2);
+  const vinyl = product === 'decal' ? decalVinylCost(widthCm, heightCm) : vinylCost(product, areaCm2);
   const labour = labourCost(designType, textDensity);
   const subtotal = round2(base + vinyl + labour);
   const shipping = shippingAmount(product, shippingOption);
@@ -351,7 +364,7 @@ export function quoteOrder(source: unknown): QuoteResult {
       ...input,
       areaCm2: round2(areaCm2),
       base,
-      rawAreaCost: areaRaw,
+      rawAreaCost: vinyl,
       vinyl,
       labour,
       subtotal,

@@ -285,7 +285,7 @@ test('paid webhook sends one purchase and a replay does not send again', async (
     const session = {
       id: 'cs_test_ads',
       payment_status: 'paid',
-      amount_total: 2200,
+      amount_total: 1800,
       currency: 'aud',
       metadata: captured.metadata,
       payment_intent: { id: 'pi_test_ads', latest_charge: 'ch_test_ads' },
