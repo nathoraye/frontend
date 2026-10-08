@@ -49,12 +49,15 @@ test('text alignment is in the inspector at 1280px and undo restores it', async 
   await expect(right).toHaveAttribute('aria-pressed', 'true');
   const canvas = page.locator('canvas.upper-canvas');
   const box = await canvas.boundingBox();
+  const reselect = async (testId: string) => {
+    await expect(page.getByTestId('text-align')).toBeHidden();
+    await canvas.click({ position: { x: box!.width / 2, y: box!.height / 2 } });
+    await expect(page.getByTestId(testId)).toHaveAttribute('aria-pressed', 'true');
+  };
   await page.getByTitle('Undo (Ctrl+Z)').click();
-  await canvas.click({ position: { x: box!.width / 2, y: box!.height / 2 } });
-  await expect(centre).toHaveAttribute('aria-pressed', 'true');
+  await reselect('text-align-center');
   await page.getByTitle('Redo (Ctrl+Y)').click();
-  await canvas.click({ position: { x: box!.width / 2, y: box!.height / 2 } });
-  await expect(right).toHaveAttribute('aria-pressed', 'true');
+  await reselect('text-align-right');
 });
 
 test('text alignment is reachable at 375px', async ({ page }) => {
