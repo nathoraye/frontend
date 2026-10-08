@@ -20,9 +20,9 @@ export const LeftDock: React.FC<LeftDockProps> = React.memo(({
   tool, setTool, addText, addShape, fileInputRef, handleImageUpload, borderCol, bgPanel, setShowLeftPanel
 }) => {
   return (
-    <aside className={`w-16 border-r ${borderCol} ${bgPanel} flex flex-col items-center py-4 gap-3 z-10 shrink-0 overflow-y-auto overflow-x-hidden custom-scrollbar relative`}>
+    <aside className={`w-16 border-r ${borderCol} ${bgPanel} flex flex-col items-center py-4 max-sm:pt-10 gap-3 z-10 shrink-0 overflow-y-auto overflow-x-hidden custom-scrollbar relative`}>
       {setShowLeftPanel && (
-        <button type="button" onClick={() => setShowLeftPanel(false)} className="absolute top-1 right-1 p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors touch-manipulation" title="Hide Sidebar" aria-label="Hide sidebar">
+        <button type="button" onClick={() => setShowLeftPanel(false)} className="absolute top-1 right-1 p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors touch-manipulation max-sm:top-1.5 max-sm:left-1/2 max-sm:right-auto max-sm:z-20 max-sm:h-8 max-sm:w-8 max-sm:-translate-x-1/2" title="Hide Sidebar" aria-label="Hide sidebar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
         </button>
       )}

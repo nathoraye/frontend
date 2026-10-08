@@ -1,4 +1,50 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+type Box = { x: number; y: number; width: number; height: number };
+
+function overlaps(a: Box, b: Box) {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+async function phoneChrome(page: Page, width: number) {
+  await page.setViewportSize({ width, height: 812 });
+  await page.goto('/');
+  await expect(page.getByTestId('studio-header')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open sidebar' })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Open inspector' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Toggle inspector' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Undo (Ctrl+Z)' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Design' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Product', exact: true })).toBeVisible();
+
+  const metrics = await page.evaluate(() => {
+    const box = (el: Element | null) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    };
+    const header = document.querySelector('[data-testid="studio-header"]');
+    return {
+      menu: box(document.querySelector('[aria-label="Open sidebar"]')),
+      badge: box(document.querySelector('[data-testid="cut-ready-badge"]')),
+      undo: box(document.querySelector('[title="Undo (Ctrl+Z)"]')),
+      canvas: box(document.querySelector('canvas.lower-canvas')),
+      headerOverflow: header ? header.scrollWidth - header.clientWidth : 99,
+    };
+  });
+
+  expect(metrics.menu).toBeTruthy();
+  expect(metrics.badge).toBeTruthy();
+  expect(metrics.undo).toBeTruthy();
+  expect(metrics.canvas).toBeTruthy();
+  expect(metrics.headerOverflow).toBeLessThanOrEqual(1);
+  expect(overlaps(metrics.menu!, metrics.badge!)).toBe(false);
+  expect(overlaps(metrics.menu!, metrics.undo!)).toBe(false);
+  expect(overlaps(metrics.badge!, metrics.undo!)).toBe(false);
+  expect(metrics.canvas!.width).toBeGreaterThan(width - 2);
+  expect(metrics.canvas!.height).toBeGreaterThan(400);
+  expect(metrics.canvas!.y).toBeGreaterThanOrEqual(metrics.menu!.y + metrics.menu!.height - 1);
+}
 
 test.describe('phone studio smoke', () => {
   test('loads, flags cut-ready, autosaves, and uses toasts instead of alerts', async ({ page }) => {
@@ -32,4 +78,15 @@ test.describe('phone studio smoke', () => {
     await expect(badge).toContainText(/cut check/i, { timeout: 15_000 });
     await expect(page.getByTestId('studio-notice')).toContainText(/restored last session/i);
   });
+
+  for (const width of [375, 414]) {
+    test(`header controls stay apart and the mat fills ${width}px`, async ({ page }) => {
+      await phoneChrome(page, width);
+      await page.getByRole('button', { name: 'Open sidebar' }).click();
+      await page.getByTestId('tool-square').click();
+      await expect(page.getByTestId('cut-ready-badge')).toContainText(/cut check/i);
+      const canvas = page.locator('canvas.lower-canvas');
+      await expect(canvas).toBeVisible();
+    });
+  }
 });

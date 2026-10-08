@@ -3,9 +3,11 @@ import type { CutReadyReport } from '../utils/cutReady';
 export function CutReadyBadge({
   report,
   onClick,
+  className = '',
 }: {
   report: CutReadyReport;
   onClick: () => void;
+  className?: string;
 }) {
   const errors = report.issues.filter((i) => i.severity === 'error').length;
   const label = report.ready ? 'Cut ready' : errors > 0 ? `${errors} cut issue${errors === 1 ? '' : 's'}` : 'Cut check';
@@ -20,7 +22,7 @@ export function CutReadyBadge({
       type="button"
       data-testid="cut-ready-badge"
       onClick={onClick}
-      className={`h-8 rounded-md border px-2 text-[10px] font-bold uppercase tracking-wider touch-manipulation ${cls}`}
+      className={`h-8 rounded-md border px-2 text-[10px] font-bold uppercase tracking-wider touch-manipulation ${cls} ${className}`}
       title="Open cut-ready checklist"
     >
       {label}
