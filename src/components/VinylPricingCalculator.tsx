@@ -24,6 +24,8 @@ export interface QuoteDraft {
 
 interface VinylPricingCalculatorProps {
   initialProduct?: ProductType;
+  /** Size, product, and shipping already chosen. Editors stay hidden. */
+  locked?: { product: ProductType; widthCm: number; heightCm: number; shippingOption?: ShippingOption };
   onQuote?: (state: { draft: QuoteDraft; result: QuoteResult }) => void;
 }
 
@@ -36,14 +38,15 @@ function money(value: number): string {
 
 export function VinylPricingCalculator({
   initialProduct = 'decal',
+  locked,
   onQuote,
 }: VinylPricingCalculatorProps) {
-  const [product, setProduct] = useState<ProductType>(initialProduct);
-  const [widthCm, setWidthCm] = useState(() => defaultSizeCm(initialProduct).widthCm);
-  const [heightCm, setHeightCm] = useState(() => defaultSizeCm(initialProduct).heightCm);
+  const [product, setProduct] = useState<ProductType>(locked?.product ?? initialProduct);
+  const [widthCm, setWidthCm] = useState(() => locked?.widthCm ?? defaultSizeCm(initialProduct).widthCm);
+  const [heightCm, setHeightCm] = useState(() => locked?.heightCm ?? defaultSizeCm(initialProduct).heightCm);
   const [designType, setDesignType] = useState<DesignType>('graphic');
   const [textDensity, setTextDensity] = useState<TextDensity>('standard');
-  const [shippingOption, setShippingOption] = useState<ShippingOption>('untracked');
+  const [shippingOption, setShippingOption] = useState<ShippingOption>(locked?.shippingOption ?? 'untracked');
 
   const draft = useMemo<QuoteDraft>(
     () => ({
@@ -73,6 +76,10 @@ export function VinylPricingCalculator({
       </header>
 
       <div className="space-y-4">
+        {locked ? (
+          <p data-testid="checkout-print-size" className="font-mono text-sm text-slate-100">{`${widthCm} × ${heightCm} cm`}</p>
+        ) : (
+        <>
         <label className="block space-y-1">
           <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Product</span>
           <select
@@ -189,6 +196,8 @@ export function VinylPricingCalculator({
           </fieldset>
         ) : (
           <p className="text-sm text-slate-300">Standard AusPost Parcel ($12.00)</p>
+        )}
+        </>
         )}
 
         {!pricing.ok ? <p className="text-sm font-bold text-red-500">{pricing.error}</p> : <QuoteBreakdown quote={pricing.quote} />}

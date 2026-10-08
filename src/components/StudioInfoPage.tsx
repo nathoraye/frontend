@@ -74,8 +74,9 @@ function OfferSummary() {
       </p>
       <ul className="list-disc space-y-1 pl-5">
         <li>
-          The price depends on the product, print size, and design. Decals start from a vinyl floor
-          of A$8.50 before labour. There is no GST line. West Vinyl Studio is not GST registered.
+          The price depends on the product, print size, and design. Single-colour decal vinyl
+          starts at A$4 and rises with the longest side. There is no GST line. West Vinyl Studio
+          is not GST registered.
         </li>
         <li>
           Decal shipping is Untracked Rigid Post (A$4.00) or Tracked Parcel Mailer (A$10.00).

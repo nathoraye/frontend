@@ -28,8 +28,8 @@ const decal10 = {
 
 test('quoted totals ignore client prices and flat legacy amounts', () => {
   assert.equal(ORDER_CURRENCY, 'AUD');
-  assert.equal(calculateOrderTotal(decal10), 22);
-  assert.equal(calculateOrderTotal({ ...decal10, amount: 1, unitAmount: 100, quantity: 2 }), 40);
+  assert.equal(calculateOrderTotal(decal10), 18);
+  assert.equal(calculateOrderTotal({ ...decal10, amount: 1, unitAmount: 100, quantity: 2 }), 32);
   assert.equal(
     calculateOrderTotal({
       orderType: 'product',
@@ -59,9 +59,9 @@ test('smokeCheckoutAmountCents is unset by default and accepts 100', () => {
     assert.equal(smokeCheckoutAmountCents(' 100 '), 100);
     process.env.SMOKE_CHECKOUT_AMOUNT_CENTS = '100';
     assert.equal(checkoutChargeAmount(decal10), 1);
-    assert.equal(calculateOrderTotal(decal10), 22);
+    assert.equal(calculateOrderTotal(decal10), 18);
     delete process.env.SMOKE_CHECKOUT_AMOUNT_CENTS;
-    assert.equal(checkoutChargeAmount(decal10), 22);
+    assert.equal(checkoutChargeAmount(decal10), 18);
     assert.throws(
       () => smokeCheckoutAmountCents('1'),
       (err) => err.status === 503 && /between 50 and 100000/.test(err.message),

@@ -14,7 +14,11 @@ test('studio tour appears on the first visit and stays dismissed after skip', as
   await page.reload();
   await expect(page.getByRole('dialog', { name: 'Studio tour' })).toHaveCount(0);
 
-  await page.getByTestId('studio-tour-replay').click();
+  const replay = page.getByTestId('studio-tour-replay');
+  if (!(await replay.isVisible())) {
+    await page.getByRole('button', { name: 'Open sidebar' }).click();
+  }
+  await replay.click();
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText('1 of 5');
   await page.keyboard.press('Escape');

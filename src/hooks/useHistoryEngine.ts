@@ -48,12 +48,16 @@ export function useHistoryEngine({ setCanvasObjects }: UseHistoryEngineProps) {
       queueCanvasAutosave(targetCanvas);
     };
 
+    if (historyTimeout.current) {
+      clearTimeout(historyTimeout.current);
+      historyTimeout.current = null;
+    }
+
     if (immediate) {
       save();
       return;
     }
 
-    if (historyTimeout.current) clearTimeout(historyTimeout.current);
     historyTimeout.current = setTimeout(save, 300);
   }, [updateHistoryUI, syncObjects]);
 

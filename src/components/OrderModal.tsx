@@ -12,6 +12,7 @@ import {
   productTypeFromCatalog,
   quoteOrder,
   type QuoteResult,
+  type ShippingOption,
 } from '../lib/pricing';
 import type { ProductPlacement } from '../utils/apparelPlacement';
 import { ApparelMockupViewer } from './ApparelMockupViewer';
@@ -54,16 +55,18 @@ interface OrderConfig {
   quantity: number;
 }
 
-function initialQuote(productId?: ProductId): { draft: QuoteDraft; result: QuoteResult } {
-  const product = productId ? productTypeFromCatalog(productId) ?? 'tee' : 'decal';
-  const size = defaultSizeCm(product);
+function initialQuote(isApparel: boolean, preview?: OrderPreviewState): { draft: QuoteDraft; result: QuoteResult } {
+  const product = isApparel
+    ? productTypeFromCatalog(preview?.productId ?? 'tshirt') ?? 'tee'
+    : 'decal';
+  const fallback = defaultSizeCm(product);
   const draft: QuoteDraft = {
     product,
-    widthCm: size.widthCm,
-    heightCm: size.heightCm,
+    widthCm: preview?.widthCm ?? fallback.widthCm,
+    heightCm: preview?.heightCm ?? fallback.heightCm,
     designType: 'graphic',
     textDensity: 'standard',
-    shippingOption: 'untracked',
+    shippingOption: preview?.shippingOption ?? 'untracked',
   };
   return { draft, result: quoteOrder(draft) };
 }
@@ -75,6 +78,9 @@ export interface OrderPreviewState {
   productSize?: string;
   activeView: string;
   placement: ProductPlacement;
+  widthCm: number;
+  heightCm: number;
+  shippingOption?: ShippingOption;
 }
 
 interface OrderModalProps {
@@ -151,20 +157,26 @@ function StepVinylOptions({
   onConfigChange,
   designDataUrl,
   initialProduct,
+  widthCm,
+  heightCm,
+  shippingOption,
   onQuote,
 }: {
   config: OrderConfig;
   onConfigChange: (config: OrderConfig) => void;
   designDataUrl: string | null;
   initialProduct: QuoteDraft['product'];
+  widthCm: number;
+  heightCm: number;
+  shippingOption: ShippingOption;
   onQuote: (state: { draft: QuoteDraft; result: QuoteResult }) => void;
 }) {
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-mono text-pink-500">Sticker options</h3>
       <p className="text-xs font-mono text-gray-400">
-        Set the cut size and design category. Artwork comes from your studio design. The server
-        prices the job again before Stripe.
+        Size, shipping, and price come from the sticker screen. Artwork comes from your studio design.
+        The server prices the job again before Stripe.
       </p>
       {designDataUrl ? (
         <img
@@ -173,7 +185,11 @@ function StepVinylOptions({
           className="mx-auto max-h-28 rounded border border-slate-800 bg-[#0f111a] object-contain"
         />
       ) : null}
-      <VinylPricingCalculator initialProduct={initialProduct} onQuote={onQuote} />
+      <VinylPricingCalculator
+        initialProduct={initialProduct}
+        locked={{ product: initialProduct, widthCm, heightCm, shippingOption }}
+        onQuote={onQuote}
+      />
       <QuantityControls
         quantity={config.quantity}
         onChange={(quantity) => onConfigChange({ ...config, quantity })}
@@ -188,6 +204,8 @@ function StepApparelReview({
   designDataUrl,
   activeView,
   initialProduct,
+  widthCm,
+  heightCm,
   onQuote,
 }: {
   config: OrderConfig;
@@ -195,6 +213,8 @@ function StepApparelReview({
   designDataUrl: string | null;
   activeView: string;
   initialProduct: QuoteDraft['product'];
+  widthCm: number;
+  heightCm: number;
   onQuote: (state: { draft: QuoteDraft; result: QuoteResult }) => void;
 }) {
   const product = config.productId ? PRODUCT_CATALOG[config.productId] : undefined;
@@ -253,7 +273,11 @@ function StepApparelReview({
         onChange={(quantity) => onConfigChange({ ...config, quantity })}
       />
 
-      <VinylPricingCalculator initialProduct={initialProduct} onQuote={onQuote} />
+      <VinylPricingCalculator
+        initialProduct={initialProduct}
+        locked={{ product: initialProduct, widthCm, heightCm }}
+        onQuote={onQuote}
+      />
     </div>
   );
 }
@@ -473,9 +497,7 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
       printConfigs: {},
     };
   });
-  const [quoteState, setQuoteState] = useState(() =>
-    initialQuote(isApparel ? preview?.productId ?? 'tshirt' : undefined),
-  );
+  const [quoteState, setQuoteState] = useState(() => initialQuote(isApparel, preview));
   const cartTracked = useRef(false);
   useEffect(() => {
     if (cartTracked.current || !quoteState.result.ok) return;
@@ -625,6 +647,8 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
                 designDataUrl={designDataUrl}
                 activeView={activeView}
                 initialProduct={quoteState.draft.product}
+                widthCm={quoteState.draft.widthCm}
+                heightCm={quoteState.draft.heightCm}
                 onQuote={onQuote}
               />
             ) : (
@@ -633,6 +657,9 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
                 onConfigChange={setConfig}
                 designDataUrl={designDataUrl}
                 initialProduct="decal"
+                widthCm={quoteState.draft.widthCm}
+                heightCm={quoteState.draft.heightCm}
+                shippingOption={quoteState.draft.shippingOption}
                 onQuote={onQuote}
               />
             )}

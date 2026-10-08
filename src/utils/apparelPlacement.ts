@@ -8,7 +8,8 @@ export interface ProductPlacement {
 /** Offset from the print-zone centre, in % of the garment frame. */
 export const PLACEMENT_POS_RANGE = 42;
 export const PLACEMENT_SCALE_MIN = 0.15;
-export const PLACEMENT_SCALE_MAX = 5;
+/** Scale 1 fills the garment's max print area. Larger prints are not offered. */
+export const PLACEMENT_SCALE_MAX = 1;
 
 export function clampPlacement(next: ProductPlacement): ProductPlacement {
   return {
