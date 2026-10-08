@@ -6,6 +6,8 @@ import {
   maxPrintCm,
   printSizeCm,
   scaleForLongestSide,
+  STICKER_SIDE_MAX_CM,
+  STICKER_SIDE_MIN_CM,
 } from '../src/utils/printSize.ts';
 
 test('adult full front follows the inch chart and the 30 cm width cap', () => {
@@ -61,6 +63,26 @@ test('hoodie print price stays flat under 900 cm² and rises once the max print 
   assert.ok(extraQuote.quote.areaCm2 > 900);
   assert.equal(extraQuote.quote.vinyl, 3.36);
   assert.equal(moneyString(chargedTotal(extraQuote.quote, 1)), '72.36');
+});
+
+test('the sticker slider stays inside the existing decal caps', () => {
+  assert.equal(STICKER_SIDE_MIN_CM, 3);
+  assert.equal(STICKER_SIDE_MAX_CM, 30);
+  const small = quoteOrder({
+    productType: 'decal',
+    widthCm: STICKER_SIDE_MIN_CM,
+    heightCm: STICKER_SIDE_MIN_CM,
+    designType: 'graphic',
+    shippingOption: 'untracked',
+  });
+  const large = quoteOrder({
+    productType: 'decal',
+    widthCm: STICKER_SIDE_MAX_CM,
+    heightCm: STICKER_SIDE_MAX_CM,
+    designType: 'graphic',
+    shippingOption: 'tracked',
+  });
+  assert.equal(small.ok && large.ok, true);
 });
 
 test('an 18 by 16.8 cm sticker uses the longest-side curve and ignores a client total', () => {

@@ -12,6 +12,7 @@ import {
   productTypeFromCatalog,
   quoteOrder,
   type QuoteResult,
+  type ShippingOption,
 } from '../lib/pricing';
 import type { ProductPlacement } from '../utils/apparelPlacement';
 import { ApparelMockupViewer } from './ApparelMockupViewer';
@@ -65,7 +66,7 @@ function initialQuote(isApparel: boolean, preview?: OrderPreviewState): { draft:
     heightCm: preview?.heightCm ?? fallback.heightCm,
     designType: 'graphic',
     textDensity: 'standard',
-    shippingOption: 'untracked',
+    shippingOption: preview?.shippingOption ?? 'untracked',
   };
   return { draft, result: quoteOrder(draft) };
 }
@@ -79,6 +80,7 @@ export interface OrderPreviewState {
   placement: ProductPlacement;
   widthCm: number;
   heightCm: number;
+  shippingOption?: ShippingOption;
 }
 
 interface OrderModalProps {
@@ -157,6 +159,7 @@ function StepVinylOptions({
   initialProduct,
   widthCm,
   heightCm,
+  shippingOption,
   onQuote,
 }: {
   config: OrderConfig;
@@ -165,13 +168,14 @@ function StepVinylOptions({
   initialProduct: QuoteDraft['product'];
   widthCm: number;
   heightCm: number;
+  shippingOption: ShippingOption;
   onQuote: (state: { draft: QuoteDraft; result: QuoteResult }) => void;
 }) {
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-mono text-pink-500">Sticker options</h3>
       <p className="text-xs font-mono text-gray-400">
-        Cut size and price come from the product screen. Artwork comes from your studio design.
+        Size, shipping, and price come from the sticker screen. Artwork comes from your studio design.
         The server prices the job again before Stripe.
       </p>
       {designDataUrl ? (
@@ -183,7 +187,7 @@ function StepVinylOptions({
       ) : null}
       <VinylPricingCalculator
         initialProduct={initialProduct}
-        locked={{ product: initialProduct, widthCm, heightCm }}
+        locked={{ product: initialProduct, widthCm, heightCm, shippingOption }}
         onQuote={onQuote}
       />
       <QuantityControls
@@ -655,6 +659,7 @@ export function OrderModal({ canvas, initialTab, preview, onClose }: OrderModalP
                 initialProduct="decal"
                 widthCm={quoteState.draft.widthCm}
                 heightCm={quoteState.draft.heightCm}
+                shippingOption={quoteState.draft.shippingOption}
                 onQuote={onQuote}
               />
             )}

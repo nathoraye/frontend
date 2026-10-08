@@ -37,7 +37,7 @@ import {
   type ProductId,
 } from './three/productCatalog';
 import { snapshotDesignAsDataURL } from './utils/designSnapshot';
-import { productTypeFromCatalog } from './lib/pricing';
+import { productTypeFromCatalog, type ShippingOption } from './lib/pricing';
 import { chargedTotal, moneyString, quoteOrder } from './utils/orderPricing';
 import {
   CHEST_LOGO_CM,
@@ -46,6 +46,8 @@ import {
   MEDIUM_PRINT_CM,
   printSizeCm,
   scaleForLongestSide,
+  STICKER_SIDE_MAX_CM,
+  STICKER_SIDE_MIN_CM,
 } from './utils/printSize';
 import { tracedSvgToObject } from './utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
@@ -62,7 +64,7 @@ import {
 import { TOUR_STEPS, isTourDismissed, markTourDismissed } from './utils/studioTour';
 
 type AppTool = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
-type ViewMode = 'sticker' | 'product';
+type ViewMode = 'sticker' | 'decal' | 'product';
 
 const CANVAS_BG = '#2a2e3c';
 const BTN =
@@ -185,6 +187,8 @@ export default function App() {
   const [productSize, setProductSize] = useState<string>('M');
   const [activeProductView, setActiveProductView] = useState<string>('front');
   const [productPlacement, setProductPlacement] = useState<ProductPlacement>({ posX: 0, posY: 0, scale: 1, rotationDeg: 0 });
+  const [stickerCm, setStickerCm] = useState(10);
+  const [stickerShipping, setStickerShipping] = useState<ShippingOption>('untracked');
   const [designSnapshot, setDesignSnapshot] = useState<string | null>(null);
 
   const handleSelectProduct = (id: ProductId) => {
@@ -204,6 +208,11 @@ export default function App() {
   const openProductPreview = useCallback(() => {
     applyDesignToProduct();
     setViewMode('product');
+  }, [applyDesignToProduct]);
+
+  const openSticker = useCallback(() => {
+    applyDesignToProduct();
+    setViewMode('decal');
   }, [applyDesignToProduct]);
 
   useEffect(() => {
@@ -634,15 +643,13 @@ export default function App() {
     scale: productPlacement.scale,
   });
   const apparelType = productTypeFromCatalog(selectedProduct);
-  const stickerQuote = livePrint
-    ? quoteOrder({
-        productType: 'decal',
-        widthCm: livePrint.widthCm,
-        heightCm: livePrint.heightCm,
-        designType: 'graphic',
-        shippingOption: 'untracked',
-      })
-    : null;
+  const stickerQuote = quoteOrder({
+    productType: 'decal',
+    widthCm: stickerCm,
+    heightCm: stickerCm,
+    designType: 'graphic',
+    shippingOption: stickerShipping,
+  });
   const apparelQuote = livePrint && apparelType
     ? quoteOrder({
         productType: apparelType,
@@ -676,8 +683,9 @@ export default function App() {
               }}
             />
             <div className="ml-auto flex shrink-0 items-center gap-0.5">
-              <button type="button" onClick={() => setViewMode('sticker')} className={`h-8 rounded-md px-2 text-[11px] font-semibold touch-manipulation ${viewMode === 'sticker' ? 'bg-[#FF1493] text-black' : 'text-slate-300'}`}>Design</button>
-              <button type="button" onClick={openProductPreview} className={`h-8 rounded-md px-2 text-[11px] font-semibold touch-manipulation ${viewMode === 'product' ? 'bg-[#FF1493] text-black' : 'text-slate-300'}`}>Product</button>
+              <button type="button" onClick={() => setViewMode('sticker')} className={`h-8 rounded-md px-1.5 text-[11px] font-semibold touch-manipulation ${viewMode === 'sticker' ? 'bg-[#FF1493] text-black' : 'text-slate-300'}`}>Design</button>
+              <button type="button" onClick={openSticker} className={`h-8 rounded-md px-1.5 text-[11px] font-semibold touch-manipulation ${viewMode === 'decal' ? 'bg-[#FF1493] text-black' : 'text-slate-300'}`}>Sticker</button>
+              <button type="button" onClick={openProductPreview} className={`h-8 rounded-md px-1.5 text-[11px] font-semibold touch-manipulation ${viewMode === 'product' ? 'bg-[#FF1493] text-black' : 'text-slate-300'}`}>Product</button>
               <button type="button" onClick={(e) => { e.stopPropagation(); setShowRightPanel((prev) => !prev); }} className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-700 text-slate-300 touch-manipulation" title="Toggle Inspector Panel" aria-label="Toggle inspector"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
             </div>
           </header>
@@ -740,6 +748,7 @@ export default function App() {
 
               <div className="flex items-center gap-1">
                 <button onClick={() => setViewMode('sticker')} className={`touch-manipulation ${viewMode === 'sticker' ? BTN_PRIMARY : BTN_QUIET}`}>Design</button>
+                <button type="button" onClick={openSticker} className={`touch-manipulation ${viewMode === 'decal' ? BTN_PRIMARY : BTN_QUIET}`}>Sticker</button>
                 <button
                   type="button"
                   onClick={openProductPreview}
@@ -820,8 +829,8 @@ export default function App() {
               style={{ backgroundColor: viewMode === 'sticker' ? CANVAS_BG : undefined }}
             >
                 <div
-                  className={viewMode === 'product' ? 'pointer-events-none invisible absolute inset-0 overflow-hidden' : 'contents'}
-                  aria-hidden={viewMode === 'product'}
+                  className={viewMode === 'sticker' ? 'contents' : 'pointer-events-none invisible absolute inset-0 overflow-hidden'}
+                  aria-hidden={viewMode !== 'sticker'}
                 >
                   <canvas ref={canvasRef} />
                 </div>
@@ -842,6 +851,67 @@ export default function App() {
                 {viewMode === 'sticker' && tool === 'eraser' && (
                   <div className="absolute top-3 left-1/2 z-30 -translate-x-1/2 rounded-xl border border-red-500/30 bg-[#1e2230]/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-400 shadow-xl">
                     {eraserMode === 'layer' ? 'Eraser: draw on the selected layer' : 'Eraser: stroke through overlapping objects'}
+                  </div>
+                )}
+
+                {viewMode === 'decal' && (
+                  <div className="absolute inset-0 flex flex-col bg-[#0f111a]" data-testid="sticker-panel">
+                    <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+                      {designSnapshot ? (
+                        <img src={designSnapshot} alt="Sticker artwork" className="max-h-full max-w-full object-contain" />
+                      ) : (
+                        <p className="max-w-xs text-center text-sm text-slate-400">Design on the mat, then set the sticker size here.</p>
+                      )}
+                    </div>
+                    <div className="shrink-0 space-y-2 border-t border-slate-800 bg-[#181a25] px-3 py-3">
+                      <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+                        <span className="shrink-0">Size</span>
+                        <input
+                          type="range"
+                          min={STICKER_SIDE_MIN_CM}
+                          max={STICKER_SIDE_MAX_CM}
+                          step={0.5}
+                          value={stickerCm}
+                          onChange={(e) => setStickerCm(Number(e.target.value))}
+                          className="h-8 min-w-0 flex-1 accent-[#FF1493]"
+                          aria-label="Sticker size"
+                        />
+                        <span data-testid="sticker-size" className="shrink-0 whitespace-nowrap font-mono text-sm normal-case text-[#FF1493]">{formatPrintCm(stickerCm)} × {formatPrintCm(stickerCm)} cm</span>
+                      </label>
+                      <fieldset className="flex flex-wrap gap-3 text-xs text-slate-200">
+                        <legend className="sr-only">Shipping</legend>
+                        <label className="flex items-center gap-1.5">
+                          <input
+                            type="radio"
+                            name="sticker-shipping"
+                            checked={stickerShipping === 'untracked'}
+                            onChange={() => setStickerShipping('untracked')}
+                            className="accent-[#FF1493]"
+                          />
+                          Untracked A$4
+                        </label>
+                        <label className="flex items-center gap-1.5">
+                          <input
+                            type="radio"
+                            name="sticker-shipping"
+                            checked={stickerShipping === 'tracked'}
+                            onChange={() => setStickerShipping('tracked')}
+                            className="accent-[#FF1493]"
+                          />
+                          Tracked A$10
+                        </label>
+                      </fieldset>
+                      <p className="font-mono text-sm text-slate-100">
+                        {stickerQuote.ok ? (
+                          <span data-testid="print-price-sticker">Sticker A${moneyString(chargedTotal(stickerQuote.quote, 1))}</span>
+                        ) : (
+                          <span data-testid="print-price-sticker" className="text-red-400">{stickerQuote.error}</span>
+                        )}
+                      </p>
+                      <div className="flex justify-end">
+                        <button type="button" onClick={() => setActiveOrderTab('vinyl')} disabled={!stickerQuote.ok} className={BTN_PRIMARY}>Buy sticker</button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -959,21 +1029,15 @@ export default function App() {
                           })}
                         </div>
                       )}
-                      <p data-testid="print-prices" className="flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-xs text-slate-100">
+                      <p data-testid="print-prices" className="font-mono text-xs text-slate-100">
                         {apparelQuote?.ok ? (
                           <span data-testid="print-price-apparel">{PRODUCT_CATALOG[selectedProduct].label} A${moneyString(chargedTotal(apparelQuote.quote, 1))}</span>
                         ) : (
                           <span data-testid="print-price-apparel" className="text-red-400">{apparelQuote && !apparelQuote.ok ? apparelQuote.error : 'No price'}</span>
                         )}
-                        {stickerQuote?.ok ? (
-                          <span data-testid="print-price-sticker">Sticker A${moneyString(chargedTotal(stickerQuote.quote, 1))}</span>
-                        ) : (
-                          <span data-testid="print-price-sticker" className="text-red-400">{stickerQuote && !stickerQuote.ok ? stickerQuote.error : 'No price'}</span>
-                        )}
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-800 bg-[#181a25] px-3 py-2">
-                      <button type="button" onClick={() => setActiveOrderTab('vinyl')} disabled={!stickerQuote?.ok} className={BTN_PRIMARY}>Buy sticker</button>
                       <button type="button" onClick={() => setActiveOrderTab('apparel')} disabled={!apparelQuote?.ok} className={BTN_APPAREL}>Buy apparel</button>
                     </div>
                   </div>
@@ -1086,7 +1150,7 @@ export default function App() {
                     )}
                   </div>
                 </div>
-                {!isPhoneLayout && !showRightPanel && viewMode !== 'product' && (
+                {!isPhoneLayout && !showRightPanel && viewMode === 'sticker' && (
                   <button type="button" onClick={() => setShowRightPanel(true)} className="absolute bottom-3 right-3 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-[#181a25]/95 text-[#FF1493] shadow-lg shadow-black/30 transition-transform hover:scale-105 touch-manipulation sm:bottom-4 sm:right-4" aria-label="Open inspector">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
                   </button>
@@ -1132,7 +1196,7 @@ export default function App() {
               canvas={canvas}
               initialTab={activeOrderTab}
               preview={
-                livePrint
+                activeOrderTab === 'apparel' && livePrint
                   ? {
                       productId: selectedProduct,
                       productColor,
@@ -1142,7 +1206,17 @@ export default function App() {
                       widthCm: livePrint.widthCm,
                       heightCm: livePrint.heightCm,
                     }
-                  : undefined
+                  : activeOrderTab === 'vinyl'
+                    ? {
+                        productId: selectedProduct,
+                        productColor,
+                        activeView: 'front',
+                        placement: { posX: 0, posY: 0, scale: 1, rotationDeg: 0 },
+                        widthCm: stickerCm,
+                        heightCm: stickerCm,
+                        shippingOption: stickerShipping,
+                      }
+                    : undefined
               }
               onClose={() => setActiveOrderTab(null)}
             />

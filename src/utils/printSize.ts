@@ -29,6 +29,10 @@ export interface PrintBox {
 export const CHEST_LOGO_CM = 10;
 export const MEDIUM_PRINT_CM = 20;
 
+/** Sticker shop slider. Inside the 2 cm minimum and the 30 cm short-side cap. */
+export const STICKER_SIDE_MIN_CM = 3;
+export const STICKER_SIDE_MAX_CM = 30;
+
 const ADULT_INCHES: Record<ApparelSize, { widthIn: number; heightIn: number }> = {
   XS: { widthIn: 9, heightIn: 11 },
   S: { widthIn: 10, heightIn: 12 },

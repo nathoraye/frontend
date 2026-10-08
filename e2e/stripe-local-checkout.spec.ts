@@ -10,15 +10,19 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('Product Preview → Buy Sticker → local checkout → jobs board', async ({ page }) => {
+test('Sticker → Buy Sticker → local checkout → jobs board', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText(/west vinyl studio/i)).toBeVisible();
 
-  await page.getByRole('button', { name: /product preview/i }).click();
-  await expect(page.getByRole('button', { name: /buy sticker/i })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'Sticker', exact: true }).click();
+  await expect(page.getByTestId('sticker-panel')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: /buy sticker/i })).toBeVisible();
+  await expect(page.getByTestId('print-price-apparel')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /buy apparel/i })).toHaveCount(0);
   await expect(page.getByText(/vinyl from/i)).toHaveCount(0);
   await expect(page.getByText(/apparel from/i)).toHaveCount(0);
-  const sizeLabel = (await page.getByTestId('print-size').innerText()).trim();
+  await page.getByRole('radio', { name: /tracked/i }).check();
+  const sizeLabel = (await page.getByTestId('sticker-size').innerText()).trim();
   const stickerLabel = (await page.getByTestId('print-price-sticker').innerText()).trim();
   const stickerAmount = stickerLabel.match(/A\$([\d.]+)/)?.[1];
   const sizeMatch = sizeLabel.match(/([\d.]+)\s*×\s*([\d.]+)/);
@@ -48,11 +52,11 @@ test('Product Preview → Buy Sticker → local checkout → jobs board', async 
 
   let createResp: {
     ok: boolean;
-    posted: { orderConfig: { widthCm: number; heightCm: number; amount?: number } };
+    posted: { orderConfig: { widthCm: number; heightCm: number; amount?: number; shippingOption?: string } };
     created: { amount?: string };
   } | null = null;
   await page.route('**/api/stripe/create-checkout-session', async (route) => {
-    const posted = route.request().postDataJSON() as { orderConfig: { widthCm: number; heightCm: number; amount?: number } };
+    const posted = route.request().postDataJSON() as { orderConfig: { widthCm: number; heightCm: number; amount?: number; shippingOption?: string } };
     const response = await route.fetch();
     const text = await response.text();
     createResp = { ok: response.ok(), posted, created: JSON.parse(text) as { amount?: string } };
@@ -65,6 +69,7 @@ test('Product Preview → Buy Sticker → local checkout → jobs board', async 
   expect(createResp!.posted.orderConfig.widthCm).toBe(Number(sizeMatch![1]));
   expect(createResp!.posted.orderConfig.heightCm).toBe(Number(sizeMatch![2]));
   expect(createResp!.posted.orderConfig.amount).toBeUndefined();
+  expect(createResp!.posted.orderConfig.shippingOption).toBe('tracked');
   expect(createResp!.created.amount).toBe(stickerAmount);
 
   const orderId = new URL(page.url()).searchParams.get('orderId');
@@ -105,6 +110,8 @@ test('Product Preview → Buy Apparel inherits colour/size/placement', async ({ 
 
   await page.getByRole('button', { name: /product preview/i }).click();
   await expect(page.getByRole('button', { name: /buy apparel/i })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('print-price-sticker')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /buy sticker/i })).toHaveCount(0);
 
   await page.getByLabel('Product').selectOption('tshirt');
   await page.getByLabel('Garment size').selectOption('L');

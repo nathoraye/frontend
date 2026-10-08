@@ -14,6 +14,7 @@ async function phoneChrome(page: Page, width: number) {
   await expect(page.getByRole('button', { name: 'Open inspector' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Toggle inspector' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Design' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sticker', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Product', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Undo (Ctrl+Z)' })).toHaveCount(0);
 
@@ -29,6 +30,7 @@ async function phoneChrome(page: Page, width: number) {
       menu: box(document.querySelector('[aria-label="Open sidebar"]')),
       badge: box(document.querySelector('[data-testid="cut-ready-badge"]')),
       design: box([...document.querySelectorAll('button')].find((el) => el.textContent?.trim() === 'Design') ?? null),
+      sticker: box([...document.querySelectorAll('button')].find((el) => el.textContent?.trim() === 'Sticker') ?? null),
       product: box([...document.querySelectorAll('button')].find((el) => el.textContent?.trim() === 'Product') ?? null),
       inspector: box(document.querySelector('[aria-label="Toggle inspector"]')),
       canvas: box(document.querySelector('canvas.lower-canvas')),
@@ -41,6 +43,7 @@ async function phoneChrome(page: Page, width: number) {
   expect(metrics.menu).toBeTruthy();
   expect(metrics.badge).toBeTruthy();
   expect(metrics.design).toBeTruthy();
+  expect(metrics.sticker).toBeTruthy();
   expect(metrics.product).toBeTruthy();
   expect(metrics.inspector).toBeTruthy();
   expect(metrics.canvas).toBeTruthy();
@@ -48,7 +51,8 @@ async function phoneChrome(page: Page, width: number) {
   for (const pair of [
     [metrics.menu, metrics.badge],
     [metrics.badge, metrics.design],
-    [metrics.design, metrics.product],
+    [metrics.design, metrics.sticker],
+    [metrics.sticker, metrics.product],
     [metrics.product, metrics.inspector],
   ] as const) {
     expect(overlaps(pair[0]!, pair[1]!)).toBe(false);

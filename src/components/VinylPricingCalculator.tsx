@@ -24,8 +24,8 @@ export interface QuoteDraft {
 
 interface VinylPricingCalculatorProps {
   initialProduct?: ProductType;
-  /** Size and product already chosen on the product screen. Editors stay hidden. */
-  locked?: { product: ProductType; widthCm: number; heightCm: number };
+  /** Size, product, and shipping already chosen. Editors stay hidden. */
+  locked?: { product: ProductType; widthCm: number; heightCm: number; shippingOption?: ShippingOption };
   onQuote?: (state: { draft: QuoteDraft; result: QuoteResult }) => void;
 }
 
@@ -46,7 +46,7 @@ export function VinylPricingCalculator({
   const [heightCm, setHeightCm] = useState(() => locked?.heightCm ?? defaultSizeCm(initialProduct).heightCm);
   const [designType, setDesignType] = useState<DesignType>('graphic');
   const [textDensity, setTextDensity] = useState<TextDensity>('standard');
-  const [shippingOption, setShippingOption] = useState<ShippingOption>('untracked');
+  const [shippingOption, setShippingOption] = useState<ShippingOption>(locked?.shippingOption ?? 'untracked');
 
   const draft = useMemo<QuoteDraft>(
     () => ({
