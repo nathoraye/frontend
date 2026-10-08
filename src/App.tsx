@@ -533,7 +533,8 @@ export default function App() {
         };
         actives.forEach(obj => applyColor(obj)); setBrushColor(hexColor);
     } else { actives.forEach(obj => { obj.set({ [key]: val } as Record<string, unknown>); obj.set({ dirty: true }); }); if (key === 'opacity' && typeof val === 'number') setOpacity(val * 100); }
-    canvas.requestRenderAll(); saveHistorySnapshot(canvas);
+    canvas.requestRenderAll();
+    saveHistorySnapshot(canvas, key === 'textAlign');
   };
 
   useCanvasEvents({ canvas, matOverlayRef, isProcessingRef, tool, brushColor, brushSize, brushType, wandTolerance, wandMode, eraserMode, setIsTracing, setQuickMenu, updateUIFromSelection, saveHistorySnapshot, traceImage, setTool, quickMenuRef, eraserTargetRef, isNodeEditing, onNodeEditToggle: toggleNodeEdit, trackLineApiRef });

@@ -240,7 +240,11 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
 
             {activeObj?.type === 'i-text' && (
               <div>
-                <div className="mb-4">
+                <TextAlignControl
+                  value={(activeObj as fabric.IText).textAlign}
+                  onChange={(next) => handlePropChange('textAlign', next)}
+                />
+                <div className="mb-4 mt-4">
                   <FontPicker 
                     currentFont={(activeObj as fabric.IText).fontFamily || 'Arial'} 
                     onSelectFont={(fontName) => handlePropChange('fontFamily', fontName)} 
@@ -382,6 +386,55 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
     </aside>
   );
 });
+
+type TextAlign = 'left' | 'center' | 'right';
+
+function normalizeTextAlign(value: string | undefined): TextAlign {
+  if (value === 'center' || value === 'right') return value;
+  return 'left';
+}
+
+function TextAlignControl({
+  value,
+  onChange,
+}: {
+  value: string | undefined;
+  onChange: (next: TextAlign) => void;
+}) {
+  const align = normalizeTextAlign(value);
+
+  const options: { id: TextAlign; label: string }[] = [
+    { id: 'left', label: 'Left' },
+    { id: 'center', label: 'Centre' },
+    { id: 'right', label: 'Right' },
+  ];
+
+  return (
+    <div>
+      <div className="mb-2 text-xs font-bold">Align</div>
+      <div role="group" aria-label="Text alignment" data-testid="text-align" className="flex gap-1 rounded-lg border border-slate-700 bg-[#0f111a] p-1">
+        {options.map((option) => {
+          const selected = align === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              data-testid={`text-align-${option.id}`}
+              aria-pressed={selected}
+              onClick={() => {
+                if (selected) return;
+                onChange(option.id);
+              }}
+              className={`min-h-11 flex-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${selected ? 'bg-[#FF1493] text-black' : 'text-slate-300 hover:bg-slate-800'}`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function InspectorBtn({ icon, onClick, tooltip }: { icon: React.ReactNode; onClick: () => void; tooltip?: string }) {
   return (
