@@ -29,9 +29,10 @@ export interface PrintBox {
 export const CHEST_LOGO_CM = 10;
 export const MEDIUM_PRINT_CM = 20;
 
-/** Sticker shop slider. Inside the 2 cm minimum and the 30 cm short-side cap. */
+/** Sticker shop. Each side is at least 3 cm. Neither side exceeds 60 cm, and the shorter side is at most 30 cm. */
 export const STICKER_SIDE_MIN_CM = 3;
-export const STICKER_SIDE_MAX_CM = 30;
+export const STICKER_SHORT_MAX_CM = 30;
+export const STICKER_LONG_MAX_CM = 60;
 
 const ADULT_INCHES: Record<ApparelSize, { widthIn: number; heightIn: number }> = {
   XS: { widthIn: 9, heightIn: 11 },
@@ -58,6 +59,27 @@ const FIXED_PRINT_CM: Partial<Record<ProductId, PrintBox>> = {
 
 export function roundPrintCm(value: number): number {
   return Math.round(value * 10) / 10;
+}
+
+function clampStickerSide(value: number): number {
+  if (!Number.isFinite(value)) return STICKER_SIDE_MIN_CM;
+  const rounded = Math.round(value * 10) / 10;
+  return Math.min(STICKER_LONG_MAX_CM, Math.max(STICKER_SIDE_MIN_CM, rounded));
+}
+
+/** Keep a sticker inside 3 cm and 30×60 cm. The side not being edited shrinks when both would exceed 30. */
+export function clampStickerSize(
+  widthCm: number,
+  heightCm: number,
+  edited: 'width' | 'height',
+): { widthCm: number; heightCm: number } {
+  let width = clampStickerSide(widthCm);
+  let height = clampStickerSide(heightCm);
+  if (Math.min(width, height) > STICKER_SHORT_MAX_CM) {
+    if (edited === 'width') height = STICKER_SHORT_MAX_CM;
+    else width = STICKER_SHORT_MAX_CM;
+  }
+  return { widthCm: width, heightCm: height };
 }
 
 export function formatPrintCm(value: number): string {

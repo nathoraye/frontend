@@ -46,8 +46,7 @@ import {
   MEDIUM_PRINT_CM,
   printSizeCm,
   scaleForLongestSide,
-  STICKER_SIDE_MAX_CM,
-  STICKER_SIDE_MIN_CM,
+  clampStickerSize,
 } from './utils/printSize';
 import { tracedSvgToObject } from './utils/placeTracedSvg';
 import { rasterToImageData, yieldToPaint } from './utils/tracePrep';
@@ -187,7 +186,8 @@ export default function App() {
   const [productSize, setProductSize] = useState<string>('M');
   const [activeProductView, setActiveProductView] = useState<string>('front');
   const [productPlacement, setProductPlacement] = useState<ProductPlacement>({ posX: 0, posY: 0, scale: 1, rotationDeg: 0 });
-  const [stickerCm, setStickerCm] = useState(10);
+  const [stickerWidthCm, setStickerWidthCm] = useState(10);
+  const [stickerHeightCm, setStickerHeightCm] = useState(10);
   const [stickerShipping, setStickerShipping] = useState<ShippingOption>('untracked');
   const [designSnapshot, setDesignSnapshot] = useState<string | null>(null);
 
@@ -646,8 +646,8 @@ export default function App() {
   const apparelType = productTypeFromCatalog(selectedProduct);
   const stickerQuote = quoteOrder({
     productType: 'decal',
-    widthCm: stickerCm,
-    heightCm: stickerCm,
+    widthCm: stickerWidthCm,
+    heightCm: stickerHeightCm,
     designType: 'graphic',
     shippingOption: stickerShipping,
   });
@@ -865,20 +865,45 @@ export default function App() {
                       )}
                     </div>
                     <div className="shrink-0 space-y-2 border-t border-slate-800 bg-[#181a25] px-3 py-3">
-                      <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
-                        <span className="shrink-0">Size</span>
-                        <input
-                          type="range"
-                          min={STICKER_SIDE_MIN_CM}
-                          max={STICKER_SIDE_MAX_CM}
-                          step={0.5}
-                          value={stickerCm}
-                          onChange={(e) => setStickerCm(Number(e.target.value))}
-                          className="h-8 min-w-0 flex-1 accent-[#FF1493]"
-                          aria-label="Sticker size"
-                        />
-                        <span data-testid="sticker-size" className="shrink-0 whitespace-nowrap font-mono text-sm normal-case text-[#FF1493]">{formatPrintCm(stickerCm)} × {formatPrintCm(stickerCm)} cm</span>
-                      </label>
+                      <div className="flex gap-2">
+                        <label className="flex min-w-0 flex-1 flex-col gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Width
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            min={3}
+                            max={60}
+                            step={0.1}
+                            value={stickerWidthCm}
+                            aria-label="Sticker width"
+                            onChange={(e) => {
+                              const next = clampStickerSize(Number(e.target.value), stickerHeightCm, 'width');
+                              setStickerWidthCm(next.widthCm);
+                              setStickerHeightCm(next.heightCm);
+                            }}
+                            className="h-11 w-full rounded border border-slate-700 bg-[#0f111a] px-2 font-mono text-sm normal-case text-slate-100"
+                          />
+                        </label>
+                        <label className="flex min-w-0 flex-1 flex-col gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Height
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            min={3}
+                            max={60}
+                            step={0.1}
+                            value={stickerHeightCm}
+                            aria-label="Sticker height"
+                            onChange={(e) => {
+                              const next = clampStickerSize(stickerWidthCm, Number(e.target.value), 'height');
+                              setStickerWidthCm(next.widthCm);
+                              setStickerHeightCm(next.heightCm);
+                            }}
+                            className="h-11 w-full rounded border border-slate-700 bg-[#0f111a] px-2 font-mono text-sm normal-case text-slate-100"
+                          />
+                        </label>
+                      </div>
+                      <p data-testid="sticker-size" className="font-mono text-sm text-[#FF1493]">{formatPrintCm(stickerWidthCm)} × {formatPrintCm(stickerHeightCm)} cm</p>
                       <fieldset className="flex flex-wrap gap-3 text-xs text-slate-200">
                         <legend className="sr-only">Shipping</legend>
                         <label className="flex items-center gap-1.5">
@@ -1213,8 +1238,8 @@ export default function App() {
                         productColor,
                         activeView: 'front',
                         placement: { posX: 0, posY: 0, scale: 1, rotationDeg: 0 },
-                        widthCm: stickerCm,
-                        heightCm: stickerCm,
+                        widthCm: stickerWidthCm,
+                        heightCm: stickerHeightCm,
                         shippingOption: stickerShipping,
                       }
                     : undefined

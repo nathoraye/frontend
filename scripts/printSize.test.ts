@@ -6,8 +6,10 @@ import {
   maxPrintCm,
   printSizeCm,
   scaleForLongestSide,
-  STICKER_SIDE_MAX_CM,
+  STICKER_LONG_MAX_CM,
+  STICKER_SHORT_MAX_CM,
   STICKER_SIDE_MIN_CM,
+  clampStickerSize,
 } from '../src/utils/printSize.ts';
 
 test('adult full front follows the inch chart and the 30 cm width cap', () => {
@@ -65,24 +67,30 @@ test('hoodie print price stays flat under 900 cm² and rises once the max print 
   assert.equal(moneyString(chargedTotal(extraQuote.quote, 1)), '72.36');
 });
 
-test('the sticker slider stays inside the existing decal caps', () => {
+test('sticker width and height stay inside 3 cm and 30 by 60 cm', () => {
   assert.equal(STICKER_SIDE_MIN_CM, 3);
-  assert.equal(STICKER_SIDE_MAX_CM, 30);
-  const small = quoteOrder({
-    productType: 'decal',
-    widthCm: STICKER_SIDE_MIN_CM,
-    heightCm: STICKER_SIDE_MIN_CM,
-    designType: 'graphic',
-    shippingOption: 'untracked',
-  });
-  const large = quoteOrder({
-    productType: 'decal',
-    widthCm: STICKER_SIDE_MAX_CM,
-    heightCm: STICKER_SIDE_MAX_CM,
-    designType: 'graphic',
-    shippingOption: 'tracked',
-  });
-  assert.equal(small.ok && large.ok, true);
+  assert.equal(STICKER_SHORT_MAX_CM, 30);
+  assert.equal(STICKER_LONG_MAX_CM, 60);
+  assert.deepEqual(clampStickerSize(1, 70, 'width'), { widthCm: 3, heightCm: 60 });
+  assert.deepEqual(clampStickerSize(45, 70, 'width'), { widthCm: 45, heightCm: 30 });
+  assert.deepEqual(clampStickerSize(45, 50, 'height'), { widthCm: 30, heightCm: 50 });
+  assert.deepEqual(clampStickerSize(20, 60, 'width'), { widthCm: 20, heightCm: 60 });
+  const untracked = (widthCm: number, heightCm: number) => {
+    const quote = quoteOrder({
+      productType: 'decal',
+      widthCm,
+      heightCm,
+      designType: 'graphic',
+      shippingOption: 'untracked',
+    });
+    assert.equal(quote.ok, true);
+    if (!quote.ok) return '';
+    return moneyString(chargedTotal(quote.quote, 1));
+  };
+  assert.equal(untracked(10, 10), '18.00');
+  assert.equal(untracked(30, 30), '32.00');
+  assert.equal(untracked(20, 60), '39.80');
+  assert.equal(untracked(30, 60), '43.10');
 });
 
 test('an 18 by 16.8 cm sticker uses the longest-side curve and ignores a client total', () => {
