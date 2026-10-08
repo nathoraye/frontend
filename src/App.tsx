@@ -21,6 +21,7 @@ import { TracePreviewModal } from './components/TracePreviewModal';
 import { OrderModal } from './components/OrderModal';
 import { ApparelMockupViewer } from './components/ApparelMockupViewer';
 import { StudioNoticeHost } from './components/StudioNoticeHost';
+import { StudioTour } from './components/StudioTour';
 import { CutReadyBadge } from './components/CutReadyPanel';
 import { inspectObjectsForCut } from './utils/cutReady';
 import { notifyStudio } from './utils/studioNotice';
@@ -48,6 +49,7 @@ import {
   writeLocalAiQuota,
   type AiQuota,
 } from './utils/aiArtwork';
+import { TOUR_STEPS, isTourDismissed, markTourDismissed } from './utils/studioTour';
 
 type AppTool = 'select' | 'draw' | 'track-line' | 'wand' | 'bucket' | 'eraser';
 type ViewMode = 'sticker' | 'product';
@@ -105,6 +107,13 @@ export default function App() {
   const [isPhoneLayout, setIsPhoneLayout] = useState<boolean>(() =>
     typeof window === 'undefined' ? false : window.matchMedia('(max-width: 639px)').matches
   );
+  const [tourOpen, setTourOpen] = useState(() => typeof window !== 'undefined' && !isTourDismissed());
+  const [tourStep, setTourStep] = useState(0);
+  const [toolBeforeTour, setToolBeforeTour] = useState<AppTool | null>(() =>
+    typeof window !== 'undefined' && !isTourDismissed() ? 'select' : null,
+  );
+  const tourReplayRef = useRef<HTMLButtonElement>(null);
+  const tourOpenRef = useRef(tourOpen);
    
   const [activeObj, setActiveObj] = useState<fabric.Object | null>(null);
   const [brushColor, setBrushColor] = useState<string>('#FF1493'); 
@@ -150,6 +159,36 @@ export default function App() {
   const [activeOrderTab, setActiveOrderTab] = useState<'vinyl' | 'apparel' | null>(null);
 
   const [viewMode, setViewMode] = useState<ViewMode>('sticker');
+  const tourRevealKey = tourOpen ? `${tourStep}:${isMobileLayout ? 'phone' : 'desk'}` : 'closed';
+  const [appliedTourReveal, setAppliedTourReveal] = useState<string | null>(() =>
+    typeof window !== 'undefined' && !isTourDismissed() ? null : 'closed',
+  );
+  if (appliedTourReveal !== tourRevealKey) {
+    setAppliedTourReveal(tourRevealKey);
+    const step = tourOpen ? TOUR_STEPS[tourStep] : null;
+    if (step) {
+      setViewMode('sticker');
+      if (step.tool === 'wand') {
+        setTool('wand');
+        setWandMode('erase');
+      } else if (toolBeforeTour) {
+        setTool(toolBeforeTour);
+      }
+      if (step.reveal === 'tools') {
+        setShowLeftPanel(true);
+        if (isMobileLayout) setShowRightPanel(false);
+      } else if (step.reveal === 'canvas') {
+        if (isMobileLayout) {
+          setShowLeftPanel(false);
+          setShowRightPanel(false);
+        }
+      } else {
+        setShowRightPanel(true);
+        if (isMobileLayout) setShowLeftPanel(false);
+        if (step.tab) setActiveTab(step.tab);
+      }
+    }
+  }
   const [selectedProduct, setSelectedProduct] = useState<ProductId>('hoodie');
   const [productColor, setProductColor] = useState<string>(PRODUCT_CATALOG.hoodie.colorOptions[0]);
   const [productSize, setProductSize] = useState<string>('M');
@@ -506,7 +545,7 @@ export default function App() {
     const updateLayout = () => {
       const mobile = mediaQuery.matches;
       setIsMobileLayout(mobile);
-      if (mobile) {
+      if (mobile && !tourOpenRef.current) {
         setShowRightPanel(false);
         setShowLeftPanel(false);
       }
@@ -524,6 +563,23 @@ export default function App() {
     phoneQuery.addEventListener?.('change', updatePhone);
     return () => phoneQuery.removeEventListener?.('change', updatePhone);
   }, []);
+
+  const replayTour = useCallback(() => {
+    tourOpenRef.current = true;
+    setToolBeforeTour((previous) => previous ?? tool);
+    setViewMode('sticker');
+    setTourStep(0);
+    setTourOpen(true);
+  }, [tool]);
+
+  const dismissTour = useCallback(() => {
+    markTourDismissed();
+    tourOpenRef.current = false;
+    setTourOpen(false);
+    if (toolBeforeTour) setTool(toolBeforeTour);
+    setToolBeforeTour(null);
+    window.setTimeout(() => tourReplayRef.current?.focus(), 0);
+  }, [toolBeforeTour]);
  
   const deleteSelected = useCallback(() => {
     if (!canvas || isProcessingRef.current) return; 
@@ -548,6 +604,7 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
+      if (tourOpen) return;
       if (isProcessingRef.current || document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT') return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) handleRedo(canvas); else handleUndo(canvas); }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); handleRedo(canvas); }
@@ -576,7 +633,7 @@ export default function App() {
       }
     };
     window.addEventListener('keydown', handleKeyDown); return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, canvas, saveHistorySnapshot, deleteSelected, isNodeEditing, exitNodeEdit, canEditActive, toggleNodeEdit, activeObj]);
+  }, [handleUndo, handleRedo, canvas, saveHistorySnapshot, deleteSelected, isNodeEditing, exitNodeEdit, canEditActive, toggleNodeEdit, activeObj, tourOpen]);
 
   return (
     <div className="relative flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-[#0f111a] font-sans text-slate-200 select-none pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
@@ -611,6 +668,7 @@ export default function App() {
               <button type="button" onClick={() => handleRedo(canvas)} className="flex h-11 w-11 items-center justify-center rounded-md text-slate-300 touch-manipulation" title="Redo (Ctrl+Y)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
               <button type="button" onClick={() => { if (canvas) { canvas.clear(); void clearSavedCanvas(); saveHistorySnapshot(canvas, true); } }} className="flex h-11 w-11 items-center justify-center rounded-md text-slate-400 touch-manipulation" title="Clear Mat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
               <a href="/policies" className="px-2 text-[10px] font-bold tracking-wider text-slate-400 uppercase">Info</a>
+              <button type="button" ref={tourReplayRef} data-testid="studio-tour-replay" onClick={replayTour} className="h-11 shrink-0 px-1.5 text-[10px] font-bold text-slate-400 uppercase touch-manipulation">Tour</button>
               <div className="ml-auto flex items-center gap-1 pr-1">
                 <button
                   type="button"
@@ -650,6 +708,7 @@ export default function App() {
               >
                 Info
               </a>
+              <button type="button" ref={tourReplayRef} data-testid="studio-tour-replay" onClick={replayTour} className="shrink-0 text-[10px] font-bold tracking-wider text-slate-400 uppercase hover:text-[#FF1493]">Tour</button>
               <div className="mx-1 hidden h-5 w-px bg-slate-800 sm:block"></div>
               <div className="flex items-center gap-1 rounded-lg bg-slate-500/5 p-1">
                 <button onClick={() => handleUndo(canvas)} className="min-h-9 min-w-9 rounded-md p-1.5 text-slate-300 transition-colors hover:bg-slate-700/50 touch-manipulation" title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
@@ -757,7 +816,7 @@ export default function App() {
 
                 {viewMode === 'sticker' && tool === 'wand' && (
                   <div className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-fuchsia-500/30 bg-[#1e2230]/95 p-1 shadow-xl touch-manipulation">
-                    <button type="button" onClick={() => setWandMode('erase')} className={`min-h-10 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'erase' ? 'bg-fuchsia-500 text-black' : 'text-slate-300 hover:text-white'}`}>Erase Color</button>
+                    <button type="button" data-tour="erase-color" onClick={() => setWandMode('erase')} className={`min-h-10 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'erase' ? 'bg-fuchsia-500 text-black' : 'text-slate-300 hover:text-white'}`}>Erase Color</button>
                     <button type="button" onClick={() => setWandMode('extract')} className={`min-h-10 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${wandMode === 'extract' ? 'bg-fuchsia-500 text-black' : 'text-slate-300 hover:text-white'}`}>Extract Shape</button>
                   </div>
                 )}
@@ -1036,6 +1095,7 @@ export default function App() {
               onClose={() => setActiveOrderTab(null)}
             />
         )}
+        <StudioTour open={tourOpen} stepIndex={tourStep} onStep={setTourStep} onDismiss={dismissTour} />
         <StudioNoticeHost />
     </div>
   );

@@ -18,6 +18,15 @@
         "value": "montserrat",
         "createdAt": "2026-10-06T23:06:08.810Z",
         "reason": "Existing default text object in addText. This edit does not introduce the face; DESIGN.md documents the UI chrome stack."
+      },
+      {
+        "rule": "ai-color-palette",
+        "value": "*",
+        "files": [
+          "src/components/RightInspector.tsx"
+        ],
+        "createdAt": "2026-10-07T05:11:11.473Z",
+        "reason": "Agent: indigo offset heading is pre-existing product UI and stays unchanged; this edit only mounts Trace to Razor SVG for the studio tour"
       }
     ]
   }

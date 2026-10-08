@@ -102,7 +102,7 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
     <aside className={`w-full max-w-[320px] md:w-[320px] border-l ${borderCol} ${bgPanel} flex flex-col z-20 shrink-0 shadow-[-10px_0_30px_rgba(0,0,0,0.05)] touch-manipulation pointer-events-auto h-full`}>
       <div className={`flex border-b ${borderCol}`}>
         <button onClick={() => setActiveTab('design')} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-colors ${activeTab==='design' ? 'text-[#FF1493] border-b-2 border-[#FF1493] bg-[#FF1493]/5' : `${textMuted} hover:${textMain}`}`}>Design</button>
-        <button onClick={() => setActiveTab('layers')} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-colors ${activeTab==='layers' ? 'text-[#FF1493] border-b-2 border-[#FF1493] bg-[#FF1493]/5' : `${textMuted} hover:${textMain}`}`}>Layers</button>
+        <button type="button" data-tour="layers-tab" onClick={() => setActiveTab('layers')} className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-colors ${activeTab==='layers' ? 'text-[#FF1493] border-b-2 border-[#FF1493] bg-[#FF1493]/5' : `${textMuted} hover:${textMain}`}`}>Layers</button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-6 custom-scrollbar">
@@ -325,25 +325,24 @@ export const RightInspector: React.FC<RightInspectorProps> = React.memo((props) 
               </div>
             )}
 
-            {activeObj && (
-              <div className="mt-2">
+            <div className="mt-2">
                 <h3 className={`text-[10px] uppercase font-bold tracking-widest text-blue-500 mb-3`}>Master Vector Trace</h3>
-                <button onClick={handleVectorTrace} disabled={isTracing} className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-900/20 flex justify-center items-center gap-2">
-                  {isTracing ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>}
-                  {isTracing ? 'Calculating Paths...' : 'Trace to Razor SVG'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleStackedVectorTrace}
-                  disabled={isTracing}
-                  className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-900/20 flex justify-center items-center gap-2"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="5" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="15" width="18" height="4" rx="1"/></svg>
-                  Trace layered SVG
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" data-tour="trace-svg" onClick={handleVectorTrace} disabled={!activeObj || isTracing} className="flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-2 py-2 text-center text-[11px] font-bold leading-tight text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50">
+                    {isTracing ? 'Calculating Paths...' : 'Trace to Razor SVG'}
+                  </button>
+                  <button
+                    type="button"
+                    data-tour="trace-layered"
+                    onClick={handleStackedVectorTrace}
+                    disabled={!activeObj || isTracing}
+                    className="flex min-h-11 items-center justify-center rounded-xl border border-slate-600 bg-transparent px-2 py-2 text-center text-[11px] font-bold leading-tight text-slate-100 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Trace layered SVG
+                  </button>
+                </div>
                 <p className={`text-[10px] mt-3 leading-relaxed ${textMuted}`}>Select a raster image to preview a colour vector trace before it replaces the photo. Layered SVG stacks a black underbase plus one cut sheet per colour for Cricut.</p>
               </div>
-            )}
           </>
         )}
 
