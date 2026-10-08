@@ -9,7 +9,11 @@ test.beforeEach(async ({ page }) => {
 async function addMultilineText(page: Page, width: number) {
   await page.setViewportSize({ width, height: width < 640 ? 812 : 800 });
   await page.goto('/');
-  await expect(page.getByText(/west vinyl studio/i)).toBeVisible();
+  if (width < 640) {
+    await expect(page.getByTestId('studio-header')).toBeVisible();
+  } else {
+    await expect(page.getByText(/west vinyl studio/i)).toBeVisible();
+  }
   if (width < 640) {
     await page.getByRole('button', { name: 'Open sidebar' }).click();
   }
