@@ -1,5 +1,7 @@
-import { generateArtworkImage } from './imageProvider.js';
-import { sanitizeImagePrompt, wrapVinylPrompt } from './imagePrompt.js';
+import { flattenArtworkBytes } from './imageFlatten.js';
+import { activeImageProvider, generateArtworkImage } from './imageProvider.js';
+import { isLogoPrompt, letteringFromPrompt, sanitizeImagePrompt, wrapVinylPrompt } from './imagePrompt.js';
+import { renderStencilWordmark } from './imageWordmark.js';
 import {
   IMAGE_QUOTA_LIMIT,
   readImageQuota,
@@ -35,7 +37,17 @@ export async function createArtwork(rawPrompt, req, nowMs = Date.now()) {
   }
 
   try {
-    const image = await generateArtworkImage(wrapVinylPrompt(prompt));
+    // Keyless Pollinations (Sana) draws a mascot for names like "hunnid" and
+    // cannot spell the wordmark. Set those prompts locally. Other providers
+    // still receive the logo wrap. Icon prompts are flattened to black on white
+    // so gray fringe does not become extra cut paths.
+    let image;
+    if (isLogoPrompt(prompt) && activeImageProvider() === 'pollinations') {
+      image = renderStencilWordmark(letteringFromPrompt(prompt));
+    } else {
+      const generated = await generateArtworkImage(wrapVinylPrompt(prompt));
+      image = flattenArtworkBytes(generated.bytes, generated.contentType);
+    }
     return {
       image: `data:${image.contentType};base64,${image.bytes.toString('base64')}`,
       contentType: image.contentType,

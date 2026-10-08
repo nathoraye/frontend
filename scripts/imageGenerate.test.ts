@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
+import jpeg from 'jpeg-js';
+import { PNG } from 'pngjs';
 import generateHandler from '../api/generate.js';
 import stickerHandler from '../api/generate-sticker.js';
 import { createArtwork } from '../api/_lib/imageGenerate.js';
@@ -8,12 +10,16 @@ import {
   resetImageProviderForTests,
   setImageFetchForTests,
 } from '../api/_lib/imageProvider.js';
+import { flattenArtworkBytes } from '../api/_lib/imageFlatten.js';
 import {
   IMAGE_PROMPT_MAX_LENGTH,
   VINYL_PROMPT_SUFFIX,
+  isLogoPrompt,
+  letteringFromPrompt,
   sanitizeImagePrompt,
   wrapVinylPrompt,
 } from '../api/_lib/imagePrompt.js';
+import { renderStencilWordmark } from '../api/_lib/imageWordmark.js';
 import {
   IMAGE_QUOTA_LIMIT,
   clearImageQuotaMemoryForTests,
@@ -24,8 +30,7 @@ import {
   setImageQuotaDurableStoreForTests,
 } from '../api/_lib/imageQuota.js';
 
-const SUFFIX =
-  'die-cut vinyl sticker design, bold clean outlines, solid flat shapes, minimal detail, high contrast, pure white background, no gradients, no photorealism, stencil cut-ready';
+const SUFFIX = VINYL_PROMPT_SUFFIX;
 
 function pngBytes() {
   const bytes = Buffer.alloc(48, 7);
@@ -79,8 +84,18 @@ function req(ip: string, body?: unknown, method = 'POST') {
 
 describe('artwork prompt, provider, and quota', { concurrency: 1 }, () => {
   test('vinyl wrapper uses the cut-ready suffix', () => {
-    assert.equal(VINYL_PROMPT_SUFFIX, SUFFIX);
-    assert.equal(wrapVinylPrompt('a bold star'), `a bold star, ${SUFFIX}`);
+    assert.match(VINYL_PROMPT_SUFFIX, /Solid flat black shapes only/);
+    assert.match(VINYL_PROMPT_SUFFIX, /no text, no letters/);
+    assert.equal(wrapVinylPrompt('a bold star'), `a bold star. ${SUFFIX}`);
+    assert.equal(isLogoPrompt('a bold black cat head'), false);
+    assert.equal(isLogoPrompt('a collection of cats'), false);
+    assert.equal(isLogoPrompt('hunnid collection logo'), true);
+    assert.equal(isLogoPrompt('west vinyl studio wordmark'), true);
+    assert.equal(letteringFromPrompt('hunnid collection logo'), 'HUNNID COLLECTION');
+    assert.equal(letteringFromPrompt('bold wordmark that says NORTH'), 'NORTH');
+    assert.match(wrapVinylPrompt('hunnid collection logo'), /"HUNNID COLLECTION"/);
+    assert.match(wrapVinylPrompt('hunnid collection logo'), /no face/);
+    assert.doesNotMatch(wrapVinylPrompt('a bold black cat head'), /HUNNID|wordmark|no face/);
   });
 
   test('sanitizer trims, caps length, and blocks obvious abuse', () => {
@@ -101,6 +116,7 @@ describe('artwork prompt, provider, and quota', { concurrency: 1 }, () => {
     assert.equal(url.searchParams.get('width'), '1024');
     assert.equal(url.searchParams.get('height'), '1024');
     assert.equal(url.searchParams.get('nologo'), 'true');
+    assert.equal(url.searchParams.get('enhance'), 'false');
     assert.equal(url.searchParams.get('seed'), '42');
     assert.equal(url.searchParams.get('referrer'), 'westvinylstudio.com');
   });
@@ -179,6 +195,7 @@ describe('artwork prompt, provider, and quota', { concurrency: 1 }, () => {
         calls.push(String(url));
         assert.match(String(url), /image\.pollinations\.ai\/prompt\//);
         assert.match(String(url), /nologo=true/);
+        assert.match(String(url), /enhance=false/);
         assert.match(String(url), /width=1024/);
         assert.match(String(url), /height=1024/);
         assert.match(String(url), /referrer=westvinylstudio\.com/);
@@ -299,5 +316,81 @@ describe('artwork prompt, provider, and quota', { concurrency: 1 }, () => {
       resetImageProviderForTests();
       resetImageQuotaForTests();
     }
+  });
+
+  test('a logo prompt is a local wordmark and does not call the image host', async () => {
+    resetImageQuotaForTests();
+    resetImageProviderForTests();
+    const prevProvider = process.env.IMAGE_PROVIDER;
+    delete process.env.IMAGE_PROVIDER;
+    let called = false;
+    try {
+      setImageFetchForTests(async () => {
+        called = true;
+        return imageResponse(pngBytes());
+      });
+      const result = await createArtwork('hunnid collection logo', req('203.0.113.70'));
+      assert.equal(called, false);
+      assert.match(result.image, /^data:image\/png;base64,/);
+      const png = PNG.sync.read(Buffer.from(result.image.replace(/^data:image\/png;base64,/, ''), 'base64'));
+      assert.equal(png.width, 1024);
+      assert.equal(png.data[0], 255);
+      let ink = 0;
+      for (let i = 0; i < png.data.length; i += 4) if (png.data[i] === 0) ink += 1;
+      assert.ok(ink > 1000, `wordmark should have black ink (${ink})`);
+      const direct = renderStencilWordmark('HUNNID COLLECTION');
+      assert.equal(direct.contentType, 'image/png');
+    } finally {
+      if (prevProvider === undefined) delete process.env.IMAGE_PROVIDER;
+      else process.env.IMAGE_PROVIDER = prevProvider;
+      resetImageProviderForTests();
+      resetImageQuotaForTests();
+    }
+  });
+
+  test('flatten snaps a gray jpeg to black ink on white paper', () => {
+    const width = 24;
+    const height = 24;
+    const data = Buffer.alloc(width * height * 4);
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = 210;
+      data[i + 1] = 210;
+      data[i + 2] = 210;
+      data[i + 3] = 255;
+    }
+    for (let y = 8; y < 16; y += 1) {
+      for (let x = 8; x < 16; x += 1) {
+        const i = (y * width + x) * 4;
+        data[i] = 30;
+        data[i + 1] = 30;
+        data[i + 2] = 30;
+      }
+    }
+    for (const [x, y] of [[20, 22], [21, 22], [22, 23], [2, 2], [3, 2], [2, 3]]) {
+      const i = (y * width + x) * 4;
+      data[i] = 0;
+      data[i + 1] = 0;
+      data[i + 2] = 0;
+    }
+    // A stroke that enters the corner from the main shape must stay.
+    for (let y = 14; y <= 23; y += 1) {
+      const i = (y * width + 14) * 4;
+      data[i] = 0;
+      data[i + 1] = 0;
+      data[i + 2] = 0;
+    }
+    const encoded = jpeg.encode({ data, width, height }, 90);
+    const flat = flattenArtworkBytes(Buffer.from(encoded.data), 'image/jpeg');
+    assert.equal(flat.contentType, 'image/png');
+    const png = PNG.sync.read(flat.bytes);
+    assert.deepEqual([png.data[0], png.data[1], png.data[2]], [255, 255, 255]);
+    const center = ((12 * width) + 12) * 4;
+    assert.deepEqual([png.data[center], png.data[center + 1], png.data[center + 2]], [0, 0, 0]);
+    const speck = ((22 * width) + 20) * 4;
+    assert.equal(png.data[speck], 255);
+    const stray = ((2 * width) + 2) * 4;
+    assert.equal(png.data[stray], 255);
+    const joined = ((22 * width) + 14) * 4;
+    assert.equal(png.data[joined], 0);
   });
 });

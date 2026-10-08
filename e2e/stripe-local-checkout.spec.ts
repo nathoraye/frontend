@@ -64,7 +64,9 @@ test('Sticker → Buy Sticker → local checkout → jobs board', async ({ page 
     await route.fulfill({ response, body: text });
   });
 
-  await Promise.all([page.waitForURL(/\/order\/success/), localBtn.click()]);
+  // Dispatch the click on the button itself. In headless CI the sticky footer
+  // can sit under another layer long enough that a normal click waits out the test.
+  await Promise.all([page.waitForURL(/\/order\/success/), localBtn.click({ force: true })]);
   expect(createResp).toBeTruthy();
   expect(createResp!.ok).toBeTruthy();
   expect(createResp!.posted.orderConfig.widthCm).toBe(Number(sizeMatch![1]));
