@@ -6,7 +6,11 @@ import generateHandler from '../api/generate.js';
 import stickerHandler from '../api/generate-sticker.js';
 import { createArtwork } from '../api/_lib/imageGenerate.js';
 import {
+  GATEWAY_CHAT_URL,
+  GATEWAY_IMAGES_URL,
+  activeImageProvider,
   buildPollinationsImageUrl,
+  gatewayImageModel,
   resetImageProviderForTests,
   setImageFetchForTests,
 } from '../api/_lib/imageProvider.js';
@@ -186,7 +190,9 @@ describe('artwork prompt, provider, and quota', { concurrency: 1 }, () => {
     resetImageQuotaForTests();
     resetImageProviderForTests();
     const prevProvider = process.env.IMAGE_PROVIDER;
+    const prevGatewayKey = process.env.AI_GATEWAY_API_KEY;
     delete process.env.IMAGE_PROVIDER;
+    delete process.env.AI_GATEWAY_API_KEY;
     const calls: string[] = [];
     let failFluxOnce = true;
     const ip = '203.0.113.40';
@@ -250,6 +256,8 @@ describe('artwork prompt, provider, and quota', { concurrency: 1 }, () => {
     } finally {
       if (prevProvider === undefined) delete process.env.IMAGE_PROVIDER;
       else process.env.IMAGE_PROVIDER = prevProvider;
+      if (prevGatewayKey === undefined) delete process.env.AI_GATEWAY_API_KEY;
+      else process.env.AI_GATEWAY_API_KEY = prevGatewayKey;
       resetImageProviderForTests();
       resetImageQuotaForTests();
     }
@@ -258,6 +266,10 @@ describe('artwork prompt, provider, and quota', { concurrency: 1 }, () => {
   test('a provider timeout is a friendly error and does not spend the daily slot', async () => {
     resetImageQuotaForTests();
     resetImageProviderForTests();
+    const prevProvider = process.env.IMAGE_PROVIDER;
+    const prevGatewayKey = process.env.AI_GATEWAY_API_KEY;
+    delete process.env.IMAGE_PROVIDER;
+    delete process.env.AI_GATEWAY_API_KEY;
     const ip = '203.0.113.50';
     try {
       setImageFetchForTests(async () => {
@@ -280,6 +292,10 @@ describe('artwork prompt, provider, and quota', { concurrency: 1 }, () => {
       );
       assert.equal((await readImageQuota(req(ip))).remaining, IMAGE_QUOTA_LIMIT);
     } finally {
+      if (prevProvider === undefined) delete process.env.IMAGE_PROVIDER;
+      else process.env.IMAGE_PROVIDER = prevProvider;
+      if (prevGatewayKey === undefined) delete process.env.AI_GATEWAY_API_KEY;
+      else process.env.AI_GATEWAY_API_KEY = prevGatewayKey;
       resetImageProviderForTests();
       resetImageQuotaForTests();
     }
@@ -322,7 +338,9 @@ describe('artwork prompt, provider, and quota', { concurrency: 1 }, () => {
     resetImageQuotaForTests();
     resetImageProviderForTests();
     const prevProvider = process.env.IMAGE_PROVIDER;
+    const prevGatewayKey = process.env.AI_GATEWAY_API_KEY;
     delete process.env.IMAGE_PROVIDER;
+    delete process.env.AI_GATEWAY_API_KEY;
     let called = false;
     try {
       setImageFetchForTests(async () => {
@@ -343,6 +361,117 @@ describe('artwork prompt, provider, and quota', { concurrency: 1 }, () => {
     } finally {
       if (prevProvider === undefined) delete process.env.IMAGE_PROVIDER;
       else process.env.IMAGE_PROVIDER = prevProvider;
+      if (prevGatewayKey === undefined) delete process.env.AI_GATEWAY_API_KEY;
+      else process.env.AI_GATEWAY_API_KEY = prevGatewayKey;
+      resetImageProviderForTests();
+      resetImageQuotaForTests();
+    }
+  });
+
+  test('a gateway key selects AI Gateway and posts the vinyl prompt', async () => {
+    resetImageQuotaForTests();
+    resetImageProviderForTests();
+    const prevProvider = process.env.IMAGE_PROVIDER;
+    const prevKey = process.env.AI_GATEWAY_API_KEY;
+    const prevModel = process.env.AI_GATEWAY_IMAGE_MODEL;
+    const seen: {
+      url?: string;
+      authorization?: string;
+      body?: {
+        model?: string;
+        modalities?: string[];
+        prompt?: string;
+        size?: string;
+        messages?: { content?: string }[];
+      };
+    } = {};
+    try {
+      delete process.env.IMAGE_PROVIDER;
+      delete process.env.AI_GATEWAY_IMAGE_MODEL;
+      process.env.AI_GATEWAY_API_KEY = 'test-gateway-key';
+      assert.equal(activeImageProvider(), 'gateway');
+      assert.equal(gatewayImageModel(), 'bfl/flux-2-klein-4b');
+      const png = pngBytes().toString('base64');
+      setImageFetchForTests(async (url: string, init?: { headers?: Record<string, string>; body?: string }) => {
+        seen.url = String(url);
+        seen.authorization = init?.headers?.Authorization;
+        seen.body = JSON.parse(String(init?.body || '{}'));
+        const body = seen.body as { model?: string; messages?: { content?: string }[] };
+        if (String(url) === GATEWAY_CHAT_URL) {
+          return {
+            ok: true,
+            status: 200,
+            async json() {
+              return {
+                choices: [{
+                  message: {
+                    images: [{ type: 'image_url', image_url: { url: `data:image/png;base64,${png}` } }],
+                  },
+                }],
+              };
+            },
+          };
+        }
+        assert.equal(body.model, 'bfl/flux-2-klein-4b');
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return { data: [{ b64_json: png }] };
+          },
+        };
+      });
+      const result = await createArtwork('a bold star', req('203.0.113.80'));
+      assert.equal(seen.url, GATEWAY_IMAGES_URL);
+      assert.equal(seen.authorization, 'Bearer test-gateway-key');
+      assert.equal(seen.body?.model, 'bfl/flux-2-klein-4b');
+      assert.equal(seen.body?.size, '1024x1024');
+      assert.match(String(seen.body?.prompt), /a bold star/);
+      assert.match(String(seen.body?.prompt), /Solid flat black shapes only/);
+      assert.match(result.image, /^data:image\/png;base64,/);
+
+      process.env.AI_GATEWAY_IMAGE_MODEL = 'google/gemini-3.1-flash-image-preview';
+      const gemini = await createArtwork('a bold moon', req('203.0.113.82'));
+      assert.equal(seen.url, GATEWAY_CHAT_URL);
+      assert.equal(seen.body?.model, 'google/gemini-3.1-flash-image-preview');
+      assert.deepEqual(seen.body?.modalities, ['image']);
+      assert.match(gemini.image, /^data:image\/png;base64,/);
+    } finally {
+      if (prevProvider === undefined) delete process.env.IMAGE_PROVIDER;
+      else process.env.IMAGE_PROVIDER = prevProvider;
+      if (prevKey === undefined) delete process.env.AI_GATEWAY_API_KEY;
+      else process.env.AI_GATEWAY_API_KEY = prevKey;
+      if (prevModel === undefined) delete process.env.AI_GATEWAY_IMAGE_MODEL;
+      else process.env.AI_GATEWAY_IMAGE_MODEL = prevModel;
+      resetImageProviderForTests();
+      resetImageQuotaForTests();
+    }
+  });
+
+  test('gateway without a key does not call the host or spend quota', async () => {
+    resetImageQuotaForTests();
+    resetImageProviderForTests();
+    const prevProvider = process.env.IMAGE_PROVIDER;
+    const prevKey = process.env.AI_GATEWAY_API_KEY;
+    let called = false;
+    try {
+      process.env.IMAGE_PROVIDER = 'gateway';
+      delete process.env.AI_GATEWAY_API_KEY;
+      setImageFetchForTests(async () => {
+        called = true;
+        return imageResponse(pngBytes());
+      });
+      await assert.rejects(
+        () => createArtwork('a bold star', req('203.0.113.81')),
+        (error: { status?: number; message?: string }) => error.status === 500 && /not configured/.test(String(error.message)),
+      );
+      assert.equal(called, false);
+      assert.equal((await readImageQuota(req('203.0.113.81'))).remaining, IMAGE_QUOTA_LIMIT);
+    } finally {
+      if (prevProvider === undefined) delete process.env.IMAGE_PROVIDER;
+      else process.env.IMAGE_PROVIDER = prevProvider;
+      if (prevKey === undefined) delete process.env.AI_GATEWAY_API_KEY;
+      else process.env.AI_GATEWAY_API_KEY = prevKey;
       resetImageProviderForTests();
       resetImageQuotaForTests();
     }

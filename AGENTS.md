@@ -18,6 +18,6 @@ Standard scripts are in `package.json`: `dev`, `build` (`tsc -b && vite build`),
 ### Non-obvious notes
 
 - Copy `.env.example` → `.env` before running. Hosted Stripe Checkout needs server `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`. `VITE_STRIPE_PUBLISHABLE_KEY` is optional (Payment Element is no longer the checkout path). The design editor and local unverified order flow work without Stripe keys. `.env` is git-ignored.
-- AI artwork is `GET`/`POST /api/generate` (alias `/api/generate-sticker`), implemented in both `api/generate.js` and local `server.mjs`. It calls Pollinations from the server. No API key is required. Outbound internet is required for a real image. Core design + ordering does not need it.
+- AI artwork is `GET`/`POST /api/generate` (alias `/api/generate-sticker`), implemented in both `api/generate.js` and local `server.mjs`. With `AI_GATEWAY_API_KEY` set and `IMAGE_PROVIDER` unset, the server calls Vercel AI Gateway (`bfl/flux-2-klein-4b`). Otherwise it calls keyless Pollinations. Outbound internet is required for a real image. Core design + ordering does not need it. Local `node server.mjs` reads gitignored `.env` for empty variables.
 - The PWA service worker is disabled in dev (`devOptions.enabled: false` in `vite.config.ts`); it is only injected during `npm run build`.
 - There is no user authentication/login in the product.
