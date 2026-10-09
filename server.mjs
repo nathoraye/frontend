@@ -1,4 +1,7 @@
+import fs from 'node:fs';
 import http from 'node:http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { handleTraceRequest } from './api/trace.js';
 import ordersHandler from './api/orders.js';
 import { readJsonBody, readRawBody, sendBinary, sendJson, sendRouteError } from './api/_lib/http.js';
@@ -15,6 +18,39 @@ import {
 import { handleAdminLogin } from './api/_lib/adminSession.js';
 import generateHandler from './api/generate.js';
 import { readTrimmedEnv } from './api/_lib/stripe.js';
+
+// Local `node server.mjs` does not use Vite's env loader. Fill empty vars from
+// .env so the artwork key and Stripe secrets are available. Never overrides
+// an already-set variable, and never runs this file on Vercel.
+function loadLocalEnv() {
+  if (process.env.VERCEL) return;
+  const file = path.join(path.dirname(fileURLToPath(import.meta.url)), '.env');
+  let text;
+  try {
+    text = fs.readFileSync(file, 'utf8');
+  } catch {
+    return;
+  }
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq <= 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
+    if (process.env[key]) continue;
+    let value = trimmed.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"'))
+      || (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] = value;
+  }
+}
+
+loadLocalEnv();
 
 // Local/dev convenience when Stripe secrets are absent. Vercel stays fail-closed.
 if (!readTrimmedEnv('STRIPE_SECRET_KEY') && process.env.ALLOW_UNVERIFIED_ORDERS == null) {

@@ -1,11 +1,15 @@
 /**
- * Artwork providers. Pollinations is the default and needs no API key.
- * Cloudflare Workers AI and Hugging Face are selected with IMAGE_PROVIDER
- * and their own credentials. Those env vars are optional and unused unless set.
+ * Artwork providers. Pollinations is the keyless default.
+ * When AI_GATEWAY_API_KEY is set and IMAGE_PROVIDER is unset, artwork goes
+ * through Vercel AI Gateway. Cloudflare and Hugging Face stay opt-in.
  */
 
 export const POLLINATIONS_REFERRER = 'westvinylstudio.com';
 export const IMAGE_FETCH_TIMEOUT_MS = 35_000;
+export const GATEWAY_IMAGE_TIMEOUT_MS = 50_000;
+export const GATEWAY_CHAT_URL = 'https://ai-gateway.vercel.sh/v1/chat/completions';
+export const GATEWAY_IMAGES_URL = 'https://ai-gateway.vercel.sh/v1/images/generations';
+export const DEFAULT_GATEWAY_IMAGE_MODEL = 'bfl/flux-2-klein-4b';
 
 const POLLINATIONS_ORIGIN = 'https://image.pollinations.ai/prompt';
 
@@ -19,9 +23,16 @@ export function resetImageProviderForTests() {
   fetchImpl = globalThis.fetch.bind(globalThis);
 }
 
+export function gatewayImageModel() {
+  const model = String(process.env.AI_GATEWAY_IMAGE_MODEL || DEFAULT_GATEWAY_IMAGE_MODEL).trim();
+  return model || DEFAULT_GATEWAY_IMAGE_MODEL;
+}
+
 export function activeImageProvider() {
-  const name = String(process.env.IMAGE_PROVIDER || 'pollinations').trim().toLowerCase();
-  return name || 'pollinations';
+  const explicit = String(process.env.IMAGE_PROVIDER || '').trim().toLowerCase();
+  if (explicit) return explicit;
+  if (String(process.env.AI_GATEWAY_API_KEY || '').trim()) return 'gateway';
+  return 'pollinations';
 }
 
 /**
@@ -95,15 +106,96 @@ async function readImageResponse(response) {
   return { bytes, contentType };
 }
 
-async function fetchImage(url, init) {
+async function fetchImage(url, init, timeoutMs = IMAGE_FETCH_TIMEOUT_MS) {
   try {
     return await fetchImpl(url, {
       ...init,
-      signal: AbortSignal.timeout(IMAGE_FETCH_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (cause) {
     throw artworkBusyError(cause);
   }
+}
+
+function imageFromDataUrl(url) {
+  if (typeof url !== 'string' || !url.startsWith('data:image/')) return null;
+  const match = /^data:(image\/[\w.+-]+);base64,([\s\S]+)$/.exec(url.trim());
+  if (!match) return null;
+  const bytes = Buffer.from(match[2].replace(/\s/g, ''), 'base64');
+  const contentType = sniffImage(bytes);
+  if (!contentType) return null;
+  return { bytes, contentType };
+}
+
+function gatewayImageFromPayload(payload) {
+  const encoded = payload?.data?.[0]?.b64_json;
+  if (typeof encoded === 'string' && encoded) {
+    const bytes = Buffer.from(encoded.replace(/\s/g, ''), 'base64');
+    const contentType = sniffImage(bytes);
+    if (contentType) return { bytes, contentType };
+  }
+  const direct = imageFromDataUrl(payload?.data?.[0]?.url);
+  if (direct) return direct;
+
+  const message = payload?.choices?.[0]?.message;
+  const parts = [];
+  if (Array.isArray(message?.images)) parts.push(...message.images);
+  if (Array.isArray(message?.content)) parts.push(...message.content);
+  for (const part of parts) {
+    const url = part?.image_url?.url || part?.url;
+    const image = imageFromDataUrl(url);
+    if (image) return image;
+  }
+  return null;
+}
+
+function gatewayUsesChat(model) {
+  return model.startsWith('google/') || model.includes('gemini');
+}
+
+async function generateGateway(prompt) {
+  const key = String(process.env.AI_GATEWAY_API_KEY || '').trim();
+  if (!key) {
+    throw providerError('AI Gateway image generation is not configured.', 500);
+  }
+  const model = gatewayImageModel();
+  const chat = gatewayUsesChat(model);
+  const response = await fetchImage(
+    chat ? GATEWAY_CHAT_URL : GATEWAY_IMAGES_URL,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(chat
+        ? {
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          modalities: ['image'],
+          stream: false,
+        }
+        : {
+          model,
+          prompt,
+          size: '1024x1024',
+          n: 1,
+        }),
+    },
+    GATEWAY_IMAGE_TIMEOUT_MS,
+  );
+  if (!response?.ok) {
+    throw artworkBusyError(new Error(`gateway status ${response?.status}`));
+  }
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (cause) {
+    throw artworkBusyError(cause);
+  }
+  const image = gatewayImageFromPayload(payload);
+  if (!image) throw artworkBusyError(new Error('gateway returned no image'));
+  return image;
 }
 
 async function generatePollinations(prompt) {
@@ -176,6 +268,9 @@ async function generateHuggingFace(prompt) {
 export async function generateArtworkImage(prompt) {
   const provider = activeImageProvider();
   if (provider === 'pollinations') return generatePollinations(prompt);
+  if (provider === 'gateway' || provider === 'ai-gateway' || provider === 'vercel') {
+    return generateGateway(prompt);
+  }
   if (provider === 'cloudflare') return generateCloudflare(prompt);
   if (provider === 'huggingface' || provider === 'hf') return generateHuggingFace(prompt);
   throw providerError('Artwork provider is not available.', 500);
