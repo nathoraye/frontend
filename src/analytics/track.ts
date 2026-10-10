@@ -228,7 +228,7 @@ function valueParams(value?: number): Record<string, unknown> {
   return { currency: CURRENCY, value };
 }
 
-/** Load tags once. Safe to call before React renders. No-op when ids are unset. */
+/** Load tags once. Safe to call before React renders. Uses the configured analytics providers. */
 export function bootCustomerAnalytics(pathname = typeof window === 'undefined' ? '/' : window.location.pathname) {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
   if (isTrackerBlockedPath(pathname)) return;
@@ -242,13 +242,15 @@ export function bootCustomerAnalytics(pathname = typeof window === 'undefined' ?
   if (ga4) rememberGaClient(readStoredAttribution().gaClientId || '');
 
   const adsId = ga4 ? googleAdsConfigId() : '';
-  if (adsId) {
+  if (ga4) {
     installGtag();
     window.gtag?.('js', new Date());
-    window.gtag?.('config', adsId);
+    // Page views are already sent by trackPageView through the GA4 collector.
+    window.gtag?.('config', ga4, { send_page_view: false });
+    if (adsId) window.gtag?.('config', adsId);
     appendScript(
-      `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(adsId)}`,
-      'google-ads',
+      `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(ga4)}`,
+      'google-tag',
     );
   }
 
