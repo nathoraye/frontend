@@ -1,6 +1,7 @@
 /**
  * Ads and analytics configuration.
- * Every id is optional. An empty or invalid value keeps that provider off.
+ * GA4 defaults to the studio property; other providers are optional.
+ * An invalid configured value keeps that provider off.
  */
 
 const GA4_RE = /^G-[A-Z0-9]+$/;
@@ -34,7 +35,7 @@ export function isTrackerBlockedPath(pathname: string): boolean {
 }
 
 export function ga4MeasurementId(): string {
-  return accept('VITE_GA4_MEASUREMENT_ID', readVite('VITE_GA4_MEASUREMENT_ID'), GA4_RE);
+  return accept('VITE_GA4_MEASUREMENT_ID', readVite('VITE_GA4_MEASUREMENT_ID') || 'G-0NP4GQGMRB', GA4_RE);
 }
 
 /** AW-######### config id. A full AW-#########/label value still yields the AW- id. */
