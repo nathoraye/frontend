@@ -45,7 +45,7 @@ describe('public SEO files', () => {
   test('index.html exposes title, description, canonical, social tags, and business JSON-LD', async () => {
     const html = await fs.readFile(path.join(root, 'index.html'), 'utf8');
     assert.match(html, /<html lang="en-AU">/);
-    assert.match(html, /<title>West Vinyl Studio \| Custom Vinyl Decals &amp; Printed Apparel, Australia<\/title>/);
+    assert.match(html, /<title>West Vinyl Studio \| Custom Vinyl Decals, Stickers &amp; Apparel Australia<\/title>/);
     assert.match(html, /name="description"/);
     assert.match(html, /Custom vinyl decals and stickers/);
     assert.match(html, /Wentworth, NSW/);
@@ -54,7 +54,7 @@ describe('public SEO files', () => {
     assert.match(html, /<link rel="canonical" href="https:\/\/westvinylstudio\.com\/"\s*\/>/);
     assert.match(html, /property="og:title"/);
     assert.match(html, /property="og:description"/);
-    assert.match(html, /property="og:image" content="https:\/\/westvinylstudio\.com\/hoodie\.png"/);
+    assert.match(html, /property="og:image" content="https:\/\/westvinylstudio\.com\/og-preview\.jpg"/);
     assert.match(html, /name="twitter:card" content="summary_large_image"/);
     assert.match(html, /name="twitter:image"/);
     assert.match(html, /id="crawlable-summary"/);
@@ -85,6 +85,29 @@ describe('public SEO files', () => {
     assert.equal(data.areaServed?.name, 'Australia');
     assert.equal(data.telephone, undefined);
     assert.equal(data.email, undefined);
+  });
+
+  test('studio controls are excluded from snippets and the social JPEG is 1200 by 630', async () => {
+    const app = await fs.readFile(path.join(root, 'src/App.tsx'), 'utf8');
+    assert.match(app, /<div data-nosnippet="" className="relative flex h-\[100dvh\]/);
+    const html = await fs.readFile(path.join(root, 'index.html'), 'utf8');
+    assert.match(html, /property="og:image:width" content="1200"/);
+    assert.match(html, /property="og:image:height" content="630"/);
+    assert.match(html, /name="twitter:image" content="https:\/\/westvinylstudio\.com\/og-preview\.jpg"/);
+    const jpeg = await fs.readFile(path.join(root, 'public/og-preview.jpg'));
+    assert.equal(jpeg.readUInt16BE(0), 0xffd8);
+    let offset = 2;
+    let dimensions: number[] | undefined;
+    while (offset < jpeg.length) {
+      const marker = jpeg.readUInt16BE(offset);
+      const length = jpeg.readUInt16BE(offset + 2);
+      if (marker === 0xffc0 || marker === 0xffc2) {
+        dimensions = [jpeg.readUInt16BE(offset + 7), jpeg.readUInt16BE(offset + 5)];
+        break;
+      }
+      offset += 2 + length;
+    }
+    assert.deepEqual(dimensions, [1200, 630]);
   });
 
   test('the SPA rewrite does not claim sitemap.xml or robots.txt', async () => {

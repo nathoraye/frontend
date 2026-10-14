@@ -664,7 +664,7 @@ export default function App() {
     : '';
 
   return (
-    <div className="relative flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-[#0f111a] font-sans text-slate-200 select-none pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
+    <div data-nosnippet="" className="relative flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-[#0f111a] font-sans text-slate-200 select-none pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
         {isPhoneLayout ? (
           <header data-testid="studio-header" className="z-20 flex h-11 shrink-0 items-center gap-1 border-b border-slate-800 bg-[#181a25] px-1.5">
             <button
