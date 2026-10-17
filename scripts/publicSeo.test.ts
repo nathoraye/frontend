@@ -110,6 +110,19 @@ describe('public SEO files', () => {
     assert.deepEqual(dimensions, [1200, 630]);
   });
 
+  test('shared info-page navigation is excluded from snippets without excluding body copy', async () => {
+    const source = await fs.readFile(path.join(root, 'src/components/StudioInfoPage.tsx'), 'utf8');
+    const nav = source.match(/<nav\b[^>]*>([\s\S]*?)<\/nav>/);
+    assert.ok(nav);
+    assert.match(nav[0], /data-nosnippet=""/);
+    assert.match(nav[0], /aria-label="Site navigation"/);
+    for (const href of PUBLIC_PATHS) {
+      assert.ok(nav[1].includes(`href="${href}"`));
+    }
+    assert.match(source, /<div className="space-y-4 text-sm leading-relaxed text-slate-300">\{children\}<\/div>/);
+    assert.equal((source.match(/data-nosnippet/g) ?? []).length, 1);
+  });
+
   test('the SPA rewrite does not claim sitemap.xml or robots.txt', async () => {
     const vercel = JSON.parse(await fs.readFile(path.join(root, 'vercel.json'), 'utf8')) as {
       rewrites: { source: string; destination: string }[];
