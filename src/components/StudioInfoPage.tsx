@@ -34,7 +34,7 @@ function PageShell({
           <h1 className="font-mono text-3xl text-pink-500">{PAGES[page].title}</h1>
           <p className="text-sm text-slate-400">{PAGES[page].eyebrow}</p>
         </header>
-        <nav className="flex flex-wrap gap-3 font-mono text-xs text-slate-400">
+        <nav data-nosnippet="" aria-label="Site navigation" className="flex flex-wrap gap-3 font-mono text-xs text-slate-400">
           <a className="hover:text-pink-300" href="/">
             Studio
           </a>
