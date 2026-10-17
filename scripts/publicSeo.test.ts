@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { ROUTE_META } from '../src/utils/useRouteMeta.ts';
 import { describe, test } from 'node:test';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -121,6 +122,32 @@ describe('public SEO files', () => {
     }
     assert.match(source, /<div className="space-y-4 text-sm leading-relaxed text-slate-300">\{children\}<\/div>/);
     assert.equal((source.match(/data-nosnippet/g) ?? []).length, 1);
+  });
+
+  test('public info routes have unique nonempty metadata', () => {
+    const titles = new Set<string>();
+    const descriptions = new Set<string>();
+    for (const route of PUBLIC_PATHS.filter(route => route !== '/')) {
+      const meta = ROUTE_META[route];
+      assert.ok(meta.title.includes('West Vinyl Studio'));
+      assert.ok(meta.description.length > 50);
+      titles.add(meta.title);
+      descriptions.add(meta.description);
+    }
+    assert.equal(titles.size, 4);
+    assert.equal(descriptions.size, 4);
+  });
+
+  test('document routes do not eagerly import the canvas engine', async () => {
+    const main = await fs.readFile(path.join(root, 'src/main.tsx'), 'utf8');
+    assert.doesNotMatch(main, /canvasSerialize|from ['"]fabric/);
+    const routes = await fs.readFile(path.join(root, 'src/RootPage.tsx'), 'utf8');
+    assert.match(routes, /lazy\(\(\) => import\('\.\/App.tsx'\)\)/);
+    assert.match(routes, /<Suspense fallback=/);
+    const config = await fs.readFile(path.join(root, 'vite.config.ts'), 'utf8');
+    assert.match(config, /globIgnores: \['\*\*\/\*\.js'\]/);
+    const dock = await fs.readFile(path.join(root, 'src/components/LeftDock.tsx'), 'utf8');
+    assert.match(dock, /aria-label=\{tooltip\}/);
   });
 
   test('the SPA rewrite does not claim sitemap.xml or robots.txt', async () => {

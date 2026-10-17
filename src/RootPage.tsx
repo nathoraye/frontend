@@ -1,11 +1,13 @@
-import { useEffect } from 'react'
-import App from './App.tsx'
-import { JobsBoard } from './components/JobsBoard.tsx'
-import { OrderCancelPage } from './components/OrderCancelPage.tsx'
-import { OrderSuccessPage } from './components/OrderSuccessPage.tsx'
-import { StudioInfoPage, type InfoPageId } from './components/StudioInfoPage.tsx'
+import { lazy, Suspense, useEffect } from 'react'
+import { useRouteMeta } from './utils/useRouteMeta'
+import type { InfoPageId } from './components/StudioInfoPage.tsx'
 import { trackPageView } from './analytics/track'
 import { isTrackerBlockedPath } from './analytics/config'
+const App = lazy(() => import('./App.tsx'))
+const JobsBoard = lazy(() => import('./components/JobsBoard.tsx').then(module => ({ default: module.JobsBoard })))
+const OrderCancelPage = lazy(() => import('./components/OrderCancelPage.tsx').then(module => ({ default: module.OrderCancelPage })))
+const OrderSuccessPage = lazy(() => import('./components/OrderSuccessPage.tsx').then(module => ({ default: module.OrderSuccessPage })))
+const StudioInfoPage = lazy(() => import('./components/StudioInfoPage.tsx'))
 
 function currentPath() {
   return window.location.pathname.replace(/\/$/, '') || '/'
@@ -16,8 +18,9 @@ function isDocumentScrollPath(path: string) {
   return path !== '/'
 }
 
-export function RootPage() {
+function RoutePage() {
   const path = currentPath()
+  useRouteMeta(path)
   const documentScroll = isDocumentScrollPath(path)
 
   useEffect(() => {
@@ -52,4 +55,12 @@ export function RootPage() {
     return <StudioInfoPage page={path.slice(1) as InfoPageId} />
   }
   return <App />
+}
+
+export function RootPage() {
+  return (
+    <Suspense fallback={<div role="status" className="min-h-[100dvh] bg-[#0f111a] p-8 text-slate-200">Loading West Vinyl Studio…</div>}>
+      <RoutePage />
+    </Suspense>
+  )
 }
