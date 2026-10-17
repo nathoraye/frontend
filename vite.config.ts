@@ -5,8 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   build: {
-    // Fabric + studio stay in one client chunk (853.69 kB minified on the
-    // 2026-09-23 production build). Warn if that chunk grows past this.
+    // Studio is route-lazy; warn about growth without forcing eager vendor dependencies.
     chunkSizeWarningLimit: 900,
   },
   server: {
@@ -33,10 +32,21 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'icons/*.png', 'icons.svg', 'mockups/**/*.{svg,jpg,jpeg}', 'tshirt-front.svg', 'tshirt-back.svg'],
       workbox: {
         // Static assets: serve from cache, refresh in background
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff2}'],
+        // Do not eagerly download lazy-route JavaScript during service-worker install.
+        globPatterns: ['**/*.{css,html,ico,png,svg,jpg,jpeg,woff2}'],
+        globIgnores: ['**/*.js'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/sitemap\.xml$/, /^\/robots\.txt$/],
         runtimeCaching: [
+          {
+            // Fingerprinted route chunks are cached only after they are requested.
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && /^\/assets\/.*\.js$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'route-chunks',
+              expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
           {
             // Fonts and any external assets: cache-first with 30-day expiry
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,

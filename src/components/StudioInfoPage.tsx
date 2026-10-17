@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 export type InfoPageId = 'policies' | 'privacy' | 'terms' | 'contact';
 
@@ -16,14 +16,6 @@ function PageShell({
   page: InfoPageId;
   children: ReactNode;
 }) {
-  useEffect(() => {
-    const previous = document.title;
-    document.title = `${PAGES[page].title} · West Vinyl Studio`;
-    return () => {
-      document.title = previous;
-    };
-  }, [page]);
-
   return (
     <div className="min-h-[100dvh] bg-[#0f111a] px-4 py-8 text-slate-200">
       <article className="mx-auto w-full max-w-2xl space-y-6">

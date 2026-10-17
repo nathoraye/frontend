@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { registerCanvasCustomProperties } from './utils/canvasSerialize';
 import * as fabric from 'fabric'; 
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useCanvasEngine } from './hooks/useCanvasEngine';
 import { useHistoryEngine } from './hooks/useHistoryEngine';
 import { useAlignmentEngine } from './hooks/useAlignmentEngine'; 
@@ -18,8 +19,6 @@ import { RightInspector } from './components/RightInspector';
 import { CropModal } from './components/CropModal';
 import { ContourModal } from './components/ContourModal';
 import { TracePreviewModal } from './components/TracePreviewModal';
-import { OrderModal } from './components/OrderModal';
-import { ApparelMockupViewer } from './components/ApparelMockupViewer';
 import { PhoneStudioMenu } from './components/PhoneStudioMenu';
 import { StudioNoticeHost } from './components/StudioNoticeHost';
 import { StudioTour } from './components/StudioTour';
@@ -72,6 +71,11 @@ const BTN_PRIMARY = `${BTN} bg-[#FF1493] text-black hover:bg-[#d41270]`;
 const BTN_APPAREL = `${BTN} bg-[#10b981] text-black hover:bg-[#047857]`;
 const BTN_SECONDARY = `${BTN} border border-slate-600 bg-transparent text-slate-100 hover:bg-slate-800`;
 const BTN_QUIET = `${BTN} text-slate-300 hover:bg-slate-800 hover:text-white`;
+
+const OrderModal = lazy(() => import('./components/OrderModal'));
+const ApparelMockupViewer = lazy(() => import('./components/ApparelMockupViewer').then(module => ({ default: module.ApparelMockupViewer })));
+
+registerCanvasCustomProperties();
 
 export default function App() {
   const { canvasRef, containerRef, canvas } = useCanvasEngine();
@@ -944,6 +948,7 @@ export default function App() {
                 {viewMode === 'product' && (
                   <div className="absolute inset-0 flex flex-col bg-[#0f111a]">
                     <div className="flex-1 min-h-0">
+                      <Suspense fallback={<div role="status" className="h-full p-4 text-sm text-slate-400">Loading apparel preview…</div>}>
                       <ApparelMockupViewer
                         productId={selectedProduct}
                         color={productColor}
@@ -953,6 +958,7 @@ export default function App() {
                         interactive
                         onPlacementChange={setProductPlacement}
                       />
+                      </Suspense>
                     </div>
                     <div className="flex max-h-[34%] shrink-0 flex-wrap items-center gap-2 overflow-y-auto border-t border-slate-800 bg-[#181a25] p-2 sm:max-h-none sm:gap-3 sm:p-3">
                       <select
@@ -1218,6 +1224,7 @@ export default function App() {
 
         {/* --- INJECTED ROUTED STOREFRONT MODAL --- */}
         {activeOrderTab && canvas && (
+            <Suspense fallback={<div role="status" className="fixed inset-0 z-50 bg-slate-950/90 p-8 text-white">Loading checkout…</div>}>
             <OrderModal
               canvas={canvas}
               initialTab={activeOrderTab}
@@ -1246,6 +1253,7 @@ export default function App() {
               }
               onClose={() => setActiveOrderTab(null)}
             />
+            </Suspense>
         )}
         <StudioTour open={tourOpen} stepIndex={tourStep} onStep={setTourStep} onDismiss={dismissTour} />
         <StudioNoticeHost />
