@@ -33,21 +33,27 @@ Public pages for the offer, privacy, terms, and contact are `/policies`, `/priva
 ## Capabilities and Constraints
 
 - All pricing is calculated server-side in AUD via `src/lib/pricing.ts` (no GST; West Vinyl Studio is not GST registered). The browser cannot set the charged amount.
-- Single-colour decal vinyl starts at A$4.00 (`DECAL_VINYL_MIN`) and scales with the longest side (`longest * 0.7 + 2`) and aspect-ratio fill (`0.55 + 0.45 * (shortest / longest)`).
-- Product base prices (including standard print area up to 900 cm² for tee/hoodie/clock, 225 cm² for baby clothes, and 75 cm² for drink bottle; extra print above threshold is A$0.02/cm²):
-  - T-Shirt (`tee`): A$32.00
-  - Jumper / Hoodie & Sloppy Joe (`hoodie`): A$52.00
-  - Baby Clothes (`baby`): A$24.00
-  - Wall Clock (`clock`): A$28.00
-  - Drink Bottle (`bottle`): A$32.00
-- Design & weeding labour tiers: Standard Text (+A$0.00), Dense Text or Graphic (+A$5.00), Intricate (+A$12.00).
-- Shipping: Decals ship via Untracked Rigid Post (A$4.00) or Tracked Parcel Mailer (A$10.00). Apparel and hard goods ship via Standard AusPost Parcel (A$12.00).
-- Size limits (minimum 2×2 cm on all products):
-  - Decals, T-Shirts, Hoodies / Sloppy Joes: Max 30×60 cm (short side ≤ 30 cm, long side ≤ 60 cm)
-  - Wall Clock: Max 30×30 cm
-  - Baby Clothes: Max 25×25 cm
-  - Drink Bottle: Max 15×5 cm
-- Quantity is 1–100 (multiplies item subtotal; shipping is charged once per order).
+- Single-colour decal vinyl starts at A$4.00 (`DECAL_VINYL_MIN`) and scales with the longest side and aspect-ratio fill.
+- Product base prices:
+  - T-Shirt: A$32.00
+  - Jumper / Hoodie & Sloppy Joe: A$52.00
+  - Baby Clothes: A$24.00
+  - Wall Clock: A$28.00
+  - Drink Bottle: A$32.00
+- Design & weeding labour tiers:
+  - Standard Text: +A$0.00
+  - Dense Text or Graphic: +A$5.00
+  - Intricate: +A$12.00
+- Shipping:
+  - Decals: A$4.00 Untracked or A$10.00 Tracked
+  - Apparel and hard goods: A$12.00 Standard AusPost Parcel
+- Size limits:
+  - Decals, T-Shirts, Hoodies / Sloppy Joes: max 30×60 cm
+  - Wall Clock: max 30×30 cm
+  - Baby Clothes: max 25×25 cm
+  - Drink Bottle: max 15×5 cm
+  - Minimum 2×2 cm
+- Quantity is 1–100, with shipping charged once per order.
 - Sized garments (`tshirt`, `hoodie`, `sloppyJoe`, `babyClothes`) use XS–2XL.
 
 ## Brand Commitments
@@ -81,7 +87,6 @@ The studio is built for mouse, touch, and keyboard (undo, redo, copy, paste, del
 - The primary customer is a person ordering a one-off sticker or iron-on for themselves. The repo never names a trade shop, a designer handoff, or a wholesale role.
 - "Sloppy joe" is the shop's name for that garment and should stay on the label.
 - westvinylstudio.com is the public brand home. The Vercel hostname is a deploy target, not a second name.
-- The PWA `theme_color` `#863bff` is unused by the studio chrome. The implemented accent is hot pink `#FF1493`. Confirm whether the violet value is leftover.
 - AI generation is a real customer action on Vercel and should remain in the header even though local `server.mjs` cannot run it.
 - Nathan is the operator and the privacy contact. No other staff role was found.
 - Baby clothes, wall clocks, and drink bottles are live catalog items, not placeholders.
