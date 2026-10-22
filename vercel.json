@@ -23,7 +23,7 @@
     }
   ],
   "rewrites": [
-    { "source": "/((?!api/|sitemap\\.xml|robots\\.txt).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|\\.well-known/|sitemap\\.xml|robots\\.txt).*)", "destination": "/index.html" }
   ],
   "functions": {
     "api/generate.js": {
