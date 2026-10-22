@@ -24,7 +24,7 @@ The artwork is designed where it is ordered. The studio traces a photo to vector
 
 ## Operating Context
 
-The customer studio is `/`. Tools cover select, magic wand, brush, track line, paint bucket, eraser, text, basic shapes, image import, trace, offset, weld, node edit, and a weeding box. Vinyl orders set a cut size in centimetres and an optional permanent finish. Apparel and hard-good orders pick a catalog product, colour, view, garment size where it applies, and placement on a flat mockup.
+The customer studio is `/`. Tools cover select, magic wand, brush, track line, paint bucket, eraser, text, basic shapes, image import, trace, offset, weld, node edit, and a weeding box. Vinyl orders set a cut size in centimetres and an optional permanent finish. Apparel and hard-goods orders pick a catalog product, colour, view, garment size where it applies, and placement on a flat mockup.
 
 Checkout is a two-step modal: product review, then shipping. It creates a Stripe Checkout Session and redirects. Without Stripe keys, local development saves an unverified job instead. Paid and cancelled checkouts return to `/order/success` and `/order/cancel`.
 
@@ -32,24 +32,32 @@ Public pages for the offer, privacy, terms, and contact are `/policies`, `/priva
 
 ## Capabilities and Constraints
 
-- Vinyl sticker base price A$12.99. Permanent adhesive adds A$6.00. Shipping is a flat A$5.99. A standard vinyl sticker totals A$18.98.
-- Iron-on apparel base price A$24.99, plus the same shipping line (A$30.98 before quantity).
-- Quantity is 1–100. The server prices the order. The browser cannot set the charged amount.
-- Catalog: T-shirt, jumper/hoodie, sloppy joe, baby clothes, wall clock, drink bottle. Sized garments use XS–2XL.
-- Vinyl cut size in the checkout UI is 2–30 cm on each side.
-- Checkout is Stripe Checkout Sessions (`mode: payment`), completed by webhook and the success-page session check. Card numbers stay on Stripe.
-- AI image generation calls `/api/generate` (the older `/api/generate-sticker` path uses the same handler). The browser does not call the image host. Local `server.mjs` implements the route. Each IP gets 5 free generations per UTC day.
-- Customer-facing design work must leave Stripe checkout, webhooks, `/api/orders`, and admin-token behaviour unchanged.
-- Canonical origin recorded in the repo is `https://westvinylstudio.com`. This frontend also deploys as Vercel project `frontendwvs`.
+- All pricing is calculated server-side in AUD via `src/lib/pricing.ts` (no GST; West Vinyl Studio is not GST registered). The browser cannot set the charged amount.
+- Single-colour decal vinyl starts at A$4.00 (`DECAL_VINYL_MIN`) and scales with the longest side (`longest * 0.7 + 2`) and aspect-ratio fill (`0.55 + 0.45 * (shortest / longest)`).
+- Product base prices (including standard print area up to 900 cm² for tee/hoodie/clock, 225 cm² for baby clothes, and 75 cm² for drink bottle; extra print above threshold is A$0.02/cm²):
+  - T-Shirt (`tee`): A$32.00
+  - Jumper / Hoodie & Sloppy Joe (`hoodie`): A$52.00
+  - Baby Clothes (`baby`): A$24.00
+  - Wall Clock (`clock`): A$28.00
+  - Drink Bottle (`bottle`): A$32.00
+- Design & weeding labour tiers: Standard Text (+A$0.00), Dense Text or Graphic (+A$5.00), Intricate (+A$12.00).
+- Shipping: Decals ship via Untracked Rigid Post (A$4.00) or Tracked Parcel Mailer (A$10.00). Apparel and hard goods ship via Standard AusPost Parcel (A$12.00).
+- Size limits (minimum 2×2 cm on all products):
+  - Decals, T-Shirts, Hoodies / Sloppy Joes: Max 30×60 cm (short side ≤ 30 cm, long side ≤ 60 cm)
+  - Wall Clock: Max 30×30 cm
+  - Baby Clothes: Max 25×25 cm
+  - Drink Bottle: Max 15×5 cm
+- Quantity is 1–100 (multiplies item subtotal; shipping is charged once per order).
+- Sized garments (`tshirt`, `hoodie`, `sloppyJoe`, `babyClothes`) use XS–2XL.
 
 ## Brand Commitments
 
-The name is West Vinyl Studio. The short name is West Vinyl. Product copy states prices in AUD, names Wentworth as the place of making, and treats every sticker and garment as custom work made from the submitted artwork. The privacy contact is westvinylco@gmail.com. Identity in the interface is the wordmark plus the PWA icons. No separate logo lockup or tagline was found.
+The name is West Vinyl Studio. The short name is West Vinyl. Product copy states prices in AUD, names Wentworth as the place of making, and treats every sticker and garment as custom work made from the submitted artwork. The privacy contact is westvinylco@gmail.com. Identity in the interface is the wordmark plus the PWA icons. No separate logo lockup or tag line was found.
 
 ## Evidence on Hand
 
 - Offer, shipping, and returns copy: `src/components/StudioInfoPage.tsx`
-- Prices: `src/utils/orderPricing.ts` and the policies page
+- Prices: `src/lib/pricing.ts` and the policies page
 - Studio shell: `src/App.tsx`, `src/components/LeftDock.tsx`, `src/components/RightInspector.tsx`, `src/components/CutReadyPanel.tsx`
 - Checkout UI: `src/components/OrderModal.tsx`
 - Catalog: `src/three/productCatalog.ts`
@@ -77,4 +85,4 @@ The studio is built for mouse, touch, and keyboard (undo, redo, copy, paste, del
 - AI generation is a real customer action on Vercel and should remain in the header even though local `server.mjs` cannot run it.
 - Nathan is the operator and the privacy contact. No other staff role was found.
 - Baby clothes, wall clocks, and drink bottles are live catalog items, not placeholders.
-- Flat A$5.99 shipping and the country list are the current offer. No free-shipping threshold or local pickup was found.
+- Decal shipping options are A$4.00 untracked or A$10.00 tracked; apparel and hard goods ship via A$12.00 standard parcel. No free-shipping threshold or local pickup was found.
