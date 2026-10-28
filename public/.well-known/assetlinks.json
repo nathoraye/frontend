@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.westvinylstudio.app",
+      "sha256_cert_fingerprints": [
+        "1C:63:3C:1B:78:E3:95:AB:E6:1C:E9:B4:08:71:B8:89:C9:81:C2:EA:9E:BD:59:B0:E4:65:47:FF:90:A9:6E:22"
+      ]
+    }
+  }
+]

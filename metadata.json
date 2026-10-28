@@ -1,0 +1,8 @@
+{
+  "name": "West Vinyl Studio",
+  "description": "Design custom die-cut vinyl decals, weatherproof stickers, and personalised apparel online. Instant 2D & 3D live previews, no minimum orders, and fast Australia-wide shipping.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
