@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { ArrowRight, ArrowUpRight } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Check, Heart, MapPin, Mail, Palette, Gift, Compass } from 'lucide-react';
 import { DEPARTMENTS, type Department } from '../config/departments';
 import './DepartmentShop.css';
 
@@ -76,37 +76,73 @@ function ProductList({ department }: { department: Department }) {
   );
 }
 
+const DEPARTMENT_IMAGES: Record<string, { src: string; alt: string; action: string }> = {
+  custom: { src: '/shop/custom.webp', alt: 'White mountain vinyl decal on a vehicle window', action: 'Shop custom vinyl' },
+  crafts: { src: '/shop/crafts.webp', alt: 'Engraved wooden tree, Good Vibes keyring and handmade candle', action: 'Shop crafts' },
+  collectables: { src: '/shop/collectables.webp', alt: 'Vintage camera, books, compass and pocket watch on a wooden table', action: 'Shop collectables' },
+};
+
+function ShopWordmark() {
+  return <span className="shop-wordmark" aria-label="West Vinyl Studio"><span>West Vinyl</span><span>Studio</span></span>;
+}
+
 export default function DepartmentShop() {
   const initial = DEPARTMENTS.find(department => department.handle === new URLSearchParams(window.location.search).get('department')) || DEPARTMENTS[0];
   const [selected, setSelected] = useState(initial);
   const accent = { '--department-accent': selected.accentColor } as CSSProperties;
+  function selectDepartment(department: Department, scroll = false) {
+    setSelected(department);
+    const url = new URL(window.location.href);
+    url.searchParams.set('department', department.handle);
+    window.history.replaceState(null, '', url);
+    if (scroll) document.getElementById('department-collection')?.scrollIntoView({ behavior: 'instant', block: 'start' });
+  }
   return (
     <div className="department-shop" style={accent}>
+      <a className="shop-skip-link" href="#main-content">Skip to content</a>
+      <div className="shop-local-strip"><span><MapPin size={14} aria-hidden="true" /> Wentworth, NSW · Australia</span><span><Heart size={14} aria-hidden="true" /> Custom creations. Handmade goods. Curated finds.</span></div>
       <header className="department-header">
-        <a className="department-wordmark" href="/">West Vinyl Studio</a>
-        <nav aria-label="Site navigation"><a href="/">Design studio <ArrowUpRight size={16} aria-hidden="true" /></a><a href="/contact">Contact</a></nav>
+        <a href="/shop" className="shop-brand"><ShopWordmark /></a>
+        <nav aria-label="Site navigation">
+          <a className="shop-active-link" href="/shop" aria-current="page">Shop</a>
+          {DEPARTMENTS.map(department => <a key={department.id} href={`#department-${department.id}`} onClick={() => selectDepartment(department)}>{department.subhead}</a>)}
+          <a href="/">Design studio <ArrowUpRight size={14} aria-hidden="true" /></a>
+          <a href="/contact">Contact</a>
+        </nav>
       </header>
       <main id="main-content">
-        <div className="department-intro">
-          <h1>Custom. Crafted.<br />Collected.</h1>
-          <p>Explore West Vinyl, West Made and West Finds.<br />Choose your department to see what’s available.</p>
+        <section className="shop-hero" aria-labelledby="shop-hero-title">
+          <img className="shop-hero-image" src="/shop/hero.webp" alt="Off-road ute in the Australian bush at sunset beside a windmill" width="1024" height="572" fetchPriority="high" />
+          <div className="shop-hero-copy">
+            <h1 id="shop-hero-title">More than just vinyl.</h1>
+            <p className="shop-hero-subhead">A creative studio for all things unique!</p>
+            <p className="shop-hero-description">Custom vinyl, handmade crafts and curated vintage finds<br className="shop-desktop-break" /> — all in one place, right here at West Vinyl Studio.</p>
+            <a className="shop-primary-action" href="#departments">Explore our collections <ArrowRight size={18} aria-hidden="true" /></a>
+          </div>
+        </section>
+        <div id="departments" className="department-directory" aria-label="Departments">
+          {DEPARTMENTS.map(department => {
+            const image = DEPARTMENT_IMAGES[department.id];
+            return (
+              <section id={`department-${department.id}`} key={department.id} style={{ '--department-accent': department.accentColor } as CSSProperties} className="department-summary">
+                <img className="department-photo" src={image.src} alt={image.alt} width="825" height="1024" />
+                <div className="department-panel-copy">
+                  <h2>{department.name} <span>| {department.subhead}</span></h2>
+                  <p className="department-tagline">{department.tagline}</p>
+                  <ul>{department.features.map(feature => <li key={feature}><Check size={13} strokeWidth={3} aria-hidden="true" />{feature}</li>)}</ul>
+                  <button type="button" aria-label={image.action} aria-pressed={selected.id === department.id} aria-controls="department-collection" onClick={() => selectDepartment(department, true)}>
+                    {image.action} <ArrowRight size={16} aria-hidden="true" />
+                  </button>
+                </div>
+              </section>
+            );
+          })}
         </div>
-        <div className="department-directory" aria-label="Departments">
-          {DEPARTMENTS.map(department => (
-            <section key={department.id} style={{ '--department-accent': department.accentColor } as CSSProperties} className="department-summary">
-              <h2>{department.name}<span>{department.subhead}</span></h2>
-              <p className="department-tagline">{department.tagline}</p>
-              <ul>{department.features.map(feature => <li key={feature}>{feature}</li>)}</ul>
-              <button type="button" aria-pressed={selected.id === department.id} aria-controls="department-collection" onClick={() => {
-                setSelected(department);
-                const url = new URL(window.location.href);
-                url.searchParams.set('department', department.handle);
-                window.history.replaceState(null, '', url);
-              }}>
-                {selected.id === department.id ? 'Viewing products' : 'Explore products'} <ArrowRight size={18} aria-hidden="true" />
-              </button>
-            </section>
-          ))}
+        <div className="shop-values" aria-label="Our departments at a glance">
+          <span><Palette aria-hidden="true" /><span>Custom designs<br /><strong>Made your way</strong></span></span>
+          <span><Gift aria-hidden="true" /><span>Handmade gifts<br /><strong>Made with heart</strong></span></span>
+          <span><Compass aria-hidden="true" /><span>Curated finds<br /><strong>Worth discovering</strong></span></span>
+          <span><MapPin aria-hidden="true" /><span>Wentworth, NSW<br /><strong>Locally rooted</strong></span></span>
         </div>
         <section id="department-collection" aria-labelledby="department-collection-title" className="department-collection">
           <h2 id="department-collection-title">{selected.name} <span>/ {selected.subhead}</span></h2>
@@ -114,7 +150,11 @@ export default function DepartmentShop() {
           <ProductList key={selected.id} department={selected} />
         </section>
       </main>
-      <footer className="department-footer"><a href="/policies">Studio policies</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/contact">Contact</a></footer>
+      <footer className="department-footer">
+        <div className="shop-contact"><h2>Let's make it yours.</h2><p>Got an idea or looking for something special?</p><a href="/contact"><Mail size={18} aria-hidden="true" /> Get in touch <ArrowRight size={16} aria-hidden="true" /></a></div>
+        <div className="shop-footer-brand"><ShopWordmark /><p>Locally rooted. Creatively driven.</p></div>
+        <nav aria-label="Footer navigation"><a href="/policies">Studio policies</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/contact">Contact</a><span>West Vinyl Studio · Wentworth NSW · Australia</span></nav>
+      </footer>
     </div>
   );
 }

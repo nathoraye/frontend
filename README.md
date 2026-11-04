@@ -184,6 +184,14 @@ Google Ads: either import the GA4 `purchase` event, or set the Ads conversion id
 
 ## Department shop / Shopify
 
+The shop's visual direction follows the owner's supplied storefront reference: a purple
+brush-style typographic wordmark, the supplied ute sunset hero, and three photographic
+cyan/magenta/gold department panels. Optimized source photos and provenance are under
+`public/shop/`; the self-hosted Road Rage font includes its license under `public/fonts/`.
+Department imagery is illustrative, not an inventory claim. No newsletter, cart or social
+controls are shown without a working integration. The original logo asset was not supplied;
+the wordmark is live text, not a low-resolution crop of the reference.
+
 `/shop` adds West Vinyl (Custom), West Made (Crafts), and West Finds (Collectables).
 The existing `/` design studio and its Stripe checkout are unchanged. Desktop navigation
 and the phone studio menu link to the shop. Department branding, collection handles,
