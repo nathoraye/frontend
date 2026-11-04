@@ -38,6 +38,6 @@ export const DEPARTMENTS: Department[] = [
     handle: 'west-finds-collectables',
     accentColor: '#FFB800',
     badgeTag: 'dept:finds',
-    features: ['Vintage Collectibles', 'Secondhand Treasures', 'Retro Toys', 'Unique Household Finds', 'Curated Resale Products'],
+    features: ['Vintage Collectibles', 'Clothing', 'Secondhand Treasures', 'Retro Toys', 'Unique Household Finds', 'Curated Resale Products'],
   },
 ];
