@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import express, { type Request, type Response } from 'express';
 import { handleTraceRequest } from './api/trace.js';
 import ordersHandler from './api/orders.js';
+import departmentsHandler from './api/departments.js';
 import { readJsonBody, readRawBody, sendBinary, sendJson, sendRouteError } from './api/_lib/http.js';
 import {
   handleCreateCheckoutSession,
@@ -69,6 +70,10 @@ app.use('/api', async (req: Request, res: Response) => {
   try {
     if (req.method === 'OPTIONS') {
       return sendJson(res, 204, {});
+    }
+
+    if (url.pathname === '/api/departments') {
+      return departmentsHandler(req, res);
     }
 
     if (req.method === 'GET' && url.pathname === '/api/health') {

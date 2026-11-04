@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
 
 export const ROUTE_META: Record<string, { title: string; description: string }> = {
+  '/shop': {
+    title: 'Shop Custom, Crafts & Collectables | West Vinyl Studio',
+    description: 'Explore West Vinyl custom products, West Made crafts and West Finds collectables.',
+  },
   '/policies': {
     title: 'Store Policies, Pricing & Shipping Overview | West Vinyl Studio',
     description: 'Review West Vinyl Studio policies for custom vinyl decals and heat-pressed apparel. AUD pricing, Australia Post shipping rates, and ordering guidelines.',

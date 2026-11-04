@@ -29,6 +29,7 @@ export function PhoneStudioMenu({
       <button type="button" onClick={onUndo} className={itemClass} aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)">Undo</button>
       <button type="button" onClick={onRedo} className={itemClass} aria-label="Redo (Ctrl+Y)" title="Redo (Ctrl+Y)">Redo</button>
       <button type="button" onClick={onClear} className={itemClass} aria-label="Clear Mat" title="Clear Mat">Clear mat</button>
+      <a href="/shop" className={itemClass}>Shop</a>
       <a href="/policies" className={itemClass}>Info</a>
       <button type="button" ref={tourRef} data-testid="studio-tour-replay" onClick={onTour} className={itemClass}>
         Tour

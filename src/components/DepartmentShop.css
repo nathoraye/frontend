@@ -1,0 +1,54 @@
+.department-shop {
+  min-height: 100dvh;
+  background: #0f111a;
+  color: #e2e8f0;
+  padding: 0 clamp(20px, 5vw, 80px);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+.department-shop a, .department-shop button { text-underline-offset: 4px; }
+.department-shop a:focus-visible, .department-shop button:focus-visible { outline-color: var(--department-accent); }
+.department-header, .department-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; padding: 24px 0; }
+.department-header { justify-content: space-between; border-bottom: 1px solid #334155; }
+.department-wordmark { font-weight: 900; letter-spacing: .06em; }
+.department-header nav { display: flex; flex-wrap: wrap; gap: 24px; font-size: .875rem; }
+.department-shop a { display: inline-flex; align-items: center; gap: 6px; }
+.department-shop a:hover { color: var(--department-accent); }
+.department-shop main { max-width: 1440px; margin-inline: auto; }
+.department-intro { padding: clamp(40px, 6vw, 88px) 0 40px; display: flex; flex-wrap: wrap; gap: 24px 64px; align-items: end; }
+.department-intro h1 { font-size: clamp(2.75rem, 6vw, 5.5rem); line-height: 1.02; font-weight: 900; letter-spacing: -.035em; margin: 0; }
+.department-intro p { max-width: 44ch; line-height: 1.7; color: #94a3b8; }
+.department-directory { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-block: 1px solid #334155; }
+.department-summary { padding: 32px 24px; border-right: 1px solid #334155; display: flex; flex-direction: column; align-items: start; }
+.department-summary:first-child { padding-left: 0; }
+.department-summary:last-child { border-right: 0; }
+.department-summary h2 { font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 800; line-height: 1.15; color: var(--department-accent); }
+.department-summary h2 span { display: block; color: #e2e8f0; font-size: 1rem; font-weight: 500; margin-top: 8px; }
+.department-tagline { font-size: .75rem; font-weight: 800; letter-spacing: .06em; margin-top: 24px; min-height: 2.8em; }
+.department-summary ul { color: #94a3b8; font-size: .9375rem; line-height: 1.8; margin: 16px 0 28px; }
+.department-summary button { display: flex; gap: 16px; align-items: center; justify-content: space-between; margin-top: auto; min-height: 44px; padding: 10px 14px; border: 1px solid var(--department-accent); color: var(--department-accent); font-weight: 700; cursor: pointer; }
+.department-summary button:hover, .department-summary button[aria-pressed='true'] { background: var(--department-accent); color: #0f111a; }
+.department-collection { padding: 48px 0 64px; }
+.department-collection > h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 800; margin-bottom: 20px; }
+.department-collection > h2 span { font-size: 1rem; color: #94a3b8; font-weight: 400; }
+.department-studio-link, .department-description { line-height: 1.7; max-width: 70ch; margin-bottom: 24px; }
+.department-studio-link a { color: var(--department-accent); text-decoration: underline; }
+.department-status { padding: 24px; background: #181a25; line-height: 1.7; }
+.department-status button { min-height: 44px; margin-right: 24px; text-decoration: underline; cursor: pointer; }
+.department-status a { color: var(--department-accent); min-height: 44px; }
+.department-products { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px 20px; margin-top: 24px; }
+.department-product img, .department-no-image { width: 100%; aspect-ratio: 1; object-fit: contain; background: #181a25; }
+.department-no-image { display: grid; place-items: center; color: #94a3b8; }
+.department-product h3 { font-size: 1rem; font-weight: 700; margin-top: 16px; }
+.department-product p { margin-top: 8px; }
+.department-product a { min-height: 44px; text-decoration: underline; }
+.department-product-note, .department-product p span { color: #94a3b8; font-size: .875rem; }
+.department-footer { border-top: 1px solid #334155; color: #94a3b8; font-size: .875rem; }
+@media (max-width: 800px) {
+  .department-products { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .department-directory { grid-template-columns: 1fr; }
+  .department-summary, .department-summary:first-child { padding: 28px 0; border-right: 0; border-bottom: 1px solid #334155; }
+  .department-summary:last-child { border-bottom: 0; }
+  .department-tagline { min-height: auto; margin-top: 16px; }
+  .department-summary ul { margin: 12px 0 20px; }
+}
+@media (max-width: 420px) { .department-products { grid-template-columns: 1fr; } }
