@@ -11,7 +11,7 @@ test('department selection renders products, sold-out state and unpublished coll
       } }] },
     } } });
   });
-  await page.goto('/shop');
+  await page.goto('/');
   await expect(page.getByRole('heading', { name: 'More than just vinyl.' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Sample custom sticker' })).toBeVisible();
   await expect(page.getByText('Sold out', { exact: true })).toBeVisible();
@@ -30,7 +30,7 @@ test('connection failures offer contact and a successful retry', async ({ page }
     status: fail ? 503 : 200,
     json: fail ? { error: 'The shop is not connected yet.' } : { collection: null },
   }));
-  await page.goto('/shop?department=west-made-crafts');
+  await page.goto('/?department=west-made-crafts');
   await expect(page.getByRole('status')).toContainText('The shop is not connected yet.');
   await expect(page.getByRole('link', { name: 'Contact us', exact: true })).toHaveAttribute('href', '/contact');
   fail = false;
@@ -42,7 +42,7 @@ for (const width of [390, 1280]) {
   test(`reference-led photography and navigation at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.route('**/api/departments?*', route => route.fulfill({ json: { collection: null } }));
-    await page.goto('/shop');
+    await page.goto('/');
     await page.evaluate(() => document.fonts.ready);
     for (const image of await page.locator('.shop-hero-image, .department-photo').all()) {
       await expect(image).toBeVisible();
@@ -58,3 +58,17 @@ for (const width of [390, 1280]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 }
+
+test('homepage is the storefront and design links open the editor', async ({ page }) => {
+  await page.route('**/api/departments?*', route => route.fulfill({ json: { collection: null } }));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'More than just vinyl.' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Design studio', exact: true })).toHaveAttribute('href', '/studio');
+  await page.getByRole('link', { name: 'Design studio', exact: true }).click();
+  await expect(page).toHaveURL(/\/studio$/);
+  await expect(page.getByTestId('studio-tour-replay')).toBeAttached();
+  expect(await page.evaluate(() => document.documentElement.classList.contains('wvs-document-scroll'))).toBe(false);
+  await page.goto('/shop');
+  await expect(page.getByRole('heading', { name: 'More than just vinyl.' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.classList.contains('wvs-document-scroll'))).toBe(true);
+});

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('studio tour appears on the first visit and stays dismissed after skip', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/studio');
   const dialog = page.getByRole('dialog', { name: 'Studio tour' });
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText('1 of 5');
@@ -32,7 +32,7 @@ for (const viewport of [
 ]) {
   test(`trace step highlights both trace buttons at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    await page.goto('/');
+    await page.goto('/studio');
     const dialog = page.getByRole('dialog', { name: 'Studio tour' });
     await expect(dialog).toBeVisible();
     for (let i = 0; i < 3; i++) await dialog.getByRole('button', { name: 'Next' }).click();

@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 
 async function addMultilineText(page: Page, width: number) {
   await page.setViewportSize({ width, height: width < 640 ? 812 : 800 });
-  await page.goto('/');
+  await page.goto('/studio');
   if (width < 640) {
     await expect(page.getByTestId('studio-header')).toBeVisible();
   } else {

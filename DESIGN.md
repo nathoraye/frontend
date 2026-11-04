@@ -153,7 +153,7 @@ The name of the north star is inferred from the implemented chrome. It is not a 
 - Flat panels with hairline borders. Shadows only on floating bars and the inspector edge.
 - Touch targets in the tool dock stay at least 44px.
 
-The `/shop` storefront is a separate, user-approved visual surface: black ground,
+The `/` storefront (with `/shop` alias) is a separate, user-approved visual surface: black ground,
 self-hosted Road Rage brush lettering, purple navigation/actions, supplied photography,
 and cyan/magenta/gold department borders. The studio's tool and checkout rules below
 remain unchanged and do not prescribe the storefront's promotional headings or CTAs.
@@ -251,14 +251,14 @@ Borders are 1px. The pink tab underline in the inspector is 2px and is a selecti
 
 ## Components
 
-### Department storefront (`/shop` only)
+### Department storefront (`/` and `/shop` only)
 
 - Reference: owner's photographic black/purple storefront mockup, followed by four supplied source images.
 - Hero uses the supplied ute sunset photo, positioned right on desktop with copy left; mobile uses a top photo and bottom-aligned copy. Dark overlays protect text contrast, not replace imagery.
 - Barlow supplies self-hosted regular/bold body typography, avoiding platform-dependent fallback and preserving the reference’s compact sans-serif copy.
 - Road Rage is self-hosted with its SIL license. It supplies a brush-like typographic wordmark; it is not represented as an original logo asset. White West Vinyl and purple Studio form the lockup.
 - Desktop department panels form three columns, with actual supplied photos, a one-pixel department-colored border, a dark lower scrim, concise feature lists and pill collection actions. At 700px they stack; 700–1000px titles wrap their subheads.
-- Photography and display typography stay on `/shop`; the editor remains untouched. Product images and prices come from Shopify, not the promotional photographs.
+- Photography and display typography stay on the storefront; the editor remains untouched. Product images and prices come from Shopify, not the promotional photographs.
 - Purple `#8121d1` actions carry white text; `#c276ff` is the lighter purple used for text. Department accents use dark text when filled.
 - No fake cart, account, social destinations, unconnected subscription form, or unverified shipping/quality promises. Footer contact goes to the existing contact route.
 - Collection selection keeps the URL query parameter and scrolls to the actual product region. Loading, unavailable connection, empty collection, sold out and retry states remain functional.

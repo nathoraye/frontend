@@ -4,7 +4,7 @@
   "title": "Design System: West Vinyl Studio",
   "extensions": {
     "departmentShop": {
-      "scope": "/shop",
+      "scope": "/ and /shop",
       "bodyFontFamily": "Barlow, sans-serif",
       "source": "Owner-supplied storefront reference and four photographs",
       "palette": {
@@ -30,7 +30,7 @@
         "panelMinHeight": "440px"
       },
       "imagery": "/shop/{hero,custom,crafts,collectables}.webp",
-      "behavior": "Department actions update query selection and scroll to products; studio remains at /."
+      "behavior": "Department actions update query selection and scroll to products; studio is at /studio."
     },
     "colorMeta": {
       "registration-pink": {

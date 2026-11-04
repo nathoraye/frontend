@@ -102,11 +102,11 @@ export default function DepartmentShop() {
       <a className="shop-skip-link" href="#main-content">Skip to content</a>
       <div className="shop-local-strip"><span><MapPin size={14} aria-hidden="true" /> Wentworth, NSW · Australia</span><span><Heart size={14} aria-hidden="true" /> Custom creations. Handmade goods. Curated finds.</span></div>
       <header className="department-header">
-        <a href="/shop" className="shop-brand"><ShopWordmark /></a>
+        <a href="/" className="shop-brand"><ShopWordmark /></a>
         <nav aria-label="Site navigation">
-          <a className="shop-active-link" href="/shop" aria-current="page">Shop</a>
+          <a className="shop-active-link" href="/" aria-current="page">Shop</a>
           {DEPARTMENTS.map(department => <a key={department.id} href={`#department-${department.id}`} onClick={() => selectDepartment(department)}>{department.subhead}</a>)}
-          <a href="/">Design studio <ArrowUpRight size={14} aria-hidden="true" /></a>
+          <a href="/studio">Design studio <ArrowUpRight size={14} aria-hidden="true" /></a>
           <a href="/contact">Contact</a>
         </nav>
       </header>
@@ -146,7 +146,7 @@ export default function DepartmentShop() {
         </div>
         <section id="department-collection" aria-labelledby="department-collection-title" className="department-collection">
           <h2 id="department-collection-title">{selected.name} <span>/ {selected.subhead}</span></h2>
-          {selected.id === 'custom' && <p className="department-studio-link">Make something your own. <a href="/">Open the design studio <ArrowUpRight size={16} aria-hidden="true" /></a></p>}
+          {selected.id === 'custom' && <p className="department-studio-link">Make something your own. <a href="/studio">Open the design studio <ArrowUpRight size={16} aria-hidden="true" /></a></p>}
           <ProductList key={selected.id} department={selected} />
         </section>
       </main>

@@ -1,6 +1,14 @@
 import { useEffect } from 'react';
 
 export const ROUTE_META: Record<string, { title: string; description: string }> = {
+  '/': {
+    title: 'West Vinyl Studio | Custom, Crafts & Collectables',
+    description: 'Custom vinyl, handmade crafts and curated vintage finds. Explore West Vinyl, West Made and West Finds in Wentworth, NSW.',
+  },
+  '/studio': {
+    title: 'Design Your Own Vinyl & Apparel | West Vinyl Studio',
+    description: 'Create custom vinyl stickers, decals and apparel in the West Vinyl Studio design editor. Build your artwork and order your design.',
+  },
   '/shop': {
     title: 'Shop Custom, Crafts & Collectables | West Vinyl Studio',
     description: 'Explore West Vinyl custom products, West Made crafts and West Finds collectables.',

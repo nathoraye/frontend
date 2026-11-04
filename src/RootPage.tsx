@@ -16,7 +16,7 @@ function currentPath() {
 
 /** Studio keeps html/body overflow locked; other routes need page scroll. */
 function isDocumentScrollPath(path: string) {
-  return path !== '/'
+  return path !== '/studio'
 }
 
 function RoutePage() {
@@ -50,7 +50,7 @@ function RoutePage() {
   }, [path])
 
   if (path === '/admin/orders' || path === '/jobs') return <JobsBoard />
-  if (path === '/shop') return <DepartmentShop />
+  if (path === '/' || path === '/shop') return <DepartmentShop />
   if (path === '/order/success') return <OrderSuccessPage />
   if (path === '/order/cancel') return <OrderCancelPage />
   if (path === '/policies' || path === '/privacy' || path === '/terms' || path === '/contact') {

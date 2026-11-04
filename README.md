@@ -192,8 +192,8 @@ Department imagery is illustrative, not an inventory claim. No newsletter, cart 
 controls are shown without a working integration. The original logo asset was not supplied;
 the wordmark is live text, not a low-resolution crop of the reference.
 
-`/shop` adds West Vinyl (Custom), West Made (Crafts), and West Finds (Collectables).
-The existing `/` design studio and its Stripe checkout are unchanged. Desktop navigation
+`/` (also available at `/shop`) shows West Vinyl (Custom), West Made (Crafts), and West Finds (Collectables).
+The design editor is now at `/studio`; its Stripe checkout is unchanged. Desktop navigation
 and the phone studio menu link to the shop. Department branding, collection handles,
 feature lists, and badge tags live in `src/config/departments.ts`.
 
