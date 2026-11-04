@@ -7,6 +7,7 @@ const App = lazy(() => import('./App.tsx'))
 const JobsBoard = lazy(() => import('./components/JobsBoard.tsx').then(module => ({ default: module.JobsBoard })))
 const OrderCancelPage = lazy(() => import('./components/OrderCancelPage.tsx').then(module => ({ default: module.OrderCancelPage })))
 const OrderSuccessPage = lazy(() => import('./components/OrderSuccessPage.tsx').then(module => ({ default: module.OrderSuccessPage })))
+const DepartmentShop = lazy(() => import('./components/DepartmentShop.tsx'))
 const StudioInfoPage = lazy(() => import('./components/StudioInfoPage.tsx'))
 
 function currentPath() {
@@ -15,7 +16,7 @@ function currentPath() {
 
 /** Studio keeps html/body overflow locked; other routes need page scroll. */
 function isDocumentScrollPath(path: string) {
-  return path !== '/'
+  return path !== '/studio'
 }
 
 function RoutePage() {
@@ -49,6 +50,7 @@ function RoutePage() {
   }, [path])
 
   if (path === '/admin/orders' || path === '/jobs') return <JobsBoard />
+  if (path === '/' || path === '/shop') return <DepartmentShop />
   if (path === '/order/success') return <OrderSuccessPage />
   if (path === '/order/cancel') return <OrderCancelPage />
   if (path === '/policies' || path === '/privacy' || path === '/terms' || path === '/contact') {

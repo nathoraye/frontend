@@ -8,7 +8,7 @@ function overlaps(a: Box, b: Box) {
 
 async function phoneChrome(page: Page, width: number) {
   await page.setViewportSize({ width, height: 812 });
-  await page.goto('/');
+  await page.goto('/studio');
   await expect(page.getByTestId('studio-header')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open sidebar' })).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Open inspector' })).toHaveCount(0);
@@ -70,7 +70,7 @@ test.describe('phone studio smoke', () => {
   });
 
   test('loads, flags cut-ready, autosaves, and uses toasts instead of alerts', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/studio');
     await page.getByRole('button', { name: 'Open sidebar' }).click();
     await expect(page.getByText('WVS', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Undo (Ctrl+Z)' })).toBeVisible();

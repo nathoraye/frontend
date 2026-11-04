@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Sticker → Buy Sticker → local checkout → jobs board', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/studio');
   await expect(page.getByText(/west vinyl studio/i)).toBeVisible();
 
   await page.getByRole('button', { name: 'Sticker', exact: true }).click();
@@ -108,7 +108,7 @@ test('Sticker → Buy Sticker → local checkout → jobs board', async ({ page 
 });
 
 test('Product Preview → Buy Apparel inherits colour/size/placement', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/studio');
   await expect(page.getByText(/west vinyl studio/i)).toBeVisible();
 
   await page.getByRole('button', { name: /product preview/i }).click();

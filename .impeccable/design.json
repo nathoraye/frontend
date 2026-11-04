@@ -3,6 +3,35 @@
   "generatedAt": "2026-09-29T23:20:00.000Z",
   "title": "Design System: West Vinyl Studio",
   "extensions": {
+    "departmentShop": {
+      "scope": "/ and /shop",
+      "bodyFontFamily": "Barlow, sans-serif",
+      "source": "Owner-supplied storefront reference and four photographs",
+      "palette": {
+        "ground": "#09090c",
+        "panel": "#141117",
+        "purple": "#a938ff",
+        "action": "#8121d1",
+        "purpleInk": "#c276ff",
+        "custom": "#00D2FF",
+        "crafts": "#FF2E93",
+        "collectables": "#FFB800"
+      },
+      "display": {
+        "fontFamily": "Road Rage",
+        "fontWeight": 400,
+        "source": "/fonts/road-rage-latin-400-normal.woff2",
+        "license": "/fonts/road-rage-LICENSE.txt"
+      },
+      "layout": {
+        "maxWidth": "1280px",
+        "departmentColumns": 3,
+        "stackAt": "700px",
+        "panelMinHeight": "440px"
+      },
+      "imagery": "/shop/{hero,custom,crafts,collectables}.webp",
+      "behavior": "Department actions update query selection and scroll to products; studio is at /studio."
+    },
     "colorMeta": {
       "registration-pink": {
         "role": "primary",

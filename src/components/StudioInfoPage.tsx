@@ -27,7 +27,8 @@ function PageShell({
           <p className="text-sm text-slate-400">{PAGES[page].eyebrow}</p>
         </header>
         <nav data-nosnippet="" aria-label="Site navigation" className="flex flex-wrap gap-3 font-mono text-xs text-slate-400">
-          <a className="hover:text-pink-300" href="/">
+          <a className="hover:text-pink-300" href="/">Home</a>
+          <a className="hover:text-pink-300" href="/studio">
             Studio
           </a>
           <a className="hover:text-pink-300" href="/policies">

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { handleTraceRequest } from './api/trace.js';
 import ordersHandler from './api/orders.js';
+import departmentsHandler from './api/departments.js';
 import { readJsonBody, readRawBody, sendBinary, sendJson, sendRouteError } from './api/_lib/http.js';
 import {
   handleCreateCheckoutSession,
@@ -66,6 +67,10 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === 'OPTIONS') {
       return sendJson(res, 204, {});
+    }
+
+    if (url.pathname === '/api/departments') {
+      return departmentsHandler(req, res);
     }
 
     if (req.method === 'GET' && url.pathname === '/api/health') {

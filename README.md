@@ -182,3 +182,43 @@ Google Ads: either import the GA4 `purchase` event, or set the Ads conversion id
 3. **Where the rows live:** Vercel Blob `west-vinyl-orders.json` when `BLOB_READ_WRITE_TOKEN` is set; otherwise local `data/orders.json`. The board prints the active store at the top.
 4. **How a paid row gets there:** checkout `POST /api/stripe/create-checkout-session` writes the job + SVG on the server first; Stripe `POST /api/stripe/webhook` (`checkout.session.completed`) marks it `paid`. Not a browser-only POST after pay.
 
+## Department shop / Shopify
+
+The shop's visual direction follows the owner's supplied storefront reference: a purple
+brush-style typographic wordmark, the supplied ute sunset hero, and three photographic
+cyan/magenta/gold department panels. Optimized source photos and provenance are under
+`public/shop/`; the self-hosted Road Rage font includes its license under `public/fonts/`.
+Department imagery is illustrative, not an inventory claim. No newsletter, cart or social
+controls are shown without a working integration. The original logo asset was not supplied;
+the wordmark is live text, not a low-resolution crop of the reference.
+
+`/` (also available at `/shop`) shows West Vinyl (Custom), West Made (Crafts), and West Finds (Collectables).
+The design editor is now at `/studio`; its Stripe checkout is unchanged. Desktop navigation
+and the phone studio menu link to the shop. Department branding, collection handles,
+feature lists, and badge tags live in `src/config/departments.ts`.
+
+The same-origin `GET /api/departments?handle=<collection-handle>` endpoint queries the
+first 12 products from the selected Shopify collection. It runs as a Vercel API function
+and is also registered in both local servers. Credentials are never sent to the browser.
+Product links use Shopify's `onlineStoreUrl`; they open the Shopify product page, not
+the studio's custom-design Stripe checkout. There is no Shopify cart in this change.
+
+Configure these **server-only** environment variables in your deployment environments
+(and your gitignored local `.env`):
+
+- `SHOPIFY_STORE_DOMAIN`: the store's bare `*.myshopify.com` hostname, without protocol or path.
+- `SHOPIFY_STOREFRONT_ACCESS_TOKEN`: a Storefront API access token (not an Admin API token)
+  with collection/product read access. Enter credentials yourself; never commit them.
+- `SHOPIFY_STOREFRONT_API_VERSION`: an active stable Shopify API version in `YYYY-MM` form.
+  It is explicit rather than silently pinning an API version that can expire.
+
+Publish collections/products to the Storefront API's sales channel. The expected handles
+are `west-vinyl-custom`, `west-made-crafts`, and `west-finds-collectables`, with department
+tags `dept:custom`, `dept:crafts`, and `dept:finds` respectively. Collection creation,
+smart-collection rules, product tagging, and channel publication remain Shopify-side tasks;
+this repository does not change Shopify data. West Finds may return no collection until
+it is created and published. The shop displays an honest empty state in that case, and a
+separate connection message when configuration is missing. Shopify failures offer retry
+and contact actions without leaking upstream errors.
+
+Focused endpoint/config checks: `node --experimental-strip-types --test scripts/departments.test.ts`.

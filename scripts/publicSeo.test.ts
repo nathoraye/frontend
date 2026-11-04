@@ -46,7 +46,7 @@ describe('public SEO files', () => {
   test('index.html exposes title, description, canonical, social tags, and business JSON-LD', async () => {
     const html = await fs.readFile(path.join(root, 'index.html'), 'utf8');
     assert.match(html, /<html lang="en-AU">/);
-    assert.match(html, /<title>West Vinyl Studio \| Custom Vinyl Decals, Stickers &amp; Apparel Australia<\/title>/);
+    assert.match(html, /<title>West Vinyl Studio \| Custom, Crafts &amp; Collectables<\/title>/);
     assert.match(html, /name="description"/);
     assert.match(html, /Custom vinyl decals and stickers/);
     assert.match(html, /Wentworth, NSW/);

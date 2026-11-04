@@ -80,7 +80,7 @@ export function OrderSuccessPage() {
         )}
         <div className="flex flex-col gap-2 sm:flex-row">
           <a
-            href="/"
+            href="/studio"
             className="inline-flex min-h-11 items-center justify-center rounded bg-pink-500 px-4 font-mono text-sm text-gray-900 hover:bg-pink-600"
           >
             Back to studio

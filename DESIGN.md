@@ -2,6 +2,14 @@
 name: West Vinyl Studio
 description: Dark cutting-mat studio for designing and ordering custom vinyl and iron-on goods.
 colors:
+  shop-ground: "#09090c"
+  shop-panel: "#141117"
+  shop-purple: "#a938ff"
+  shop-action: "#8121d1"
+  shop-purple-ink: "#c276ff"
+  shop-custom: "#00D2FF"
+  shop-crafts: "#FF2E93"
+  shop-collectables: "#FFB800"
   registration-pink: "#FF1493"
   registration-pink-hover: "#d41270"
   void: "#0f111a"
@@ -21,6 +29,18 @@ colors:
   notice-error: "#2a151c"
   notice-success: "#152a1c"
 typography:
+  shop-body:
+    fontFamily: "Barlow, sans-serif"
+    fontSize: "0.875rem"
+    fontWeight: 400
+    lineHeight: 1.7
+    letterSpacing: "normal"
+  shop-display:
+    fontFamily: "Road Rage, cursive"
+    fontSize: "clamp(3.2rem, 5.4vw, 5rem)"
+    fontWeight: 400
+    lineHeight: 0.95
+    letterSpacing: "normal"
   display:
     fontFamily: "ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.875rem"
@@ -133,6 +153,11 @@ The name of the north star is inferred from the implemented chrome. It is not a 
 - Flat panels with hairline borders. Shadows only on floating bars and the inspector edge.
 - Touch targets in the tool dock stay at least 44px.
 
+The `/` storefront (with `/shop` alias) is a separate, user-approved visual surface: black ground,
+self-hosted Road Rage brush lettering, purple navigation/actions, supplied photography,
+and cyan/magenta/gold department borders. The studio's tool and checkout rules below
+remain unchanged and do not prescribe the storefront's promotional headings or CTAs.
+
 ## Colors
 
 The palette is a night bench plus a plotter's registration pink. A second saturated green exists only for buying apparel.
@@ -225,6 +250,19 @@ Corners are gently curved and get rounder as the control gets more like a tool. 
 Borders are 1px. The pink tab underline in the inspector is 2px and is a selection rule, not a card accent.
 
 ## Components
+
+### Department storefront (`/` and `/shop` only)
+
+- Reference: owner's photographic black/purple storefront mockup, followed by four supplied source images.
+- Hero uses the supplied ute sunset photo, positioned right on desktop with copy left; mobile uses a top photo and bottom-aligned copy. Dark overlays protect text contrast, not replace imagery.
+- Barlow supplies self-hosted regular/bold body typography, avoiding platform-dependent fallback and preserving the reference’s compact sans-serif copy.
+- Road Rage is self-hosted with its SIL license. It supplies a brush-like typographic wordmark; it is not represented as an original logo asset. White West Vinyl and purple Studio form the lockup.
+- Desktop department panels form three columns, with actual supplied photos, a one-pixel department-colored border, a dark lower scrim, concise feature lists and pill collection actions. At 700px they stack; 700–1000px titles wrap their subheads.
+- Photography and display typography stay on the storefront; the editor remains untouched. Product images and prices come from Shopify, not the promotional photographs.
+- Purple `#8121d1` actions carry white text; `#c276ff` is the lighter purple used for text. Department accents use dark text when filled.
+- No fake cart, account, social destinations, unconnected subscription form, or unverified shipping/quality promises. Footer contact goes to the existing contact route.
+- Collection selection keeps the URL query parameter and scrolls to the actual product region. Loading, unavailable connection, empty collection, sold out and retry states remain functional.
+
 
 ### Buttons
 

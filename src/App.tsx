@@ -701,6 +701,7 @@ export default function App() {
                 <span className="sm:hidden">WVS</span>
                 <span className="hidden sm:inline">West Vinyl Studio</span>
               </span>
+              <a href="/" className="inline-flex min-h-10 items-center px-2 text-xs text-slate-300 hover:text-pink-300">Shop</a>
               <a
                 href="/policies"
                 className="shrink-0 text-[10px] font-bold tracking-wider text-slate-400 uppercase hover:text-pink-400"
