@@ -5,6 +5,7 @@
   "extensions": {
     "departmentShop": {
       "scope": "/shop",
+      "bodyFontFamily": "Barlow, sans-serif",
       "source": "Owner-supplied storefront reference and four photographs",
       "palette": {
         "ground": "#09090c",

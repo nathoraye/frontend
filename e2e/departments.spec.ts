@@ -49,6 +49,7 @@ for (const width of [390, 1280]) {
       expect(await image.evaluate((node: HTMLImageElement) => node.complete && node.naturalWidth > 0)).toBe(true);
     }
     expect(await page.evaluate(() => document.fonts.check('32px "Road Rage"'))).toBe(true);
+    expect(await page.evaluate(() => document.fonts.check('16px "Barlow"'))).toBe(true);
     await page.getByRole('link', { name: 'Explore our collections' }).click();
     await expect(page).toHaveURL(/#departments$/);
     await page.getByRole('button', { name: 'Shop crafts' }).click();

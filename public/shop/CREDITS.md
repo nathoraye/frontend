@@ -10,3 +10,5 @@ The four WebP images are optimized copies of images supplied by the site owner i
 These are department imagery, not a claim that any photographed item is currently in stock.
 
 Display typography: Road Rage, by Youssef Habchi, distributed through @fontsource/road-rage 5.3.0 under the SIL Open Font License. Font and license are self-hosted in /fonts.
+
+Body typography: Barlow, by Jeremy Tribby, distributed through @fontsource/barlow under the SIL Open Font License. Regular and bold fonts plus license are self-hosted in /fonts.

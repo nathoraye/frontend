@@ -29,6 +29,12 @@ colors:
   notice-error: "#2a151c"
   notice-success: "#152a1c"
 typography:
+  shop-body:
+    fontFamily: "Barlow, sans-serif"
+    fontSize: "0.875rem"
+    fontWeight: 400
+    lineHeight: 1.7
+    letterSpacing: "normal"
   shop-display:
     fontFamily: "Road Rage, cursive"
     fontSize: "clamp(3.2rem, 5.4vw, 5rem)"
@@ -249,6 +255,7 @@ Borders are 1px. The pink tab underline in the inspector is 2px and is a selecti
 
 - Reference: owner's photographic black/purple storefront mockup, followed by four supplied source images.
 - Hero uses the supplied ute sunset photo, positioned right on desktop with copy left; mobile uses a top photo and bottom-aligned copy. Dark overlays protect text contrast, not replace imagery.
+- Barlow supplies self-hosted regular/bold body typography, avoiding platform-dependent fallback and preserving the reference’s compact sans-serif copy.
 - Road Rage is self-hosted with its SIL license. It supplies a brush-like typographic wordmark; it is not represented as an original logo asset. White West Vinyl and purple Studio form the lockup.
 - Desktop department panels form three columns, with actual supplied photos, a one-pixel department-colored border, a dark lower scrim, concise feature lists and pill collection actions. At 700px they stack; 700–1000px titles wrap their subheads.
 - Photography and display typography stay on `/shop`; the editor remains untouched. Product images and prices come from Shopify, not the promotional photographs.
