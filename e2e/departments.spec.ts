@@ -13,6 +13,7 @@ test('department selection renders products, sold-out state and unpublished coll
   });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'More than just vinyl.' })).toBeVisible();
+  await expect(page.locator('#department-collectables').getByText('Clothing', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Sample custom sticker' })).toBeVisible();
   await expect(page.getByText('Sold out', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'View product', exact: true })).toHaveAttribute('href', 'https://example.myshopify.com/products/sample');
