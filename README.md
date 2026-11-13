@@ -201,7 +201,7 @@ The same-origin `GET /api/departments?handle=<collection-handle>` endpoint queri
 first 12 products from the selected Shopify collection. It runs as a Vercel API function
 and is also registered in both local servers. Credentials are never sent to the browser.
 Product links use Shopify's `onlineStoreUrl`; they open the Shopify product page, not
-the studio's custom-design Stripe checkout. There is no Shopify cart in this change.
+the studio's custom-design Stripe checkout. The featured West Vinyl product below uses a separate Shopify Buy Button cart.
 
 Configure these **server-only** environment variables in your deployment environments
 (and your gitignored local `.env`):
@@ -222,3 +222,23 @@ separate connection message when configuration is missing. Shopify failures offe
 and contact actions without leaking upstream errors.
 
 Focused endpoint/config checks: `node --experimental-strip-types --test scripts/departments.test.ts`.
+
+### Featured West Vinyl Buy Button
+
+The West Vinyl department also embeds product `15289649725681` from
+`stdgmt-5m.myshopify.com`, using the Shopify Buy Button SDK and the supplied olive
+Add to cart / Checkout styling. Shopify supplies the product title, variants, image,
+price, availability and checkout. It is independent of the collection API and Stripe studio.
+
+Set `VITE_SHOPIFY_BUY_BUTTON_STOREFRONT_TOKEN` yourself in Preview and Production,
+then create a new deployment. Use only the **public Storefront token from the Buy Button
+embed**, not an Admin API token or private Storefront token: Vite embeds this value in
+browser code. Never commit the token. The featured product stays mounted across department
+switches to preserve the cart; it is shown only in West Vinyl. Missing configuration or
+a failed SDK request shows a product enquiry link rather than a nonfunctional buy button.
+The collection API's server-only credentials are not reused or exposed.
+
+Focused Buy Button browser tests: `npx playwright test e2e/westVinylProduct.spec.ts`.
+For SDK lifecycle tests, run the dev server and tests with a dummy public token via
+`VITE_SHOPIFY_BUY_BUTTON_STOREFRONT_TOKEN=fixture-token`; the tests mock Shopify,
+so they do not create real carts or orders.
