@@ -136,3 +136,6 @@
   .department-summary h2 span { display: block; }
   .department-products { grid-template-columns: 1fr; }
 }
+
+.west-vinyl-buy-button { max-width: 400px; margin-block: 24px; }
+.west-vinyl-buy-button[hidden] { display: none; }

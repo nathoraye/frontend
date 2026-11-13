@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { ArrowRight, ArrowUpRight, Check, Heart, MapPin, Mail, Palette, Gift, Compass } from 'lucide-react';
 import { DEPARTMENTS, type Department } from '../config/departments';
 import './DepartmentShop.css';
+import WestVinylProduct from './WestVinylProduct';
 
 type Product = {
   id: string;
@@ -47,7 +48,7 @@ function ProductList({ department }: { department: Department }) {
   const collection = result.collection;
   if (!collection || collection.products.edges.length === 0) return (
     <div className="department-status" role="status">
-      <p>No products are available in {department.name} yet.</p>
+      <p>{department.id === 'custom' ? 'No additional collection products' : 'No products'} are available in {department.name} yet.</p>
       <a href="/contact">Ask about {department.subhead.toLowerCase()} <ArrowUpRight size={16} aria-hidden="true" /></a>
     </div>
   );
@@ -147,6 +148,7 @@ export default function DepartmentShop() {
         <section id="department-collection" aria-labelledby="department-collection-title" className="department-collection">
           <h2 id="department-collection-title">{selected.name} <span>/ {selected.subhead}</span></h2>
           {selected.id === 'custom' && <p className="department-studio-link">Make something your own. <a href="/studio">Open the design studio <ArrowUpRight size={16} aria-hidden="true" /></a></p>}
+          <WestVinylProduct visible={selected.id === 'custom'} />
           <ProductList key={selected.id} department={selected} />
         </section>
       </main>
